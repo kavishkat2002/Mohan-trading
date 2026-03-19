@@ -1,72 +1,80 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useBusiness } from "@/hooks/useBusiness";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { subDays, format, startOfDay } from "date-fns";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
+
+const data = [
+  { name: 'Mon', leads: 4, closed: 1 },
+  { name: 'Tue', leads: 7, closed: 2 },
+  { name: 'Wed', leads: 5, closed: 1 },
+  { name: 'Thu', leads: 11, closed: 4 },
+  { name: 'Fri', leads: 8, closed: 3 },
+  { name: 'Sat', leads: 14, closed: 6 },
+  { name: 'Sun', leads: 9, closed: 2 },
+];
+
+const sourceData = [
+  { name: "WhatsApp Bot", value: 65, fill: "#22c55e" },
+  { name: "Website", value: 25, fill: "#3b82f6" },
+  { name: "Referral", value: 10, fill: "#a855f7" }
+];
 
 export default function Analytics() {
-  const { businessId } = useBusiness();
-
-  const { data: orders } = useQuery({
-    queryKey: ["analytics-orders", businessId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("total_amount, created_at, status")
-        .eq("business_id", businessId!)
-        .gte("created_at", subDays(new Date(), 30).toISOString());
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!businessId,
-  });
-
-  // Group by day for charts
-  const dailyData = Array.from({ length: 7 }, (_, i) => {
-    const day = startOfDay(subDays(new Date(), 6 - i));
-    const dayStr = format(day, "yyyy-MM-dd");
-    const dayOrders = (orders || []).filter(o => o.created_at?.startsWith(dayStr));
-    return {
-      day: format(day, "EEE"),
-      revenue: dayOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0),
-      orders: dayOrders.length,
-    };
-  });
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-display font-bold">Sales Analytics</h1>
-        <p className="text-muted-foreground mt-1">Last 7 days performance</p>
+        <h1 className="text-3xl font-display font-bold text-slate-900 tracking-tight">Analytics & Reports</h1>
+        <p className="text-slate-500 mt-1">Deep dive into your sales performance and lead sources.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="font-display">Revenue Trend</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="day" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="col-span-full lg:col-span-2 shadow-sm border-slate-200">
+          <CardHeader>
+            <CardTitle>Lead Generation over Time</CardTitle>
+            <CardDescription>Number of incoming leads vs deals closed in the past week.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorClosed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend />
+                <Area type="monotone" dataKey="leads" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" name="Total Leads" />
+                <Area type="monotone" dataKey="closed" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorClosed)" name="Closed Deals" />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="font-display">Order Volume</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="day" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader>
+            <CardTitle>Lead Sources</CardTitle>
+            <CardDescription>Where your leads are coming from.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{fill: '#475569', fontSize: 13, fontWeight: 500}} />
+                <Tooltip cursor={{fill: '#f1f5f9'}} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {sourceData.map((entry, index) => (
+                    <cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
