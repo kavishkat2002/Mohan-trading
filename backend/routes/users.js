@@ -84,4 +84,56 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Get profile
+router.get('/:id/profile', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await db.query('SELECT id, email, role, name, mobile_number, avatar_url, created_at FROM users WHERE id = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update profile details
+router.put('/:id/profile', async (req, res) => {
+  const { id } = req.params;
+  const { name, mobile_number, avatar_url, oldPassword, newPassword } = req.body;
+  try {
+    // Basic updates
+    let updateQuery = 'UPDATE users SET name = COALESCE($1, name), avatar_url = COALESCE($2, avatar_url), mobile_number = COALESCE($3, mobile_number)';
+    let params = [name, avatar_url, mobile_number, id];
+    let returning = 'RETURNING id, email, role, name, mobile_number, avatar_url';
+
+    // Password update flow
+    if (newPassword) {
+      if (!oldPassword) {
+        return res.status(400).json({ error: 'Old password is required to set a new password' });
+      }
+      
+      const userRes = await db.query('SELECT password_hash FROM users WHERE id = $1', [id]);
+      if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+      
+      const match = await bcrypt.compare(oldPassword, userRes.rows[0].password_hash);
+      if (!match) return res.status(400).json({ error: 'Incorrect old password' });
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      updateQuery += ', password_hash = $5';
+      params.push(hashedPassword);
+      updateQuery += ` WHERE id = $4 ${returning}`;
+    } else {
+      updateQuery += ` WHERE id = $4 ${returning}`;
+    }
+
+    const { rows } = await db.query(updateQuery, params);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

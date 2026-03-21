@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -16,20 +20,24 @@ const navItems = [
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
   { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
-  { label: "Admin Panel", icon: Shield, path: "/dashboard/settings" },
+  { label: "Settings", icon: Settings, path: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileAvatar, setProfileAvatar] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   
-  const isOwner = user?.role === 'owner';
+  const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const filteredNavItems = navItems.filter(item => {
-    if (isOwner) return true;
+    if (isElevated) return true;
     return ["Dashboard", "Vehicles", "Leads", "Chat Box"].includes(item.label);
   });
 
@@ -198,12 +206,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <h2 className="font-sans font-semibold text-sm tracking-tight text-foreground uppercase">
             {navItems.find(n => location.pathname.startsWith(n.path))?.label || "Dashboard"}
           </h2>
-          <div className="ml-auto flex items-center gap-3">
-             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-               <span className="text-xs font-semibold text-primary">MT</span>
-             </div>
+          <div className="ml-auto flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-[13px] font-semibold text-foreground capitalize tracking-wide">{user?.role} Profile</p>
+              <p className="text-[11px] text-muted-foreground">{profileName || user?.email}</p>
+            </div>
+            <button 
+              onClick={() => setProfileOpen(true)}
+              className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm hover:bg-primary/20 transition-all cursor-pointer overflow-hidden relative"
+            >
+              {profileAvatar ? (
+                <img src={profileAvatar} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-primary uppercase">{(profileName || user?.email)?.charAt(0) || "U"}</span>
+              )}
+            </button>
           </div>
         </header>
+
+        <ProfileSettingsDialog 
+          open={profileOpen} 
+          onOpenChange={setProfileOpen} 
+          user={user} 
+          setProfileName={setProfileName}
+          setProfileAvatar={setProfileAvatar}
+        />
 
         <div className="flex-1 overflow-auto p-5 md:p-8 scrollbar-minimal flex flex-col">
           <motion.div
@@ -227,5 +254,116 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
     </div>
+  );
+}
+
+function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setProfileAvatar }: { open: boolean; onOpenChange: (open: boolean) => void; user: any; setProfileName: (n:string)=>void; setProfileAvatar: (a:string)=>void; }) {
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && user?.id) {
+      fetch(`http://localhost:5001/api/users/${user.id}/profile`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.name) {
+             setName(data.name);
+             setProfileName(data.name);
+          }
+          if (data.mobile_number) setMobileNumber(data.mobile_number);
+          if (data.avatar_url) {
+             setAvatarUrl(data.avatar_url);
+             setProfileAvatar(data.avatar_url);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [open, user]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (newPassword && !oldPassword) {
+      toast({ title: "Old Password required", description: "You must enter your old password to set a new one.", variant: "destructive" });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/${user.id}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           name, 
+           mobile_number: mobileNumber,
+           avatar_url: avatarUrl,
+           oldPassword: oldPassword || undefined,
+           newPassword: newPassword || undefined 
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Profile updated successfully" });
+        setProfileName(name);
+        setProfileAvatar(avatarUrl);
+        setOldPassword("");
+        setNewPassword("");
+        onOpenChange(false);
+      } else {
+        toast({ title: "Update failed", description: data.error, variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "An error occurred", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto w-11/12 rounded-lg">
+        <DialogHeader>
+          <DialogTitle>Profile Settings</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSave} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label>Email Address</Label>
+            <Input value={user?.email || ""} readOnly disabled className="bg-gray-50 text-gray-500" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Your Full Name</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Type your full name" />
+            </div>
+            <div className="space-y-2">
+              <Label>Mobile Number</Label>
+              <Input value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} placeholder="e.g. +1 234 567 890" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Profile Picture URL</Label>
+            <Input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://example.com/photo.jpg" />
+          </div>
+          <div className="pt-4 border-t border-border space-y-4">
+            <h4 className="text-sm font-semibold">Change Password</h4>
+            <div className="space-y-2">
+              <Label>Current Password</Label>
+              <Input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="Required only if changing password" />
+            </div>
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" />
+            </div>
+          </div>
+          <Button type="submit" disabled={loading} className="w-full mt-4">Save Profile</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

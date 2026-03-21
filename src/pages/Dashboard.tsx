@@ -88,7 +88,7 @@ export default function Dashboard() {
               { label: "Add Vehicle", icon: Car },
               { label: "New Lead", icon: Users },
               { label: "Open Chat", icon: MessageSquare },
-              ...(user?.role === 'owner' ? [{ label: "Analytics", icon: Target }] : []),
+              ...(['owner', 'admin'].includes(user?.role) ? [{ label: "Analytics", icon: Target }] : []),
             ].map((action) => (
               <button
                 key={action.label}

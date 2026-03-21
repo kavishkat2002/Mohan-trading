@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,9 @@ import {
 
 function TeamManager() {
   const [users, setUsers] = useState<any[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = () => {
@@ -34,6 +38,33 @@ function TeamManager() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const addMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail || !newPassword) return;
+    setIsAdding(true);
+    try {
+      const res = await fetch("http://localhost:5001/api/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newEmail, password: newPassword, role: "sales" }) // Default to staff
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Team member added successfully" });
+        setNewEmail("");
+        setNewPassword("");
+        fetchUsers();
+      } else {
+        toast({ title: "Failed to add member", description: data.error, variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "An error occurred", variant: "destructive" });
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const changeRole = async (id: number, role: string) => {
     try {
@@ -54,30 +85,61 @@ function TeamManager() {
   };
 
   return (
-    <div className="space-y-3">
-      {users.map(u => (
-        <div key={u.id} className="flex items-center justify-between p-3.5 border border-border bg-background/50 rounded-lg">
-          <div>
-            <p className="text-sm font-medium text-foreground">{u.email}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
-          </div>
-          <Select value={u.role || 'sales'} onValueChange={(val) => changeRole(u.id, val)}>
-            <SelectTrigger className="w-32 h-8 text-xs bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="owner">Owner</SelectItem>
-              <SelectItem value="sales">Staff</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-6">
+      <form onSubmit={addMember} className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-4 border border-primary/20 bg-primary/5 rounded-lg">
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-primary/70 font-semibold">Email Address</Label>
+          <Input 
+            type="email" 
+            placeholder="staff@mohantrading.com" 
+            className="h-9 text-sm bg-white" 
+            value={newEmail} 
+            onChange={e => setNewEmail(e.target.value)} 
+          />
         </div>
-      ))}
-      {users.length === 0 && <p className="text-sm text-muted-foreground">Loading team members...</p>}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-primary/70 font-semibold">Temporary Password</Label>
+          <Input 
+            type="password" 
+            placeholder="••••••••" 
+            className="h-9 text-sm bg-white" 
+            value={newPassword} 
+            onChange={e => setNewPassword(e.target.value)} 
+          />
+        </div>
+        <Button type="submit" disabled={isAdding || !newEmail || !newPassword} className="h-9 px-6 bg-primary text-white shadow-sm shadow-primary/20">
+          {isAdding ? "Adding..." : "Add Member"}
+        </Button>
+      </form>
+
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">Current Members</h4>
+        {users.map(u => (
+          <div key={u.id} className="flex items-center justify-between p-3.5 border border-border bg-background/50 rounded-lg">
+            <div>
+              <p className="text-sm font-medium text-foreground">{u.email}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+            </div>
+            <Select value={u.role || 'sales'} onValueChange={(val) => changeRole(u.id, val)}>
+              <SelectTrigger className="w-32 h-8 text-xs bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="sales">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
+        {users.length === 0 && <p className="text-sm text-muted-foreground">Loading team members...</p>}
+      </div>
     </div>
   );
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const { business, userRole } = useBusiness();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -188,7 +250,7 @@ export default function SettingsPage() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Role:</Label>
               <Badge variant="outline" className="text-[11px] rounded-md px-2 py-0.5 font-medium bg-primary/5 text-primary border-primary/20">{userRole || "—"}</Badge>
             </div>
-            {userRole === "owner" && (
+            {['owner', 'admin'].includes(user?.role) && (
               <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 mt-2 shadow-sm shadow-primary/20">
                 Save Changes
               </Button>
@@ -229,7 +291,7 @@ export default function SettingsPage() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payment Gateway Link</Label>
               <Input type="url" placeholder="e.g., https://paypal.me/yourbusiness" defaultValue={business?.payment_gateway_link || ""} onChange={e => setPaymentGatewayLink(e.target.value)} className="h-9 text-sm" />
             </div>
-            {userRole === "owner" && (
+            {['owner', 'admin'].includes(user?.role) && (
               <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
                 Save Payment Settings
               </Button>
@@ -337,7 +399,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">Copy this to your Meta App Configuration. Set Verify Token to: <code className="px-1 py-0.5 bg-primary/5 text-primary rounded text-[10px]">smartbiz_verify_token</code></p>
             </div>
-            {userRole === "owner" && (
+            {['owner', 'admin'].includes(user?.role) && (
               <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
                 Save WhatsApp Settings
               </Button>
