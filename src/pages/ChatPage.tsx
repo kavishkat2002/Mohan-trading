@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Loader2, Send, Bot, User, Car, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -54,65 +53,94 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-6">
+    <div className="flex h-[calc(100vh-120px)] gap-4">
       {/* Sidebar: Leads List */}
-      <Card className="w-1/3 flex flex-col border-slate-200 shadow-sm overflow-hidden bg-white">
-        <div className="p-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="font-bold text-lg text-slate-800">WhatsApp Chats</h2>
-          <p className="text-xs text-slate-500">Select a lead to view messages</p>
+      <div className="w-[280px] shrink-0 flex flex-col border border-border rounded-lg bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">Conversations</h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Select a lead to view messages</p>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-minimal">
           {loadingLeads ? (
-            <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : leads.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">No leads available</div>
+            <div className="p-8 text-center text-xs text-muted-foreground">No leads available</div>
           ) : (
              leads.map(lead => (
                <div 
                  key={lead.id} 
                  onClick={() => handleSelectLead(lead)}
-                 className={`p-4 border-b border-slate-50 cursor-pointer transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/10 border-l-4 border-l-primary' : 'hover:bg-slate-50'}`}
+                 className={`px-4 py-3 border-b border-border/50 cursor-pointer transition-all duration-150 ${
+                   selectedLead?.id === lead.id 
+                     ? 'bg-primary text-white' 
+                     : 'hover:bg-primary/[0.03]'
+                 }`}
                >
                  <div className="flex justify-between items-start">
-                   <span className="font-semibold text-slate-900">{lead.name || lead.phone}</span>
-                   <span className="text-xs text-slate-400">{new Date(lead.created_at).toLocaleDateString()}</span>
+                   <span className={`font-medium text-sm ${selectedLead?.id === lead.id ? '' : 'text-foreground'}`}>
+                     {lead.name || lead.phone}
+                   </span>
+                   <span className={`text-[10px] ${selectedLead?.id === lead.id ? 'text-white/60' : 'text-muted-foreground'}`}>
+                     {new Date(lead.created_at).toLocaleDateString()}
+                   </span>
                  </div>
-                 <div className="text-sm text-slate-500 truncate mt-1 flex items-center gap-2">
-                   <Car className="h-3 w-3" /> {lead.interested_car || "Any"}
+                 <div className={`text-xs truncate mt-1 flex items-center gap-1.5 ${
+                   selectedLead?.id === lead.id ? 'text-white/70' : 'text-muted-foreground'
+                 }`}>
+                   <Car className="h-3 w-3 shrink-0" /> {lead.interested_car || "Any"}
                  </div>
                </div>
              ))
           )}
         </div>
-      </Card>
+      </div>
 
       {/* Main Chat Area */}
-      <Card className="flex-1 flex flex-col border-slate-200 shadow-sm overflow-hidden bg-white">
+      <div className="flex-1 flex flex-col border border-border rounded-lg bg-white overflow-hidden">
         {selectedLead ? (
           <>
-            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            {/* Chat header */}
+            <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-white">
               <div>
-                <h3 className="font-bold text-lg text-slate-800">{selectedLead.name}</h3>
-                <p className="text-xs text-slate-500 font-mono">{selectedLead.phone}</p>
+                <h3 className="font-semibold text-sm text-foreground">{selectedLead.name}</h3>
+                <p className="text-[11px] text-muted-foreground font-mono">{selectedLead.phone}</p>
               </div>
-              <div className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">WhatsApp Active</div>
+              <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[11px] font-medium px-2.5 py-1 rounded-full">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                WhatsApp
+              </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-background/30 scrollbar-minimal">
               {loadingMessages ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                  <Bot className="h-12 w-12 text-slate-300" />
-                  <p className="text-sm">No messages yet. Send a message to start!</p>
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-2">
+                  <Bot className="h-8 w-8 opacity-20" />
+                  <p className="text-xs">No messages yet. Send a message to start.</p>
                 </div>
               ) : (
                 messages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.sender === 'sales' || msg.sender === 'bot' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${msg.sender === 'sales' ? 'bg-primary text-white rounded-br-none shadow-sm' : msg.sender === 'bot' ? 'bg-slate-800 text-white rounded-br-none shadow-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm'}`}>
-                      {msg.sender === 'bot' && <div className="text-[10px] uppercase text-slate-400 font-bold mb-1 flex items-center gap-1"><Bot className="h-3 w-3"/> Auto-Reply</div>}
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      <span className={`text-[10px] mt-1 block ${msg.sender === 'sales' || msg.sender === 'bot' ? 'text-primary-foreground/70 text-right' : 'text-slate-400'}`}>
+                    <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
+                      msg.sender === 'sales' 
+                        ? 'bg-primary text-white rounded-br-md' 
+                        : msg.sender === 'bot' 
+                          ? 'bg-primary/80 text-white rounded-br-md' 
+                          : 'bg-white border border-border text-foreground rounded-bl-md shadow-sm'
+                    }`}>
+                      {msg.sender === 'bot' && (
+                        <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold mb-1 flex items-center gap-1">
+                          <Bot className="h-2.5 w-2.5"/> Auto-Reply
+                        </div>
+                      )}
+                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                      <span className={`text-[10px] mt-1 block ${
+                        msg.sender === 'sales' || msg.sender === 'bot' 
+                          ? 'text-white/50 text-right' 
+                          : 'text-muted-foreground'
+                      }`}>
                         {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </span>
                     </div>
@@ -121,28 +149,32 @@ export default function ChatPage() {
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-white flex items-center gap-3">
+            {/* Input */}
+            <div className="px-4 py-3 border-t border-border bg-white flex items-center gap-3">
               <Input 
                 placeholder={`Message ${selectedLead.name}...`} 
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 border-slate-300 rounded-full bg-slate-50"
+                className="flex-1 h-10 text-sm bg-background border-border rounded-full px-4"
               />
-              <Button onClick={handleSendMessage} className="rounded-full h-10 w-10 p-0 shrink-0">
+              <Button 
+                onClick={handleSendMessage} 
+                className="h-10 w-10 p-0 shrink-0 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm shadow-primary/20"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
-            <MessageSquare className="h-16 w-16 text-slate-200" />
-            <p>Select a conversation from the sidebar to start chatting</p>
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-3">
+            <div className="h-16 w-16 rounded-full bg-primary/5 flex items-center justify-center">
+              <MessageSquare className="h-7 w-7 text-primary/30" />
+            </div>
+            <p className="text-sm">Select a conversation to start chatting</p>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
-
-

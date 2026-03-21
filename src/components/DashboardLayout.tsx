@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,46 +33,68 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     navigate("/auth");
   };
 
-  const sidebarWidth = collapsed ? "w-[68px]" : "w-64";
+  const sidebarWidth = collapsed ? "w-[72px]" : "w-[260px]";
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className={cn("flex items-center gap-3 p-4 border-b border-sidebar-border", collapsed && "justify-center")}>
-        <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-          <Car className="h-5 w-5 text-primary-foreground" />
-        </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="font-display font-bold text-sm truncate">Mohan Trading</p>
-            <p className="text-xs text-sidebar-foreground/50 truncate">CRM Platform</p>
-          </div>
-        )}
+      {/* Logo area with MohanTrader branding */}
+      <div className={cn(
+        "flex items-center gap-3 px-5 py-5",
+        collapsed && "justify-center px-3"
+      )}>
+        <img 
+          src="/mohantrader-logo.png" 
+          alt="MohanTrader" 
+          className="h-10 w-10 rounded-xl object-contain bg-white/10 p-1 shrink-0"
+        />
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              className="overflow-hidden"
+            >
+              <p className="text-[17px] font-semibold text-white leading-tight">
+                Mohan Trader
+              </p>
+              <p className="text-[10px] text-white/40 tracking-wide italic leading-tight mt-0.5">
+                Delivering Dreams, Driving Trust
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      {/* Divider */}
+      <div className="mx-4 border-t border-sidebar-border" />
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
         {navItems.map((item) => {
-          const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+          const active = location.pathname === item.path || 
+            (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"));
           return (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => isMobile && setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 relative group",
                 active
-                  ? "bg-primary/10 text-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                  ? "bg-primary text-white"
+                  : "text-sidebar-accent-foreground hover:text-white hover:bg-sidebar-accent",
                 collapsed && "justify-center px-2"
               )}
             >
-              <item.icon className={cn("h-5 w-5 shrink-0 relative z-10", active ? "text-primary" : "")} />
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "opacity-60 group-hover:opacity-100")} />
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
-                    className="relative z-10 whitespace-nowrap"
+                    className="whitespace-nowrap"
                   >
                     {item.label}
                   </motion.span>
@@ -83,87 +105,120 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border">
-        <button
-          onClick={handleSignOut}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-destructive w-full transition-colors",
-            collapsed && "justify-center px-2"
-          )}
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                className="whitespace-nowrap"
-              >
-                Sign Out
-              </motion.span>
+      {/* Sign out */}
+      <div className="px-3 pb-4">
+        <div className="border-t border-sidebar-border pt-3">
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-sidebar-accent-foreground hover:text-red-400 hover:bg-sidebar-accent w-full transition-all duration-200",
+              collapsed && "justify-center px-2"
             )}
-          </AnimatePresence>
-        </button>
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0 opacity-60" />
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="whitespace-nowrap"
+                >
+                  Sign Out
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Desktop sidebar — dark navy */}
       {!isMobile && (
-        <aside className={cn("hidden md:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 shadow-sm relative z-20", sidebarWidth)}>
+        <aside className={cn(
+          "hidden md:flex flex-col bg-sidebar transition-all duration-300 relative z-20",
+          sidebarWidth
+        )}>
           <SidebarContent />
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute top-6 -right-3 z-50 h-7 w-7 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-md hover:bg-slate-50 transition-colors"
+            className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full bg-white border border-border flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? <ChevronRight className="h-3 w-3 text-gray-500" /> : <ChevronLeft className="h-3 w-3 text-gray-500" />}
           </button>
         </aside>
       )}
 
-      {isMobile && mobileOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <motion.aside
-            initial={{ x: -256 }}
-            animate={{ x: 0 }}
-            exit={{ x: -256 }}
-            className="relative w-64 bg-white border-r border-slate-200 z-50 shadow-xl"
-          >
-            <SidebarContent />
-          </motion.aside>
-        </div>
-      )}
+      {/* Mobile sidebar */}
+      <AnimatePresence>
+        {isMobile && mobileOpen && (
+          <div className="fixed inset-0 z-50 flex">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" 
+              onClick={() => setMobileOpen(false)} 
+            />
+            <motion.aside
+              initial={{ x: -260 }}
+              animate={{ x: 0 }}
+              exit={{ x: -260 }}
+              transition={{ type: "tween", duration: 0.25 }}
+              className="relative w-[260px] bg-sidebar z-50"
+            >
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="absolute top-4 right-3 p-1 rounded-md hover:bg-sidebar-accent transition-colors"
+              >
+                <X className="h-4 w-4 text-sidebar-accent-foreground" />
+              </button>
+              <SidebarContent />
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
 
+      {/* Main content — clean white */}
       <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-        <header className="h-16 border-b border-slate-200 flex items-center px-4 md:px-6 gap-3 bg-white shrink-0 shadow-sm z-10 sticky top-0">
+        <header className="h-14 border-b border-border flex items-center px-5 md:px-6 gap-3 bg-white shrink-0 z-10 sticky top-0">
           {isMobile && (
-            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="mr-2">
-              <Menu className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="mr-1 h-8 w-8">
+              <Menu className="h-4 w-4" />
             </Button>
           )}
-          <h2 className="font-display font-semibold text-xl text-slate-800 tracking-tight">
+          <h2 className="font-sans font-semibold text-sm tracking-tight text-foreground uppercase">
             {navItems.find(n => location.pathname.startsWith(n.path))?.label || "Dashboard"}
           </h2>
-          <div className="ml-auto flex items-center gap-4">
-             {/* Reserved for User profile / Notifications */}
-             <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-inner">
-               <Users className="h-4 w-4 text-slate-500" />
+          <div className="ml-auto flex items-center gap-3">
+             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+               <span className="text-xs font-semibold text-primary">MT</span>
              </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
+        <div className="flex-1 overflow-auto p-5 md:p-8 scrollbar-minimal flex flex-col">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex-1"
           >
             {children}
           </motion.div>
+
+          {/* Footer */}
+          <footer className="mt-12 pt-4 border-t border-border text-center">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Design & Developed By © 2026 <span className="font-medium text-foreground/70">Creative LabX</span> All Rights Reserved.
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+              Powered by <span className="font-medium text-foreground/50">Clientplus Digital</span>
+            </p>
+          </footer>
         </div>
       </main>
     </div>

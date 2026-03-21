@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, Plus, Image as ImageIcon } from "lucide-react";
@@ -74,57 +73,57 @@ export default function Vehicles() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Vehicle Inventory</h1>
-          <p className="text-slate-500">Manage your car fleet, pricing, and stock levels.</p>
+          <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">Vehicle Inventory</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your car fleet, pricing, and stock levels.</p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 text-white shadow-sm">
-              <Plus className="mr-2 h-4 w-4" /> Add Vehicle
+            <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
+              <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
+              <DialogTitle className="font-display">Add New Vehicle</DialogTitle>
               <DialogDescription>Enter the car's details and upload a photo.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddVehicle} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brand">Brand & Model</Label>
-                  <Input required value={newVehicle.brand} onChange={e => setNewVehicle({...newVehicle, brand: e.target.value})} placeholder="Toyota Prius" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand & Model</Label>
+                  <Input required value={newVehicle.brand} onChange={e => setNewVehicle({...newVehicle, brand: e.target.value})} placeholder="Toyota Prius" className="h-9 text-sm" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price (Rs.)</Label>
-                  <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({...newVehicle, price: e.target.value})} placeholder="7500000" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input value={newVehicle.category} onChange={e => setNewVehicle({...newVehicle, category: e.target.value})} placeholder="Sedan" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stock">Stock</Label>
-                  <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({...newVehicle, stock: e.target.value})} />
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price (Rs.)</Label>
+                  <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({...newVehicle, price: e.target.value})} placeholder="7500000" className="h-9 text-sm" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (optional)</Label>
-                <Input value={newVehicle.description} onChange={e => setNewVehicle({...newVehicle, description: e.target.value})} placeholder="Excellent condition..." />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Category</Label>
+                  <Input value={newVehicle.category} onChange={e => setNewVehicle({...newVehicle, category: e.target.value})} placeholder="Sedan" className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stock</Label>
+                  <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({...newVehicle, stock: e.target.value})} className="h-9 text-sm" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="image">Vehicle Image</Label>
-                <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} />
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
+                <Input value={newVehicle.description} onChange={e => setNewVehicle({...newVehicle, description: e.target.value})} placeholder="Excellent condition..." className="h-9 text-sm" />
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={isAdding}>
-                  {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
+                <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
+                <Button type="submit" disabled={isAdding} className="bg-primary text-white hover:bg-primary/90 text-sm h-9">
+                  {isAdding && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                   Save Vehicle
                 </Button>
               </DialogFooter>
@@ -133,54 +132,57 @@ export default function Vehicles() {
         </Dialog>
       </div>
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-          <div className="relative w-full md:max-w-sm">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-             <Input placeholder="Search cars..." className="pl-9 bg-white border-slate-200" value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="border border-border rounded-lg bg-white overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <div className="relative w-full md:max-w-xs">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+             <Input placeholder="Search cars..." className="pl-9 h-9 text-sm bg-background border-border" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="font-semibold text-slate-600 w-[100px]">Image</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Brand / Model</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Category</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Stock</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Price</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-slate-500">No vehicles found.</TableCell></TableRow>
-                ) : (
-                  filtered.map(v => (
-                    <TableRow key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                      <TableCell>
-                        {v.image_url ? (
-                          <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-16 h-12 object-cover rounded-md border border-slate-200" />
-                        ) : (
-                          <div className="w-16 h-12 bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center">
-                            <ImageIcon className="h-6 w-6 text-slate-400" />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium text-slate-900">{v.brand}</TableCell>
-                      <TableCell className="text-slate-600">{v.category || "-"}</TableCell>
-                      <TableCell><Badge variant="outline">{v.stock} in stock</Badge></TableCell>
-                      <TableCell className="text-right font-mono font-medium">Rs. {Number(v.price).toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center p-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent bg-background/50">
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider w-[80px]">Image</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Brand / Model</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Price</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-16 text-sm text-muted-foreground">No vehicles found.</TableCell></TableRow>
+              ) : (
+                filtered.map(v => (
+                  <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
+                    <TableCell>
+                      {v.image_url ? (
+                        <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                      ) : (
+                        <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center">
+                          <img src="/car-icon.png" alt="car" className="h-5 w-5 opacity-20" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground text-sm">{v.brand}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{v.category || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 border-border text-muted-foreground">
+                        {v.stock} in stock
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm font-medium text-foreground">Rs. {Number(v.price).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

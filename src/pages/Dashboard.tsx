@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Target, Users, BookOpen, MessageSquare } from "lucide-react";
+import { Car, Users, Target, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
@@ -20,38 +19,86 @@ export default function Dashboard() {
   }, []);
 
   const cards = [
-    { label: "Total Leads", icon: Users, value: stats.leads, color: "text-blue-500" },
-    { label: "New Leads", icon: MessageSquare, value: stats.new, color: "text-amber-500" },
-    { label: "Closed Deals", icon: Target, value: stats.closed, color: "text-emerald-500" },
-    { label: "Active Pipelines", icon: BookOpen, value: stats.leads - stats.new - stats.closed, color: "text-purple-500" },
+    { label: "Total Leads", value: stats.leads, icon: Users, accent: "border-l-primary" },
+    { label: "New This Week", value: stats.new, icon: TrendingUp, accent: "border-l-amber-400" },
+    { label: "Closed Deals", value: stats.closed, icon: Target, accent: "border-l-emerald-500" },
+    { label: "In Pipeline", value: stats.leads - stats.new - stats.closed, icon: Car, accent: "border-l-violet-400" },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
+      {/* Page header */}
       <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900 tracking-tight">Overview</h1>
-        <p className="text-slate-500 mt-1">Snapshot of your CRM performance.</p>
+        <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">
+          Overview
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Your dealership at a glance.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stat cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card, i) => (
           <motion.div
             key={card.label}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.08, duration: 0.3 }}
+            className={`bg-white border border-border rounded-lg p-5 border-l-[3px] ${card.accent} hover:shadow-sm transition-all duration-200`}
           >
-            <Card className="hover:shadow-md transition-all duration-300 border-slate-200 bg-white">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-500">{card.label}</CardTitle>
-                <card.icon className={`h-5 w-5 ${card.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-slate-900">{card.value}</div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {card.label}
+              </span>
+              <card.icon className="h-4 w-4 text-primary/40" />
+            </div>
+            <div className="text-3xl font-semibold text-foreground tabular-nums font-sans tracking-tight">
+              {card.value}
+            </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* Quick summary section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="border border-border rounded-lg p-6 bg-white">
+          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
+          <div className="space-y-3">
+            {[
+              { text: "New lead captured via WhatsApp", time: "2 min ago", dot: "bg-primary" },
+              { text: "Test drive scheduled — Toyota Prius", time: "1 hour ago", dot: "bg-amber-400" },
+              { text: "Deal closed — Honda Civic", time: "3 hours ago", dot: "bg-emerald-500" },
+              { text: "Follow-up reminder sent", time: "Yesterday", dot: "bg-violet-400" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
+                <div className={`h-2 w-2 rounded-full ${item.dot} shrink-0`} />
+                <span className="text-sm text-foreground/80 flex-1">{item.text}</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border border-border rounded-lg p-6 bg-white">
+          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Add Vehicle", icon: Car },
+              { label: "New Lead", icon: Users },
+              { label: "View Pipeline", icon: TrendingUp },
+              { label: "Analytics", icon: Target },
+            ].map((action) => (
+              <button
+                key={action.label}
+                className="flex items-center gap-3 p-3.5 rounded-lg border border-border text-sm font-medium text-foreground/70 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200 group"
+              >
+                <action.icon className="h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
