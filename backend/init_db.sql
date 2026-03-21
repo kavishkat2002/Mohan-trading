@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS leads (
   interested_car VARCHAR(255),
   budget VARCHAR(100),
   status VARCHAR(50) DEFAULT 'New',
+  source VARCHAR(50) DEFAULT 'manual',
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
