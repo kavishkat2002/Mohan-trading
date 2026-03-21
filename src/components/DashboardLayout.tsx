@@ -14,7 +14,6 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Vehicles", icon: Car, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
-  { label: "Pipeline", icon: ListTodo, path: "/dashboard/pipeline" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
   { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
   { label: "Settings", icon: Settings, path: "/dashboard/settings" },

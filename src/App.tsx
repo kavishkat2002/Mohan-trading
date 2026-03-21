@@ -12,7 +12,6 @@ import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Leads from "./pages/Leads";
-import Pipeline from "./pages/Pipeline";
 import Vehicles from "./pages/Vehicles";
 
 const queryClient = new QueryClient();
@@ -44,7 +43,6 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/vehicles" element={<ProtectedRoute><DashboardLayout><Vehicles /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/leads" element={<ProtectedRoute><DashboardLayout><Leads /></DashboardLayout></ProtectedRoute>} />
-            <Route path="/dashboard/pipeline" element={<ProtectedRoute><DashboardLayout><Pipeline /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/chat" element={<ProtectedRoute><DashboardLayout><ChatPage /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage /></DashboardLayout></ProtectedRoute>} />
