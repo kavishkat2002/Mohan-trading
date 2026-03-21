@@ -1,10 +1,17 @@
+// Deno ambient types for VS Code compatibility (Deno runtime resolves URL imports)
+declare const Deno: {
+  env: { get(key: string): string | undefined };
+};
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+type ServeHandler = (req: Request) => Response | Promise<Response>;
+declare function serve(handler: ServeHandler): void;
+
+// @ts-ignore – resolved by Deno at runtime
+const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
 
 const VERIFY_TOKEN = "mohan_trading_token";
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const url = new URL(req.url);
 
   // 1. Handle Webhook Verification (GET)
@@ -73,7 +80,7 @@ serve(async (req) => {
   }
 });
 
-async function sendWhatsApp(to, text) {
+async function sendWhatsApp(to: string, text: string): Promise<void> {
   const token = Deno.env.get("WHATSAPP_TOKEN");
   const phoneId = Deno.env.get("PHONE_NUMBER_ID");
   

@@ -25,7 +25,9 @@ router.post('/register', async (req, res) => {
 
 // Login User
 router.post('/login', async (req, res) => {
+  console.log('Login attempt received for:', req.body.email);
   const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
   try {
     const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (rows.length === 0) return res.status(400).json({ error: 'Invalid credentials' });
@@ -37,8 +39,8 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
     res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('LOGIN ERROR:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
 

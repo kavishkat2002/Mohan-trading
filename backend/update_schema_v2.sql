@@ -1,0 +1,16 @@
+-- backend/update_schema_v2.sql
+
+CREATE TABLE IF NOT EXISTS sessions (
+  phone VARCHAR(50) PRIMARY KEY,
+  step VARCHAR(100) DEFAULT 'START',
+  language VARCHAR(20),
+  data JSONB DEFAULT '{}',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add advanced fields to leads
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS language VARCHAR(20);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS intent VARCHAR(50);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS car_type VARCHAR(50);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS fuel_type VARCHAR(50);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS session_data JSONB DEFAULT '{}';
