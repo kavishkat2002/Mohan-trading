@@ -7,6 +7,7 @@ const usersRouter = require('./routes/users');
 const messagesRouter = require('./routes/messages');
 const webhookRouter = require('./routes/webhook');
 const vehiclesRouter = require('./routes/vehicles');
+const attendanceRouter = require('./routes/attendance');
 const db = require('./db');
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/webhook', webhookRouter);
 app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/attendance', attendanceRouter);
 
 // Basic health check
 app.get('/health', (req, res) => {

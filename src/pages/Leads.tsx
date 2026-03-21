@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Plus, Pencil, Trash2, MoreHorizontal, MessageCircle } from "lucide-react";
+import { Loader2, Search, Plus, Pencil, Trash2, MoreHorizontal, MessageCircle, UserPlus, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
@@ -38,7 +39,17 @@ export default function Leads() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isElevated = user?.role === 'owner' || user?.role === 'admin';
+  const [team, setTeam] = useState<any[]>([]);
+
+  // Modals for Actions
+  const [assignLead, setAssignLead] = useState<any | null>(null);
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("");
+  const [commissionLead, setCommissionLead] = useState<any | null>(null);
+  const [commissionAmount, setCommissionAmount] = useState<string>("");
 
   const [newLead, setNewLead] = useState({
     name: "", phone: "", interested_car: "", budget: "", status: "New", source: "manual"
@@ -51,7 +62,14 @@ export default function Leads() {
       .catch(err => { console.error(err); setLoading(false); });
   };
 
-  useEffect(() => { fetchLeads(); }, []);
+  useEffect(() => { 
+    fetchLeads(); 
+    if (isElevated) {
+      fetch("http://localhost:5001/api/users")
+        .then(res => res.json())
+        .then(data => setTeam(data.filter((u: any) => u.role !== 'owner')));
+    }
+  }, [isElevated]);
 
   // Add
   const handleAddLead = async (e: React.FormEvent) => {
@@ -126,7 +144,50 @@ export default function Leads() {
     }
   };
 
+  // Assign
+  const handleAssignLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignLead || !selectedAssignee) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/leads/${assignLead.id}/assign`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigned_to: selectedAssignee, assigner_name: (user as any)?.name || user?.email })
+      });
+      if (res.ok) {
+        toast({ title: "Assigned", description: "Lead successfully assigned to team member." });
+        setAssignLead(null);
+        setSelectedAssignee("");
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Commission & Close
+  const handleCommissionClose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commissionLead) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/leads/${commissionLead.id}/commission`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commission_amount: parseFloat(commissionAmount) || 0 })
+      });
+      if (res.ok) {
+        toast({ title: "Deal Closed", description: "Commission registered and deal finalized!" });
+        setCommissionLead(null);
+        setCommissionAmount("");
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const filteredLeads = leads.filter(l => {
+    // Show all leads to everyone so staff can see who is managing which deal
     const matchesSearch = l.name.toLowerCase().includes(search.toLowerCase()) || 
       l.phone.includes(search) ||
       l.interested_car?.toLowerCase().includes(search.toLowerCase());
@@ -276,6 +337,7 @@ export default function Leads() {
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Interest</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -310,6 +372,22 @@ export default function Leads() {
                           {lead.status}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-sm font-medium text-foreground/80">
+                        {lead.assigned_to_name ? (
+                          lead.assigned_to === user?.id ? (
+                            <span className="text-emerald-600 font-bold px-2 py-0.5 bg-emerald-50 rounded-full text-[10px]">Me</span>
+                          ) : (
+                            <span className="text-[12px]">{lead.assigned_to_name}</span>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground italic text-[11px]">Unassigned</span>
+                        )}
+                        {lead.commission_amount > 0 && (isElevated || user?.role === 'accountant') && (
+                          <div className="text-[10px] text-emerald-600 font-bold mt-1">
+                            LKR {Number(lead.commission_amount).toLocaleString()}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -317,7 +395,17 @@ export default function Leads() {
                               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-44">
+                            {isElevated && (
+                              <DropdownMenuItem onClick={() => setAssignLead({...lead})} className="text-xs gap-2 text-primary">
+                                <UserPlus className="h-3 w-3" /> Assign to Staff
+                              </DropdownMenuItem>
+                            )}
+                            {isElevated && lead.status !== 'Closed' && (
+                              <DropdownMenuItem onClick={() => setCommissionLead({...lead})} className="text-xs gap-2 text-amber-600 focus:text-amber-600">
+                                <DollarSign className="h-3 w-3" /> Declare Commission
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => { setEditLead({...lead}); setIsEditOpen(true); }} className="text-xs gap-2">
                               <Pencil className="h-3 w-3" /> Edit Details
                             </DropdownMenuItem>
@@ -419,6 +507,67 @@ export default function Leads() {
               <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Lead Dialog */}
+      <Dialog open={!!assignLead} onOpenChange={(open) => !open && setAssignLead(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="font-display">Assign Lead to Staff</DialogTitle>
+            <DialogDescription>
+              Assign <strong>{assignLead?.name}</strong> to a team member to handle the sale.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAssignLead} className="space-y-4 pt-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Sales Person</Label>
+              <Select value={selectedAssignee} onValueChange={setSelectedAssignee} required>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select team member..." /></SelectTrigger>
+                <SelectContent>
+                  {team.map(member => (
+                    <SelectItem key={member.id} value={member.id.toString()}>
+                      {member.name || member.email} ({member.role?.replace('_', ' ') || member.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setAssignLead(null)} className="h-9 text-sm">Cancel</Button>
+              <Button type="submit" className="bg-primary text-white h-9 text-sm">Assign Lead</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Commission Dialog */}
+      <Dialog open={!!commissionLead} onOpenChange={(open) => !open && setCommissionLead(null)}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle className="font-display text-emerald-600">Declare Commission & Close</DialogTitle>
+            <DialogDescription>
+              Mark <strong>{commissionLead?.name}</strong> as finalized and instantly attribute commission to the assigned salesperson.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCommissionClose} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Commission Amount (LKR)</Label>
+              <Input 
+                type="number" 
+                placeholder="e.g. 50000" 
+                value={commissionAmount} 
+                onChange={(e) => setCommissionAmount(e.target.value)} 
+                required 
+                min="0"
+                className="h-10 text-lg font-medium"
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setCommissionLead(null)} className="h-9 text-sm">Cancel</Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm">Confirm & Close Pay</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

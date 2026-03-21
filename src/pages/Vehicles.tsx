@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Plus, Image as ImageIcon } from "lucide-react";
+import { Loader2, Search, Plus, Image as ImageIcon, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -10,13 +10,21 @@ import {
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Vehicles() {
+  const { user } = useAuth();
+  const canUpdate = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'sales';
+  
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<any>(null);
   const { toast } = useToast();
 
   const [newVehicle, setNewVehicle] = useState({
@@ -44,16 +52,24 @@ export default function Vehicles() {
     formData.append("description", newVehicle.description);
     if (imageFile) {
       formData.append("image", imageFile);
+    } else if (editingVehicle && editingVehicle.image_url) {
+      formData.append("existing_image", editingVehicle.image_url);
     }
 
     try {
-      const res = await fetch("http://localhost:5001/api/vehicles", {
-        method: "POST",
+      const url = editingVehicle 
+        ? `http://localhost:5001/api/vehicles/${editingVehicle.id}`
+        : "http://localhost:5001/api/vehicles";
+      const method = editingVehicle ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         body: formData,
       });
       if (res.ok) {
-        toast({ title: "Success", description: "Vehicle added successfully!" });
+        toast({ title: "Success", description: editingVehicle ? "Vehicle updated successfully!" : "Vehicle added successfully!" });
         setIsOpen(false);
+        setEditingVehicle(null);
         setNewVehicle({ brand: "", price: "", category: "", stock: "1", description: "" });
         setImageFile(null);
         fetchVehicles();
@@ -65,6 +81,33 @@ export default function Vehicles() {
       toast({ title: "Error", description: "Network error", variant: "destructive" });
     }
     setIsAdding(false);
+  };
+
+  const handleEditVehicle = (v: any) => {
+    setEditingVehicle(v);
+    setNewVehicle({
+      brand: v.brand,
+      price: v.price.toString(),
+      category: v.category || "",
+      stock: v.stock.toString(),
+      description: v.description || ""
+    });
+    setIsOpen(true);
+  };
+
+  const handleDeleteVehicle = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this vehicle?")) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/vehicles/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        toast({ title: "Deleted", description: "Vehicle removed successfully." });
+        fetchVehicles();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const filtered = vehicles.filter(v => 
@@ -80,56 +123,69 @@ export default function Vehicles() {
           <p className="text-sm text-muted-foreground mt-1">Manage your car fleet, pricing, and stock levels.</p>
         </div>
         
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
-              <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle className="font-display">Add New Vehicle</DialogTitle>
-              <DialogDescription>Enter the car's details and upload a photo.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddVehicle} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand & Model</Label>
-                  <Input required value={newVehicle.brand} onChange={e => setNewVehicle({...newVehicle, brand: e.target.value})} placeholder="Toyota Prius" className="h-9 text-sm" />
+        {canUpdate && (
+          <Dialog open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) {
+              setEditingVehicle(null);
+              setNewVehicle({ brand: "", price: "", category: "", stock: "1", description: "" });
+              setImageFile(null);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
+                <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="font-display">
+                  {editingVehicle ? "Edit Vehicle" : "Add New Vehicle"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingVehicle ? "Update the vehicle details below." : "Enter the car's details and upload a photo."}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddVehicle} className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand & Model</Label>
+                    <Input required value={newVehicle.brand} onChange={e => setNewVehicle({...newVehicle, brand: e.target.value})} placeholder="Toyota Prius" className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price (Rs.)</Label>
+                    <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({...newVehicle, price: e.target.value})} placeholder="7500000" className="h-9 text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Category</Label>
+                    <Input value={newVehicle.category} onChange={e => setNewVehicle({...newVehicle, category: e.target.value})} placeholder="Sedan" className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stock</Label>
+                    <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({...newVehicle, stock: e.target.value})} className="h-9 text-sm" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price (Rs.)</Label>
-                  <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({...newVehicle, price: e.target.value})} placeholder="7500000" className="h-9 text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Category</Label>
-                  <Input value={newVehicle.category} onChange={e => setNewVehicle({...newVehicle, category: e.target.value})} placeholder="Sedan" className="h-9 text-sm" />
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
+                  <Input value={newVehicle.description} onChange={e => setNewVehicle({...newVehicle, description: e.target.value})} placeholder="Excellent condition..." className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stock</Label>
-                  <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({...newVehicle, stock: e.target.value})} className="h-9 text-sm" />
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
+                  <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
-                <Input value={newVehicle.description} onChange={e => setNewVehicle({...newVehicle, description: e.target.value})} placeholder="Excellent condition..." className="h-9 text-sm" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
-                <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
-              </div>
-              <DialogFooter className="pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
-                <Button type="submit" disabled={isAdding} className="bg-primary text-white hover:bg-primary/90 text-sm h-9">
-                  {isAdding && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                  Save Vehicle
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter className="pt-2">
+                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
+                  <Button type="submit" disabled={isAdding} className="bg-primary text-white hover:bg-primary/90 text-sm h-9">
+                    {isAdding && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Save Vehicle
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="border border-border rounded-lg bg-white overflow-hidden">
@@ -150,7 +206,8 @@ export default function Vehicles() {
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Brand / Model</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Price</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</TableHead>
+                {canUpdate && <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,7 +232,26 @@ export default function Vehicles() {
                         {v.stock} in stock
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-medium text-foreground">Rs. {Number(v.price).toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-sm font-medium text-foreground">Rs. {Number(v.price).toLocaleString()}</TableCell>
+                    {canUpdate && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
+                              <Pencil className="h-3 w-3" /> Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
+                              <Trash2 className="h-3 w-3" /> Delete Vehicle
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ const navItems = [
   { label: "Vehicles", icon: Car, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
+  { label: "Attendance", icon: CalendarClock, path: "/dashboard/attendance" },
+  { label: "Finance", icon: Banknote, path: "/dashboard/finance" },
   { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
   { label: "Settings", icon: Settings, path: "/dashboard/settings" },
 ];
@@ -38,8 +40,58 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const filteredNavItems = navItems.filter(item => {
     if (isElevated) return true;
-    return ["Dashboard", "Vehicles", "Leads", "Chat Box"].includes(item.label);
+    if (user?.role === 'accountant') {
+      return ["Dashboard", "Vehicles", "Leads", "Attendance", "Finance", "Settings"].includes(item.label);
+    }
+    return ["Dashboard", "Vehicles", "Leads", "Chat Box", "Attendance"].includes(item.label);
   });
+
+  const [commissionTotal, setCommissionTotal] = useState<number>(0);
+  const [companyStats, setCompanyStats] = useState<{revenue: number, payout: number} | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    // Check Notifications
+    fetch(`http://localhost:5001/api/users/${user.id}/notifications`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(n => {
+            // Push toast notification
+            toast({ title: "New Notification", description: n.message });
+            // Mark as read
+            fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
+          });
+        }
+      })
+      .catch(console.error);
+
+    // Fetch Commissions if Sales Person
+    if (!isElevated) {
+      fetch(`http://localhost:5001/api/users/${user.id}/commissions`)
+        .then(res => res.json())
+        .then(data => setCommissionTotal(data.total))
+        .catch(console.error);
+    }
+
+    // Fetch Company Stats for Owner & Accountant
+    if (user?.role === 'owner' || user?.role === 'accountant') {
+      fetch("http://localhost:5001/api/leads")
+        .then(res => res.json())
+        .then(data => {
+          const closed = data.filter((l: any) => l.status === 'Closed');
+          let rev = 0;
+          let pay = 0;
+          closed.forEach((l: any) => {
+            const budgetStr = l.budget || "0";
+            rev += parseInt(budgetStr.replace(/[^0-9]/g, ''), 10) || 0;
+            pay += parseFloat(l.commission_amount) || 0;
+          });
+          setCompanyStats({ revenue: rev, payout: pay });
+        })
+        .catch(console.error);
+    }
+  }, [user, isElevated]);
 
   const handleSignOut = () => {
     logout();
@@ -208,8 +260,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </h2>
           <div className="ml-auto flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-[13px] font-semibold text-foreground capitalize tracking-wide">{user?.role} Profile</p>
-              <p className="text-[11px] text-muted-foreground">{profileName || user?.email}</p>
+              <p className="text-[13px] font-semibold text-foreground capitalize tracking-wide">{user?.role?.replace('_', ' ') || user?.role} Profile</p>
+              <div className="flex flex-col items-end">
+                <p className="text-[11px] text-muted-foreground">{profileName || user?.email}</p>
+                {!isElevated && user?.role !== 'accountant' && commissionTotal > 0 && (
+                  <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Comm: LKR {commissionTotal}</p>
+                )}
+                {(user?.role === 'owner' || user?.role === 'accountant') && companyStats && (
+                  <div className="flex flex-col items-end">
+                    <p className="text-[9px] text-emerald-600 font-bold leading-none">Net Rev: {companyStats.revenue.toLocaleString()}</p>
+                    <p className="text-[9px] text-rose-500 font-bold mt-0.5 leading-none">Payout: {companyStats.payout.toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
             </div>
             <button 
               onClick={() => setProfileOpen(true)}
@@ -265,6 +328,33 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0] || !user) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/${user.id}/avatar`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAvatarUrl(data.avatar_url);
+        toast({ title: "Photo uploaded successfully" });
+      } else {
+        toast({ title: "Upload failed", description: data.error, variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "An error occurred during upload", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open && user?.id) {
@@ -347,8 +437,11 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Profile Picture URL</Label>
-            <Input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://example.com/photo.jpg" />
+            <Label>Profile Picture (Upload from device)</Label>
+            <div className="flex gap-3 items-center">
+              {avatarUrl && <img src={avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full object-cover border shrink-0" />}
+              <Input type="file" accept="image/*" onChange={handleFileUpload} className="cursor-pointer file:cursor-pointer flex-1 text-[11px] h-9" />
+            </div>
           </div>
           <div className="pt-4 border-t border-border space-y-4">
             <h4 className="text-sm font-semibold">Change Password</h4>

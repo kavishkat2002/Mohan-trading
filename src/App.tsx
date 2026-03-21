@@ -13,6 +13,8 @@ import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Leads from "./pages/Leads";
 import Vehicles from "./pages/Vehicles";
+import Attendance from "./pages/Attendance";
+import Finance from "./pages/Finance";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,8 @@ const App = () => (
             <Route path="/dashboard/vehicles" element={<ProtectedRoute><DashboardLayout><Vehicles /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/leads" element={<ProtectedRoute><DashboardLayout><Leads /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/chat" element={<ProtectedRoute><DashboardLayout><ChatPage /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/dashboard/attendance" element={<ProtectedRoute><DashboardLayout><Attendance /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/dashboard/finance" element={<ProtectedRoute><DashboardLayout><Finance /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage /></DashboardLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

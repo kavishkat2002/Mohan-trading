@@ -127,7 +127,9 @@ function TeamManager() {
               <SelectContent>
                 <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="sales">Staff</SelectItem>
+                <SelectItem value="accountant">Accountant</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="sales">Sales Person</SelectItem>
               </SelectContent>
             </Select>
           </div>
