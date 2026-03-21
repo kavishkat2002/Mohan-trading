@@ -52,7 +52,7 @@ export default function Analytics() {
         value: count,
         fill: sourceColors[src] || "#D1D5DB"
       }))
-      .sort((a, b) => b.value - a.value); // Sort by highest count
+      .sort((a, b) => Number(b.value) - Number(a.value)); // Sort by highest count
 
     // 2. Timeline Data (Last 7 Days)
     const timelineData = [];

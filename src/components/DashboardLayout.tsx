@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ const navItems = [
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
   { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
-  { label: "Settings", icon: Settings, path: "/dashboard/settings" },
+  { label: "Admin Panel", icon: Shield, path: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -24,8 +24,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const isMobile = useIsMobile();
+  
+  const isOwner = user?.role === 'owner';
+  const filteredNavItems = navItems.filter(item => {
+    if (isOwner) return true;
+    return ["Dashboard", "Vehicles", "Leads", "Chat Box"].includes(item.label);
+  });
 
   const handleSignOut = () => {
     logout();
@@ -70,7 +76,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const active = location.pathname === item.path || 
             (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"));
           return (

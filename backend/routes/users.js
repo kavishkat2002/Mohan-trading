@@ -43,5 +43,45 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
+// Get all users
+router.get('/', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT id, email, role, created_at FROM users ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update user role
+router.put('/:id/role', async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  try {
+    const { rows } = await db.query(
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, email, role',
+      [role, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete user
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -17,6 +17,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+function TeamManager() {
+  const [users, setUsers] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  const fetchUsers = () => {
+    fetch("http://localhost:5001/api/users")
+      .then(res => res.json())
+      .then(data => {
+         if(Array.isArray(data)) setUsers(data);
+      })
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const changeRole = async (id: number, role: string) => {
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/${id}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role })
+      });
+      if (res.ok) {
+        toast({ title: "Role updated successfully" });
+        fetchUsers();
+      } else {
+        toast({ title: "Failed to update role", variant: "destructive" });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {users.map(u => (
+        <div key={u.id} className="flex items-center justify-between p-3.5 border border-border bg-background/50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-foreground">{u.email}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+          </div>
+          <Select value={u.role || 'sales'} onValueChange={(val) => changeRole(u.id, val)}>
+            <SelectTrigger className="w-32 h-8 text-xs bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="owner">Owner</SelectItem>
+              <SelectItem value="sales">Staff</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ))}
+      {users.length === 0 && <p className="text-sm text-muted-foreground">Loading team members...</p>}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { business, userRole } = useBusiness();
@@ -323,8 +382,8 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="team" className="mt-6">
-          <SectionCard title="Team Members" desc="Manage team access and roles">
-            <p className="text-sm text-muted-foreground">Team management features coming soon. You'll be able to invite admins and agents to your business.</p>
+          <SectionCard title="Team Members" desc="Manage team access and roles. 'Owner' has full access. 'Staff' can only see Vehicles, Leads, and Chat.">
+            <TeamManager />
           </SectionCard>
         </TabsContent>
       </Tabs>

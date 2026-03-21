@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Car, Users, Target, TrendingUp } from "lucide-react";
+import { Car, Users, Target, TrendingUp, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({ leads: 0, new: 0, closed: 0 });
 
   useEffect(() => {
@@ -22,7 +24,6 @@ export default function Dashboard() {
     { label: "Total Leads", value: stats.leads, icon: Users, accent: "border-l-primary" },
     { label: "New This Week", value: stats.new, icon: TrendingUp, accent: "border-l-amber-400" },
     { label: "Closed Deals", value: stats.closed, icon: Target, accent: "border-l-emerald-500" },
-    { label: "In Pipeline", value: stats.leads - stats.new - stats.closed, icon: Car, accent: "border-l-violet-400" },
   ];
 
   return (
@@ -38,7 +39,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
         {cards.map((card, i) => (
           <motion.div
             key={card.label}
@@ -86,8 +87,8 @@ export default function Dashboard() {
             {[
               { label: "Add Vehicle", icon: Car },
               { label: "New Lead", icon: Users },
-              { label: "View Pipeline", icon: TrendingUp },
-              { label: "Analytics", icon: Target },
+              { label: "Open Chat", icon: MessageSquare },
+              ...(user?.role === 'owner' ? [{ label: "Analytics", icon: Target }] : []),
             ].map((action) => (
               <button
                 key={action.label}
