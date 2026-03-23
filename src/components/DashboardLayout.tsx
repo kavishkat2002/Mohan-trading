@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Vehicles", icon: Car, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
+  { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
   { label: "Attendance", icon: CalendarClock, path: "/dashboard/attendance" },
   { label: "Finance", icon: Banknote, path: "/dashboard/finance" },
@@ -39,9 +40,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const filteredNavItems = navItems.filter(item => {
+    if (item.label === "Noticeboard") return false;
     if (isElevated) return true;
     if (user?.role === 'accountant') {
-      return ["Dashboard", "Vehicles", "Leads", "Attendance", "Finance", "Settings"].includes(item.label);
+      return ["Dashboard", "Vehicles", "Leads", "Attendance", "Finance"].includes(item.label);
     }
     return ["Dashboard", "Vehicles", "Leads", "Chat Box", "Attendance"].includes(item.label);
   });
@@ -266,12 +268,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 {!isElevated && user?.role !== 'accountant' && commissionTotal > 0 && (
                   <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Comm: LKR {commissionTotal}</p>
                 )}
-                {(user?.role === 'owner' || user?.role === 'accountant') && companyStats && (
-                  <div className="flex flex-col items-end">
-                    <p className="text-[9px] text-emerald-600 font-bold leading-none">Net Rev: {companyStats.revenue.toLocaleString()}</p>
-                    <p className="text-[9px] text-rose-500 font-bold mt-0.5 leading-none">Payout: {companyStats.payout.toLocaleString()}</p>
-                  </div>
-                )}
+                
               </div>
             </div>
             <button 
@@ -308,7 +305,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Footer */}
           <footer className="mt-12 pt-4 border-t border-border text-center">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Design & Developed By © 2026 <span className="font-medium text-foreground/70">Creative LabX</span> All Rights Reserved.
+              Design & Developed By © 2026 <span className="font-medium text-foreground/70">Creativex Lab</span> All Rights Reserved.
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-0.5">
               Powered by <span className="font-medium text-foreground/50">Clientplus Digital</span>

@@ -1,102 +1,78 @@
-# SmartBiz AI Connect
+# Mohan Trader CRM (SmartBiz AI Connect)
 
-SmartBiz AI Connect is a futuristic AI-powered business automation engine that integrates WhatsApp, Supabase, and Gemini AI to automate product discovery, order management, and customer notifications.
-
-## 🚀 Key Features
-
-- **Visual Product Search**: Customers can send a photo of a product to the WhatsApp bot, and it automatically identifies the item in your catalog using Gemini 2.0 Vision.
-- **Automated Order Processing**: Intent-based AI extraction of product names and quantities from natural language messages.
-- **Real-time Status Notifications**: Automatic WhatsApp alerts whenever an order status is updated (e.g., from "Pending" to "Out for Delivery").
-- **Payment Verification**: AI-powered bank receipt verification to confirm transfers automatically.
-- **Business Dashboard**: A sleek, modern React dashboard to manage products, orders, and customer conversations.
+Mohan Trader CRM is a premium, AI-powered automotive business management engine. It transforms traditional dealership operations into a high-efficiency digital ecosystem by integrating **WhatsApp Business API**, **Supabase**, and **Real-time Lead Management**.
 
 ---
 
-## 👥 Professional Roles & Contributions
+## 🚀 Key Features
 
-This project highlights a multidisciplinary approach to building modern AI-driven enterprise solutions:
-
-### **Business Analyst Role**
-
-*Precision in Business Logic & Digital Transformation*
-
-- **Strategy & Mapping**: Defined the end-to-end customer journey on WhatsApp to ensure a frictionless "Chat-to-Checkout" experience.
-- **Requirement Engineering**: Bridged the gap between business needs and technical execution, ensuring the automated order flow aligns with standard retail operations.
-- **Value Optimization**: Focused on reducing manual overhead by automating order status notifications and bank receipt verification processes.
-
-### **AI Software Engineer Role**
-
-*Innovation in Multi-modal AI & Orchestration*
-
-- **Visual Intelligence**: Implemented **Gemini 2.0 Vision** models via OpenRouter, utilizing "Chain-of-Thought" prompting for high-accuracy product identification.
-- **System Orchestration**: Architected the background processing logic using **EdgeRuntime.waitUntil** to handle heavy AI tasks without violating messaging server timeouts.
-- **Full-Stack AI Integration**: Developed the secure integration between Supabase (PostgreSQL), Deno Edge Functions, and the WhatsApp Business API.
+- **Multi-Channel Lead Capture**: Automatically capture and organize leads from **WhatsApp, Facebook, Instagram, and TikTok** into a unified registry.
+- **Live WhatsApp Chat**: Seamlessly communicate with customers directly from the CRM using an integrated WhatsApp chat interface.
+- **Vehicle Inventory Management**: A centralized hub to manage and track vehicle stock, technical details, and sales status.
+- **Real-time Lead Assignment**: Instantly assign incoming leads to sales team members with automated notifications.
+- **Financial & Commission Tracking**: Automatically calculate and record commissions upon closing deals, providing real-time financial transparency for owners and accountants.
+- **Role-Based Workspace**: Tailored interfaces for **Owners, Admins, Salespersons, and Accountants** to ensure secure and focused workflows.
+- **Internal Noticeboard**: Keep the entire team aligned with pinned company announcements and real-time updates.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, Lucide Icons, Framer Motion.
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS.
+- **Animations**: Framer Motion for smooth transitions and high-end feel.
+- **Icons**: Lucide Icons for a clean, modern UI.
 - **Backend/Infrastructure**: Supabase (PostgreSQL), Edge Functions (Deno).
 - **Messaging**: WhatsApp Business Platform (Meta Graph API).
-- **AI Model**: Gemini 2.0 Flash / Pro (via OpenRouter).
-- **Styling**: Shadcn/UI for premium, responsive design.
+- **Styling**: Custom Design System with a focus on "Automotive Elegance" (Inter typography, Slate/Primary color palette).
 
 ---
 
-## 🏗️ Getting Started (Start-to-End Guidance)
+## 🏗️ Getting Started
 
 ### 1. Prerequisites
 
 - [Node.js](https://nodejs.org/) (Latest LTS)
-- [Supabase CLI](https://supabase.com/docs/guides/cli) installed and authenticated.
-- A Meta Developer account with a WhatsApp Business phone number set up.
+- [Supabase CLI](https://supabase.com/docs/guides/cli)
+- Meta Developer Account (WhatsApp Business API access)
 
 ### 2. Project Setup
 
-Clone the repository and install dependencies:
-
 ```bash
+# Clone the repository
 git clone https://github.com/kavishkat2002/smartbiz-ai-connect.git
 cd smartbiz-ai-connect
+
+# Install dependencies
 npm install
 ```
 
-### 3. Database & Secret Configuration
+### 3. Environment Configuration
 
-Initialize Supabase and push the schema:
+Create a `.env` file in the root directory (for local frontend) and set your Supabase secrets:
 
 ```bash
-supabase link --project-ref your_project_id
-supabase db push
+# Frontend Env
+VITE_SUPABASE_URL="your-supabase-url"
+VITE_SUPABASE_ANON_KEY="your-anon-key"
+VITE_WHATSAPP_TOKEN="your-permanent-api-token"
+VITE_PHONE_NUMBER_ID="your-whatsapp-phone-id"
+
+# Supabase Secrets
+supabase secrets set WHATSAPP_TOKEN="..."
+supabase secrets set PHONE_NUMBER_ID="..."
+supabase secrets set VERIFY_TOKEN="..."
 ```
 
-Set the required environment variables for the AI and Messaging components:
+### 4. Deploying the WhatsApp Webhook
+
+The core messaging logic resides in Supabase Edge Functions:
 
 ```bash
-supabase secrets set WHATSAPP_API_TOKEN="..."
-supabase secrets set WHATSAPP_PHONE_NUMBER_ID="..."
-supabase secrets set OPENROUTER_API_KEY="..."
-```
-
-### 4. Deploying Edge Functions
-
-The bot logic resides in Supabase Edge Functions. Deploy them using:
-
-```bash
+# Deploy the webhook
 supabase functions deploy whatsapp-webhook --no-verify-jwt
-supabase functions deploy send-order-notification --no-verify-jwt
 ```
 
-### 5. Config WhatsApp Webhook
-
-1. Go to your Meta Developer Dashboard -> WhatsApp -> Configuration.
-2. Set the Webhook URL to: `https://your_project_ref.supabase.co/functions/v1/whatsapp-webhook`
-3. Verify with your custom token (as set in the code).
-
-### 6. Local Development (Frontend)
-
-Run the project locally to view the dashboard:
+### 5. Running Locally
 
 ```bash
 npm run dev
@@ -106,15 +82,22 @@ npm run dev
 
 ## 📦 Project Structure
 
-- `/src`: The React frontend application.
-- `/supabase/functions`: Deno Edge Functions for the WhatsApp bot and notifications.
-- `/supabase/migrations`: SQL migrations for the automated order triggers.
-- `tailwind.config.ts`: Modern design tokens and theming.
+- `/src/pages`: Modular dashboard pages (Leads, Vehicles, Finance, Chat, etc.).
+- `/src/components`: Reusable UI components and the core `DashboardLayout`.
+- `/supabase/functions/whatsapp-webhook`: Deno logic for handling incoming WhatsApp messages and lead creation.
+- `/src/contexts`: Global state management for Authentication and Real-time data.
+
+---
 
 ## 🤝 Contribution
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 ## 📄 License
 
-[MIT](https://choosealicense.org/licenses/mit/)
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+**Developed & Designed by [Creativex Lab](#)**
+*Driving Trust, Delivering Dreams.*

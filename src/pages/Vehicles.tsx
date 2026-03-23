@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Plus, Image as ImageIcon, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { 
+  Loader2, Search, Plus, Image as ImageIcon, Pencil, Trash2, MoreHorizontal, 
+  CheckCircle, Wallet, ShoppingCart
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +16,9 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Vehicles() {
   const { user } = useAuth();
@@ -28,9 +33,18 @@ export default function Vehicles() {
   const { toast } = useToast();
 
   const [newVehicle, setNewVehicle] = useState({
-    brand: "", price: "", category: "", stock: "1", description: ""
+    brand: "", price: "", category: "", stock: "1", description: "",
+    purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0"
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // Sale tracking state
+  const [isSelling, setIsSelling] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [newSale, setNewSale] = useState({
+    lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank"
+  });
 
   const fetchVehicles = () => {
     fetch("http://localhost:5001/api/vehicles")
@@ -39,7 +53,41 @@ export default function Vehicles() {
       .catch(err => { console.error(err); setLoading(false); });
   };
 
-  useEffect(() => { fetchVehicles(); }, []);
+  const fetchLeads = () => {
+    fetch("http://localhost:5001/api/leads")
+      .then(res => res.json())
+      .then(data => setLeads((data || []).filter((l: any) => l.status !== 'Closed')))
+      .catch(console.error);
+  };
+
+  useEffect(() => { 
+    fetchVehicles(); 
+    if (canUpdate) fetchLeads();
+  }, [canUpdate]);
+
+  const handleMarkSold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVehicle || !newSale.lead_id) return;
+    try {
+      const res = await fetch("http://localhost:5001/api/finance/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicle_id: selectedVehicle.id,
+          lead_id: newSale.lead_id,
+          selling_price: newSale.selling_price || selectedVehicle.price,
+          sale_date: newSale.sale_date,
+          payment_method: "Bank",
+          account: newSale.account
+        })
+      });
+      if (res.ok) {
+        toast({ title: "Sale Verified", description: "Finance ledger updated & vehicle stock reduced." });
+        setIsSelling(false);
+        fetchVehicles();
+      }
+    } catch (err) { console.error(err); }
+  };
 
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +98,10 @@ export default function Vehicles() {
     formData.append("category", newVehicle.category);
     formData.append("stock", newVehicle.stock);
     formData.append("description", newVehicle.description);
+    formData.append("purchase_price", newVehicle.purchase_price);
+    formData.append("transport_cost", newVehicle.transport_cost);
+    formData.append("repair_cost", newVehicle.repair_cost);
+    formData.append("registration_fee", newVehicle.registration_fee);
     if (imageFile) {
       formData.append("image", imageFile);
     } else if (editingVehicle && editingVehicle.image_url) {
@@ -70,7 +122,10 @@ export default function Vehicles() {
         toast({ title: "Success", description: editingVehicle ? "Vehicle updated successfully!" : "Vehicle added successfully!" });
         setIsOpen(false);
         setEditingVehicle(null);
-        setNewVehicle({ brand: "", price: "", category: "", stock: "1", description: "" });
+        setNewVehicle({ 
+          brand: "", price: "", category: "", stock: "1", description: "",
+          purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0"
+        });
         setImageFile(null);
         fetchVehicles();
       } else {
@@ -90,7 +145,11 @@ export default function Vehicles() {
       price: v.price.toString(),
       category: v.category || "",
       stock: v.stock.toString(),
-      description: v.description || ""
+      description: v.description || "",
+      purchase_price: (v.purchase_price || 0).toString(),
+      transport_cost: (v.transport_cost || 0).toString(),
+      repair_cost: (v.repair_cost || 0).toString(),
+      registration_fee: (v.registration_fee || 0).toString()
     });
     setIsOpen(true);
   };
@@ -128,7 +187,10 @@ export default function Vehicles() {
             setIsOpen(open);
             if (!open) {
               setEditingVehicle(null);
-              setNewVehicle({ brand: "", price: "", category: "", stock: "1", description: "" });
+              setNewVehicle({ 
+                brand: "", price: "", category: "", stock: "1", description: "",
+                purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0"
+              });
               setImageFile(null);
             }
           }}>
@@ -171,6 +233,29 @@ export default function Vehicles() {
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
                   <Input value={newVehicle.description} onChange={e => setNewVehicle({...newVehicle, description: e.target.value})} placeholder="Excellent condition..." className="h-9 text-sm" />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3 border-t pt-3 mt-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold text-emerald-600">Purchase Price (Cost)</Label>
+                    <Input type="number" value={newVehicle.purchase_price} onChange={e => setNewVehicle({...newVehicle, purchase_price: e.target.value})} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Repair Cost</Label>
+                    <Input type="number" value={newVehicle.repair_cost} onChange={e => setNewVehicle({...newVehicle, repair_cost: e.target.value})} className="h-9 text-sm" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pb-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transport Cost</Label>
+                    <Input type="number" value={newVehicle.transport_cost} onChange={e => setNewVehicle({...newVehicle, transport_cost: e.target.value})} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reg. / Taxes</Label>
+                    <Input type="number" value={newVehicle.registration_fee} onChange={e => setNewVehicle({...newVehicle, registration_fee: e.target.value})} className="h-9 text-sm" />
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
                   <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
@@ -241,14 +326,20 @@ export default function Vehicles() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
-                              <Pencil className="h-3 w-3" /> Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
-                              <Trash2 className="h-3 w-3" /> Delete Vehicle
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                           <DropdownMenuContent align="end" className="w-48">
+                             {v.stock > 0 && (
+                               <DropdownMenuItem onClick={() => { setSelectedVehicle(v); setNewSale(prev => ({...prev, selling_price: v.price.toString()})); setIsSelling(true); }} className="text-xs gap-2 text-emerald-600 font-bold focus:text-emerald-600">
+                                 <ShoppingCart className="h-3 w-3" /> Mark as Sold
+                               </DropdownMenuItem>
+                             )}
+                             <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
+                               <Pencil className="h-3 w-3" /> Edit Details
+                             </DropdownMenuItem>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
+                               <Trash2 className="h-3 w-3" /> Delete Vehicle
+                             </DropdownMenuItem>
+                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     )}
@@ -259,6 +350,47 @@ export default function Vehicles() {
           </Table>
         )}
       </div>
+
+      {/* Sale Confirmation Dialog */}
+      <Dialog open={isSelling} onOpenChange={setIsSelling}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="font-display">Finalize Sale</DialogTitle>
+            <DialogDescription>Mark {selectedVehicle?.brand} as sold and record revenue.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleMarkSold} className="space-y-4 py-4">
+             <div className="space-y-1.5">
+                <Label className="text-xs uppercase font-bold text-muted-foreground">Select Buyer (Lead)</Label>
+                <Select value={newSale.lead_id} onValueChange={v => setNewSale({...newSale, lead_id: v})}>
+                   <SelectTrigger><SelectValue placeholder="Link this sale to a lead" /></SelectTrigger>
+                   <SelectContent>
+                      {leads.map(l => (
+                         <SelectItem key={l.id} value={l.id.toString()}>{l.name} ({l.phone})</SelectItem>
+                      ))}
+                   </SelectContent>
+                </Select>
+             </div>
+             <div className="space-y-1.5">
+                <Label className="text-xs uppercase font-bold text-muted-foreground">Final Selling Price (Rs.)</Label>
+                <Input type="number" value={newSale.selling_price} onChange={e => setNewSale({...newSale, selling_price: e.target.value})} className="h-9" />
+             </div>
+             <div className="space-y-1.5">
+                <Label className="text-xs uppercase font-bold text-muted-foreground">Deposit to Account</Label>
+                <Select value={newSale.account} onValueChange={v => setNewSale({...newSale, account: v})}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                      <SelectItem value="Bank">Bank Account</SelectItem>
+                      <SelectItem value="Cash">Cash Drawer</SelectItem>
+                   </SelectContent>
+                </Select>
+             </div>
+             <DialogFooter className="pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsSelling(false)} className="h-9">Cancel</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white h-9">Confirm Sale</Button>
+             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

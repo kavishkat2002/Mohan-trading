@@ -143,7 +143,7 @@ const VisualProposal = () => {
                     className="z-10"
                 >
                     <Badge className="mb-6 py-1.5 px-6 text-sm font-bold tracking-widest uppercase bg-primary text-white border-none rounded-full shadow-lg shadow-primary/20">
-                        Creative LabX • Autonomous Retail Intelligence
+                        Creativex Lab • Autonomous Retail Intelligence
                     </Badge>
                     <h1 className="text-6xl md:text-8xl font-display font-extrabold tracking-tighter mb-8 leading-none">
                         SmartBiz <br />
@@ -387,7 +387,7 @@ const VisualProposal = () => {
             {/* Footer Branding */}
             <footer className="py-12 px-4 border-t border-white/5 text-center">
                 <p className="text-xs uppercase tracking-[0.5em] font-bold text-white/20">
-                    SmartBiz AI Connect • Creative LabX
+                    SmartBiz AI Connect • Creativex Lab
                 </p>
             </footer>
         </div>

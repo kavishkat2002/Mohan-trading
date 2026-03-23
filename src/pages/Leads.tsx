@@ -336,6 +336,7 @@ export default function Leads() {
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Source</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Interest</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI Context</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned</TableHead>
                 <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>
@@ -367,6 +368,21 @@ export default function Leads() {
                       </TableCell>
                       <TableCell className="text-sm text-foreground/80">{lead.interested_car || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground font-mono">{lead.budget || "—"}</TableCell>
+                      <TableCell>
+                        {lead.current_step && (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="secondary" className="text-[9px] w-fit font-bold uppercase py-0 px-1 bg-primary/5 text-primary/60 border-primary/10">
+                              {lead.current_step.replace('_', ' ')}
+                            </Badge>
+                            {lead.chat_metadata && typeof lead.chat_metadata === 'object' && Object.keys(lead.chat_metadata).length > 0 && (
+                                <div className="text-[9px] text-muted-foreground italic leading-tight">
+                                   {lead.chat_metadata.type && `Prefers: ${lead.chat_metadata.type} `}
+                                   {lead.chat_metadata.intent && `| ${lead.chat_metadata.intent}`}
+                                </div>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={`text-[11px] font-medium rounded-md px-2 py-0.5 ${getStatusStyle(lead.status)}`}>
                           {lead.status}

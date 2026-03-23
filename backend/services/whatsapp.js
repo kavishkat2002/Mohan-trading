@@ -6,105 +6,132 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
 
 const WA_API_URL = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
 
-// Session store for conversational state (in-memory for demo, should be Redis in production)
-const userSessions = {};
-
 // Send a plain text message via WhatsApp
-async function sendWhatsAppMessage(to, text) {
+async function sendWhatsAppMessage(to, text, leadId = null) {
   try {
+    // Log outgoing message to DB
+    if (leadId) {
+       await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [leadId, 'bot', text]);
+    }
+
     await axios.post(
       WA_API_URL,
-      {
-        messaging_product: 'whatsapp',
-        to: to,
-        text: { body: text },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-      }
+      { messaging_product: 'whatsapp', to: to, text: { body: text } },
+      { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);
   }
 }
 
-// Interactive Message Component Flow
+// Main logic for AI Sales Assistant (WhatsApp Flow)
 async function handleIncomingMessage(phone, text) {
-  const session = userSessions[phone] || { step: 'START' };
+  // 1. RECOVER OR CREATE LEAD (Tier 2 Memory)
+  let leadResult = await db.query('SELECT * FROM leads WHERE phone = $1', [phone]);
+  let lead = leadResult.rows[0];
 
-  if (text.toLowerCase() === 'reset' || text.toLowerCase() === 'hi' || text.toLowerCase() === 'hello') {
-    session.step = 'START';
+  if (!lead) {
+    const insertRes = await db.query(
+      'INSERT INTO leads (phone, name, status, current_step, chat_metadata) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [phone, 'WhatsApp User', 'New', 'START', '{}']
+    );
+    lead = insertRes.rows[0];
   }
 
-  switch (session.step) {
+  // 2. LOG INCOMING MESSAGE
+  await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [lead.id, 'customer', text]);
+
+  let step = lead.current_step || 'START';
+  let metadata = lead.chat_metadata || {};
+  let outMsg = "";
+
+  const inputLower = text.toLowerCase();
+  if (inputLower === 'reset' || inputLower === 'hi' || inputLower === 'hello') {
+    step = 'START';
+    metadata = {};
+  }
+
+  // 3. STATE MACHINE (Tier 1 Memory)
+  switch (step) {
     case 'START':
-      await sendWhatsAppMessage(
-        phone,
-        `Hi 👋 Welcome to Mohan Trading 🚗
-How can we help you today?
-1. Buy a car
-2. Sell a car
-3. View available cars
-(Please reply with a number)`
-      );
-      session.step = 'WAITING_FOR_ACTION';
+      outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can we help you today?\n\n1️⃣ Buy a car\n2️⃣ Sell a car\n3️⃣ View latest Inventory\n\n(Reply with 1, 2, or 3)`;
+      step = 'INTENT_DISCOVERY';
       break;
 
-    case 'WAITING_FOR_ACTION':
+    case 'INTENT_DISCOVERY':
       if (text === '1') {
-        await sendWhatsAppMessage(phone, "Great! What is your name?");
-        session.step = 'COLLECT_NAME';
-        session.action = 'Buy';
+        outMsg = "Great! 🚗 What is your name?";
+        step = 'COLLECT_NAME';
+        metadata.intent = 'BUY';
       } else if (text === '2') {
-        await sendWhatsAppMessage(phone, "We can help you sell your car. What is your name?");
-        session.step = 'COLLECT_NAME';
-        session.action = 'Sell';
+        outMsg = "We can help you sell! What is your name?";
+        step = 'COLLECT_NAME';
+        metadata.intent = 'SELL';
       } else if (text === '3') {
-        await sendWhatsAppMessage(phone, "You can view our available cars on our website: https://mohantrading.com");
-        session.step = 'START';
+        outMsg = "Check out our current fleet here: https://mohantrading.com/vehicles \n\nType 'Buy' if you see something you like!";
+        step = 'START';
       } else {
-        await sendWhatsAppMessage(phone, "Please reply with 1, 2, or 3.");
+        outMsg = "Please reply with 1, 2, or 3 to proceed.";
       }
       break;
 
     case 'COLLECT_NAME':
-      session.name = text;
-      await sendWhatsAppMessage(phone, `Nice to meet you, ${session.name}! What budget are you considering? (e.g., $10k-$20k)`);
-      session.step = 'COLLECT_BUDGET';
+      metadata.name = text;
+      await db.query('UPDATE leads SET name = $1 WHERE id = $2', [text, lead.id]);
+      if (metadata.intent === 'BUY') {
+        outMsg = `Nice to meet you, ${text}! What type of vehicle are you looking for? (e.g. SUV, Sedan, Van)`;
+        step = 'COLLECT_VEHICLE_TYPE';
+      } else {
+        outMsg = `Nice to meet you, ${text}! What is the Make and Model of the car you wish to sell?`;
+        step = 'COLLECT_SELL_MODEL';
+      }
+      break;
+
+    case 'COLLECT_VEHICLE_TYPE':
+      metadata.type = text;
+      outMsg = `Got it. And what is your budget range in LKR? (e.g. 10M - 15M)`;
+      step = 'COLLECT_BUDGET';
       break;
 
     case 'COLLECT_BUDGET':
-      session.budget = text;
-      await sendWhatsAppMessage(phone, "Got it. Lastly, what type of car or specific model are you looking for?");
-      session.step = 'COLLECT_CAR';
-      break;
-
-    case 'COLLECT_CAR':
-      session.car = text;
+      metadata.budget = text;
       
-      // Save lead to CRM
+      // AI MEMORY TIER 3: Semantic Inventory Search
       try {
-        await db.query(
-          'INSERT INTO leads (name, phone, interested_car, budget, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (phone) DO UPDATE SET interested_car = $3, budget = $4',
-          [session.name, phone, session.car, session.budget, 'New']
-        );
-      } catch (err) {
-        console.error('Failed to save lead:', err);
-      }
+          // Parse budget for query (simplistic budget limit extraction)
+          const maxBudget = parseInt(text.replace(/[^0-9]/g, ''), 10) || 999999999;
+          const { rows: matches } = await db.query(
+            'SELECT brand, price, category FROM vehicles WHERE category ILIKE $1 AND price <= $2 LIMIT 3',
+            [`%${metadata.type}%`, maxBudget]
+          );
 
-      await sendWhatsAppMessage(phone, "Thanks! Your details have been recorded. One of our sales agents will contact you shortly. 🚗💨");
-      session.step = 'DONE';
-      break;
+          if (matches.length > 0) {
+            let carList = matches.map(m => `✅ ${m.brand} - LKR ${m.price}`).join('\n');
+            outMsg = `I found some matches 📊:\n\n${carList}\n\nOur specialists will contact you shortly with full details and photos! 🚗💨`;
+          } else {
+            outMsg = `Thanks! 📊 I'm searching our full network for a ${metadata.type} within your budget. One of our human specialists will follow up with personalized options shortly! 🚗💨`;
+          }
+      } catch (err) {
+          console.error('Inventory search error:', err);
+          outMsg = "Thank you! Our sales team will follow up with you shortly with personalized options. 🚗💨";
+      }
       
-    case 'DONE':
-      await sendWhatsAppMessage(phone, "We have already received your request. An agent will be in touch! (Reply 'reset' to start over)");
+      step = 'COMPLETED';
+      // Sync detailed lead info
+      await db.query('UPDATE leads SET interested_car = $1, budget = $2, status = $3 WHERE id = $4', [metadata.type, metadata.budget, 'Warm', lead.id]);
       break;
+
+    case 'COMPLETED':
+      outMsg = "We already have your details! Our team is working on your request. (Reply 'reset' to start over)";
+      break;
+
+    default:
+      outMsg = "Thanks for your message! Our team will be with you shortly.";
   }
 
-  userSessions[phone] = session;
+  // 4. PERSIST STATE AND SEND
+  await db.query('UPDATE leads SET current_step = $1, chat_metadata = $2 WHERE id = $3', [step, JSON.stringify(metadata), lead.id]);
+  await sendWhatsAppMessage(phone, outMsg, lead.id);
 }
 
 module.exports = {

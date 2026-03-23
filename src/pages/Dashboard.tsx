@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { Car, Users, Target, TrendingUp, MessageSquare } from "lucide-react";
+import { Car, Users, Target, TrendingUp, Bell } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ leads: 0, new: 0, closed: 0 });
+  const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("http://localhost:5001/api/leads")
@@ -17,6 +22,11 @@ export default function Dashboard() {
           closed: data.filter((l: any) => l.status === "Closed Deal").length,
         });
       })
+      .catch(console.error);
+
+    fetch("http://localhost:5001/api/notices")
+      .then(res => res.json())
+      .then(data => setNotices(Array.isArray(data) ? data.slice(0, 5) : []))
       .catch(console.error);
   }, []);
 
@@ -61,45 +71,64 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Quick summary section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="border border-border rounded-lg p-6 bg-white">
-          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            {[
-              { text: "New lead captured via WhatsApp", time: "2 min ago", dot: "bg-primary" },
-              { text: "Test drive scheduled — Toyota Prius", time: "1 hour ago", dot: "bg-amber-400" },
-              { text: "Deal closed — Honda Civic", time: "3 hours ago", dot: "bg-emerald-500" },
-              { text: "Follow-up reminder sent", time: "Yesterday", dot: "bg-violet-400" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
-                <div className={`h-2 w-2 rounded-full ${item.dot} shrink-0`} />
-                <span className="text-sm text-foreground/80 flex-1">{item.text}</span>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.time}</span>
-              </div>
-            ))}
+      {/* Noticeboard Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h2 className="font-display text-xl font-bold text-foreground">Noticeboard</h2>
+            <p className="text-xs text-muted-foreground">Company-wide announcements</p>
           </div>
+          <Button variant="ghost" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs font-semibold text-primary gap-1 h-8 px-3">
+            View All →
+          </Button>
         </div>
 
-        <div className="border border-border rounded-lg p-6 bg-white">
-          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Add Vehicle", icon: Car },
-              { label: "New Lead", icon: Users },
-              { label: "Open Chat", icon: MessageSquare },
-              ...(['owner', 'admin'].includes(user?.role) ? [{ label: "Analytics", icon: Target }] : []),
-            ].map((action) => (
-              <button
-                key={action.label}
-                className="flex items-center gap-3 p-3.5 rounded-lg border border-border text-sm font-medium text-foreground/70 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200 group"
+        {notices.length === 0 ? (
+          <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center bg-muted/20">
+            <div className="py-2" />
+            <p className="text-sm text-muted-foreground">No notices posted yet.</p>
+            {(user?.role === "owner" || user?.role === "admin") && (
+              <Button variant="outline" size="sm" className="mt-3 border-2 text-xs font-bold" onClick={() => navigate("/dashboard/noticeboard")}>
+                Post First Notice
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {notices.map((n, i) => (
+              <motion.div
+                key={n.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className={`relative border-2 rounded-2xl bg-white overflow-hidden cursor-pointer hover:shadow-md transition-all group ${n.pinned ? "border-amber-300" : "border-border"}`}
+                onClick={() => navigate("/dashboard/noticeboard")}
               >
-                <action.icon className="h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                {action.label}
-              </button>
+                {n.pinned && <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-400" />}
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    {n.pinned && (
+                      <Badge className="bg-amber-100 text-amber-700 border-0 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5">
+                        📌 Pinned
+                      </Badge>
+                    )}
+                    <h3 className="text-base font-bold text-foreground">{n.title}</h3>
+                  </div>
+                  <div
+                    className="text-sm text-foreground/70 line-clamp-3 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: n.content }}
+                  />
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground font-medium">{n.author_name || "Admin"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(n.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

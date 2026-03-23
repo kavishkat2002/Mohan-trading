@@ -53,7 +53,7 @@ const FormalProposal = () => {
                     </div>
                     <div className="text-right text-sm text-gray-500 font-medium">
                         <p>February 14, 2026</p>
-                        <p>Creative LabX</p>
+                        <p>Creativex Lab</p>
                     </div>
                 </header>
 
@@ -260,7 +260,7 @@ const FormalProposal = () => {
                     {/* Footer */}
                     <footer className="pt-12 border-t border-gray-100 flex justify-between items-start text-sm text-gray-500">
                         <div className="space-y-1">
-                            <p className="font-bold text-gray-900">Creative LabX</p>
+                            <p className="font-bold text-gray-900">Creativex Lab</p>
                             <p>Sri Lanka's Leader in Business AI</p>
                         </div>
                         <div className="space-y-1 text-right">

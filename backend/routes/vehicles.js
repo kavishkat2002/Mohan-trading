@@ -33,13 +33,13 @@ router.get('/', async (req, res) => {
 
 // Add a new vehicle
 router.post('/', upload.single('image'), async (req, res) => {
-  const { brand, price, category, stock, description } = req.body;
+  const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
     const { rows } = await db.query(
-      'INSERT INTO vehicles (brand, price, category, stock, description, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [brand, price, category, stock || 1, description, imageUrl]
+      'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [brand, price, category, stock || 1, description, imageUrl, purchase_price || 0, transport_cost || 0, repair_cost || 0, registration_fee || 0]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -51,13 +51,13 @@ router.post('/', upload.single('image'), async (req, res) => {
 // Update vehicle stock or details
 router.put('/:id', upload.single('image'), async (req, res) => {
   const { id } = req.params;
-  const { brand, price, category, stock, description, existing_image } = req.body;
+  const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : existing_image;
 
   try {
     const { rows } = await db.query(
-      'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6 WHERE id = $7 RETURNING *',
-      [brand, price, category, stock, description, imageUrl, id]
+      'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10 WHERE id = $11 RETURNING *',
+      [brand, price, category, stock, description, imageUrl, purchase_price, transport_cost, repair_cost, registration_fee, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Vehicle not found' });
     res.json(rows[0]);

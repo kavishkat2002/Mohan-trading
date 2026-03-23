@@ -8,6 +8,8 @@ const messagesRouter = require('./routes/messages');
 const webhookRouter = require('./routes/webhook');
 const vehiclesRouter = require('./routes/vehicles');
 const attendanceRouter = require('./routes/attendance');
+const financeRouter = require('./routes/finance');
+const noticesRouter = require('./routes/notices');
 const db = require('./db');
 
 const app = express();
@@ -25,6 +27,8 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/webhook', webhookRouter);
 app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/attendance', attendanceRouter);
+app.use('/api/finance', financeRouter);
+app.use('/api/notices', noticesRouter);
 
 // Basic health check
 app.get('/health', (req, res) => {

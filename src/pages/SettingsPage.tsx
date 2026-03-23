@@ -145,6 +145,8 @@ export default function SettingsPage() {
   const { business, userRole } = useBusiness();
   const { toast } = useToast();
   const qc = useQueryClient();
+
+
   const [name, setName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [bankName, setBankName] = useState("");
@@ -158,6 +160,8 @@ export default function SettingsPage() {
   const [description, setDescription] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState("");
+
+
 
   const updateBusiness = useMutation({
     mutationFn: async () => {
@@ -181,6 +185,20 @@ export default function SettingsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["business"] }); toast({ title: "Settings updated" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  if (['accountant', 'staff', 'sales'].includes(user?.role || "")) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+        <div className="h-12 w-12 rounded-full bg-rose-100 flex items-center justify-center">
+          <Building2 className="h-6 w-6 text-rose-600" />
+        </div>
+        <h2 className="text-xl font-bold font-display text-rose-600">Unauthorized Access</h2>
+        <p className="text-xs text-muted-foreground max-w-xs uppercase tracking-widest font-bold">Role: {user?.role}</p>
+        <p className="text-sm text-muted-foreground max-w-xs">Only Owners and Admins have permission to modify business configurations.</p>
+        <Button variant="outline" onClick={() => window.history.back()} className="mt-4 border-2 font-bold h-10">Go Back to Safety</Button>
+      </div>
+    );
+  }
 
   const SectionCard = ({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) => (
     <div className="border border-border rounded-lg bg-white">

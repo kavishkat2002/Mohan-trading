@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const whatsappService = require('../services/whatsapp');
 
 // Get messages for a lead
 router.get('/lead/:leadId', async (req, res) => {
@@ -25,6 +26,15 @@ router.post('/', async (req, res) => {
       'INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3) RETURNING *',
       [lead_id, sender, content]
     );
+    
+    // If sent by sales, trigger real WhatsApp message
+    if (sender === 'sales') {
+        const leadRes = await db.query('SELECT phone FROM leads WHERE id = $1', [lead_id]);
+        if (leadRes.rows.length > 0) {
+            await whatsappService.sendWhatsAppMessage(leadRes.rows[0].phone, content);
+        }
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
