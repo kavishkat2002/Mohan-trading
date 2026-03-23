@@ -1,4 +1,4 @@
-# Mohan Trader CRM (SmartBiz AI Connect)
+# Mohan Trader CRM
 
 Mohan Trader CRM is a premium, AI-powered automotive business management engine. It transforms traditional dealership operations into a high-efficiency digital ecosystem by integrating **WhatsApp Business API**, **Supabase**, and **Real-time Lead Management**.
 

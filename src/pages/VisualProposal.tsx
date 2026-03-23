@@ -146,9 +146,9 @@ const VisualProposal = () => {
                         Creativex Lab • Autonomous Retail Intelligence
                     </Badge>
                     <h1 className="text-6xl md:text-8xl font-display font-extrabold tracking-tighter mb-8 leading-none">
-                        SmartBiz <br />
+                        TRADER <br />
                         <span className="bg-gradient-to-r from-primary via-purple-500 to-blue-600 bg-clip-text text-transparent">
-                            AI CONNECT
+                            CRM
                         </span>
                     </h1>
                     <p className="text-xl md:text-2xl text-white/60 max-w-3xl mx-auto font-light leading-relaxed">
@@ -345,7 +345,7 @@ const VisualProposal = () => {
                         UNMATCHED ROI
                     </h2>
                     <p className="text-2xl text-white/90 font-medium mb-16 leading-relaxed">
-                        SmartBiz AI Connect doesn't just save time—it creates a competitive moat for your business.
+                        Mohan Trader CRM doesn't just save time—it creates a competitive moat for your business.
                     </p>
 
                     <div className="grid md:grid-cols-3 gap-12 text-black">
@@ -367,7 +367,7 @@ const VisualProposal = () => {
                     <Button
                         size="lg"
                         className="h-16 px-10 text-lg bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/30 rounded-2xl group"
-                        onClick={() => window.open('https://wa.me/94703375336?text=I%27m%20interested%20in%20the%20SmartBiz%20AI%20Connect%20Private%20Beta', '_blank')}
+                        onClick={() => window.open('https://wa.me/94703375336?text=I%27m%20interested%20in%20the%20Mohan%20Trader%20CRM', '_blank')}
                     >
                         Request Private Beta
                         <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -376,7 +376,7 @@ const VisualProposal = () => {
                         variant="outline"
                         size="lg"
                         className="h-16 px-10 text-lg border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl gap-2"
-                        onClick={() => window.location.href = 'mailto:tkavishka101@gmail.com?subject=SmartBiz%20AI%20Connect%20Inquiry'}
+                        onClick={() => window.location.href = 'mailto:tkavishka101@gmail.com?subject=MohanTrader%20CRM%20Inquiry'}
                     >
                         <Mail className="w-5 h-5 opacity-50" />
                         Send an Email
@@ -387,7 +387,7 @@ const VisualProposal = () => {
             {/* Footer Branding */}
             <footer className="py-12 px-4 border-t border-white/5 text-center">
                 <p className="text-xs uppercase tracking-[0.5em] font-bold text-white/20">
-                    SmartBiz AI Connect • Creativex Lab
+                    Mohan Trader CRM • Creativex Lab
                 </p>
             </footer>
         </div>

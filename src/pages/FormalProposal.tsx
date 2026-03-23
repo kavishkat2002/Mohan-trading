@@ -48,7 +48,7 @@ const FormalProposal = () => {
                 {/* PAGE 1: COVER & EXECUTIVE SUMMARY */}
                 <header className="border-b-4 border-blue-600 pb-8 mb-12 flex justify-between items-end">
                     <div>
-                        <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-2">SmartBiz AI Connect</h1>
+                        <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-2">Mohan Trader CRM</h1>
                         <p className="text-blue-600 font-bold uppercase tracking-widest text-sm">Strategic Business Proposal</p>
                     </div>
                     <div className="text-right text-sm text-gray-500 font-medium">
@@ -64,7 +64,7 @@ const FormalProposal = () => {
                         <div className="bg-blue-50 p-8 rounded-3xl border border-blue-100 mb-8">
                             <p className="text-xl font-medium text-blue-900 mb-4">The Solution to Modern Retail Leakage</p>
                             <p className="text-gray-700">
-                                SmartBiz AI Connect is a <span className="highlight font-bold">Sustainable Market Advantage</span>. While competitors hire more staff to handle growth, our partners use <strong>Multimodal Intelligence</strong> to scale infinitely. We solve the three biggest leaks in retail: Missed Calls, Slow Replies, and Lost Retargeting. This proposal outlines a transformation from variable labor costs to fixed digital efficiency.
+                                Mohan Trader CRM is a <span className="highlight font-bold">Sustainable Market Advantage</span>. While competitors hire more staff to handle growth, our partners use <strong>Multimodal Intelligence</strong> to scale infinitely. We solve the three biggest leaks in retail: Missed Calls, Slow Replies, and Lost Retargeting. This proposal outlines a transformation from variable labor costs to fixed digital efficiency.
                             </p>
                         </div>
 
