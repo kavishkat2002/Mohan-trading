@@ -10,6 +10,7 @@ const vehiclesRouter = require('./routes/vehicles');
 const attendanceRouter = require('./routes/attendance');
 const financeRouter = require('./routes/finance');
 const noticesRouter = require('./routes/notices');
+const settingsRouter = require('./routes/settings');
 const db = require('./db');
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/notices', noticesRouter);
+app.use('/api/settings', settingsRouter);
 
 // Basic health check
 app.get('/health', (req, res) => {

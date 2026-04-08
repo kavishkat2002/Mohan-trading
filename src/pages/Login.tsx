@@ -1,14 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+const slides = [
+  "/hero-raptor.png",
+  "/hero-car-1.png",
+  "/hero-car-3.jpg",
+];
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,33 +50,56 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left side — dark navy branding with MohanTrader logo */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden" style={{ background: 'hsl(220, 28%, 16%)' }}>
+      {/* Left side — raptor branding */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden bg-slate-950">
+        
+        {/* Slideshow */}
+        {slides.map((slide, index) => (
+          <img
+            key={slide}
+            src={slide}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+              currentSlide === index ? "opacity-60" : "opacity-0"
+            }`}
+            style={{ zIndex: 1 }}
+            alt="Showroom Vehicle"
+          />
+        ))}
+
+        {/* Overlay gradient for readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-slate-950/40 z-[5]" />
+
         <div className="relative z-10 px-16 text-center">
           {/* MohanTrader Logo */}
           <img 
             src="/mohantrader-logo.png" 
             alt="MohanTrader" 
-            className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/5 p-2"
+            className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/10 backdrop-blur-md p-2 shadow-2xl ring-1 ring-white/20"
           />
-          <h1 className="text-4xl font-semibold text-white tracking-tight leading-tight">
+          <h1 className="text-4xl font-semibold text-white tracking-tight leading-tight drop-shadow-lg">
             Mohan Trader
           </h1>
-          <p className="text-white/50 mt-2 text-base italic font-display tracking-wide">
+          <p className="text-white/80 mt-2 text-base italic font-display tracking-wide drop-shadow-md">
             Delivering Dreams, Driving Trust
           </p>
-          <p className="text-white/30 mt-4 text-sm max-w-sm mx-auto leading-relaxed">
+          <p className="text-white/60 mt-4 text-sm max-w-sm mx-auto leading-relaxed drop-shadow-sm border-t border-white/10 pt-4">
             Your complete CRM for managing vehicle inventory, leads, and sales pipeline — all in one place.
           </p>
-          {/* Decorative dots */}
-          <div className="flex items-center justify-center gap-2 mt-8">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-            <div className="h-1.5 w-8 rounded-full bg-primary/30" />
-            <div className="h-1.5 w-1.5 rounded-full bg-primary/20" />
+          
+          {/* Decorative bar */}
+          <div className="flex items-center justify-center gap-2 mt-8 relative z-20">
+            {slides.map((_, idx) => (
+              <button 
+                key={idx}
+                type="button"
+                onClick={() => setCurrentSlide(idx)}
+                className={`h-1.5 rounded-full transition-all duration-500 hover:bg-white cursor-pointer ${currentSlide === idx ? 'w-6 bg-primary' : 'w-1.5 bg-white/30'}`} 
+              />
+            ))}
           </div>
         </div>
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{
+        {/* Subtle grid pattern over everything for texture */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.04] z-10" style={{
           backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`,
           backgroundSize: '40px 40px'
         }} />

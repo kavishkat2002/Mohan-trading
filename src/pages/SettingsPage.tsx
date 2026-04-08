@@ -158,33 +158,88 @@ export default function SettingsPage() {
   const [paymentGatewayName, setPaymentGatewayName] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [description, setDescription] = useState("");
+  const [slogan, setSlogan] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState("");
 
-
+  useEffect(() => {
+    if (business) {
+      if (business.name && !name) setName(business.name);
+      if (business.contact_email && !contactEmail) setContactEmail(business.contact_email);
+      if (business.bank_name && !bankName) setBankName(business.bank_name);
+      if (business.bank_account_number && !bankAccountNumber) setBankAccountNumber(business.bank_account_number);
+      if (business.bank_account_holder && !bankAccountHolder) setBankAccountHolder(business.bank_account_holder);
+      if (business.bank_branch && !bankBranch) setBankBranch(business.bank_branch);
+      if (business.bank_swift_code && !bankSwiftCode) setBankSwiftCode(business.bank_swift_code);
+      if (business.payment_gateway_link && !paymentGatewayLink) setPaymentGatewayLink(business.payment_gateway_link);
+      if (business.payment_gateway_name && !paymentGatewayName) setPaymentGatewayName(business.payment_gateway_name);
+      if (business.business_type && !businessType) setBusinessType(business.business_type);
+      if (business.description && !description) setDescription(business.description);
+      if (business.slogan && !slogan) setSlogan(business.slogan);
+      if (business.logo_url && !logoUrl) setLogoUrl(business.logo_url);
+      if (business.contact_phone && !whatsappPhone) setWhatsappPhone(business.contact_phone);
+      if (business.whatsapp_phone_number_id && !whatsappPhoneNumberId) setWhatsappPhoneNumberId(business.whatsapp_phone_number_id);
+    }
+  }, [business]);
 
   const updateBusiness = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("businesses").update({
-        name: name || business?.name,
-        contact_email: contactEmail || business?.contact_email,
-        bank_name: bankName || business?.bank_name || null,
-        bank_account_number: bankAccountNumber || business?.bank_account_number || null,
-        bank_account_holder: bankAccountHolder || business?.bank_account_holder || null,
-        bank_branch: bankBranch || business?.bank_branch || null,
-        bank_swift_code: bankSwiftCode || business?.bank_swift_code || null,
-        payment_gateway_link: paymentGatewayLink || business?.payment_gateway_link || null,
-        payment_gateway_name: paymentGatewayName || business?.payment_gateway_name || null,
-        business_type: businessType || (business as any)?.business_type || null,
-        description: description || (business as any)?.description || null,
-        contact_phone: whatsappPhone || business?.contact_phone || null,
-        whatsapp_phone_number_id: whatsappPhoneNumberId || business?.whatsapp_phone_number_id || null,
-      }).eq("id", business!.id);
-      if (error) throw error;
+      const payload = {
+        name,
+        contact_email: contactEmail,
+        bank_name: bankName,
+        bank_account_number: bankAccountNumber,
+        bank_account_holder: bankAccountHolder,
+        bank_branch: bankBranch,
+        bank_swift_code: bankSwiftCode,
+        payment_gateway_link: paymentGatewayLink,
+        payment_gateway_name: paymentGatewayName,
+        business_type: businessType,
+        description,
+        slogan,
+        logo_url: logoUrl,
+        contact_phone: whatsappPhone,
+        whatsapp_phone_number_id: whatsappPhoneNumberId,
+      };
+
+      const res = await fetch("http://localhost:5001/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error("Failed to update settings");
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["business"] }); toast({ title: "Settings updated" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('avatar', file); // We reuse the avatar/image upload endpoint or similar
+    
+    try {
+      // The backend actually has a generic upload endpoint or we can use the avatar endpoint.
+      // Wait, let's use the standard POST to /api/users/${user.id}/avatar for simplicity and get an image URL.
+      // Since it's local storage, we can just use it to host the image.
+      const res = await fetch(`http://localhost:5001/api/users/${user?.id || 1}/avatar`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLogoUrl(data.avatar_url);
+        toast({ title: "Logo uploaded successfully" });
+      } else {
+        toast({ title: "Upload failed", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "An error occurred during upload", variant: "destructive" });
+    }
+  };
 
   if (['accountant', 'staff', 'sales'].includes(user?.role || "")) {
     return (
@@ -200,18 +255,6 @@ export default function SettingsPage() {
     );
   }
 
-  const SectionCard = ({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) => (
-    <div className="border border-border rounded-lg bg-white">
-      <div className="px-6 py-4 border-b border-border">
-        <h3 className="font-display text-base font-semibold text-foreground">{title}</h3>
-        {desc && <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>}
-      </div>
-      <div className="p-6 space-y-4">
-        {children}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-8">
       <div>
@@ -225,7 +268,6 @@ export default function SettingsPage() {
           <TabsTrigger value="bank" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Banknote className="h-3.5 w-3.5" />Bank & Payment</TabsTrigger>
           <TabsTrigger value="whatsapp" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><MessageSquare className="h-3.5 w-3.5" />WhatsApp</TabsTrigger>
           <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger>
-          <TabsTrigger value="plans" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><CreditCard className="h-3.5 w-3.5" />Plans</TabsTrigger>
           <TabsTrigger value="team" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Users className="h-3.5 w-3.5" />Team</TabsTrigger>
         </TabsList>
 
@@ -233,11 +275,22 @@ export default function SettingsPage() {
           <SectionCard title="Business Profile" desc="Update your business information">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Name</Label>
-              <Input defaultValue={business?.name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+              <Input value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Slogan</Label>
+              <Input value={slogan} onChange={e => setSlogan(e.target.value)} placeholder="e.g. Delivering Dreams..." className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Logo</Label>
+              <div className="flex gap-4 items-center">
+                {logoUrl && <img src={`http://localhost:5001${logoUrl.replace('http://localhost:5001', '')}`} alt="Logo" className="w-12 h-12 object-contain rounded-md border" />}
+                <Input type="file" accept="image/*" onChange={handleLogoUpload} className="h-9 text-sm w-full" />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Type</Label>
-              <Select onValueChange={setBusinessType} defaultValue={(business as any)?.business_type || ""}>
+              <Select onValueChange={setBusinessType} value={businessType || (business as any)?.business_type || ""}>
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
@@ -257,14 +310,14 @@ export default function SettingsPage() {
               </Label>
               <Textarea
                 placeholder="e.g. We sell premium used cars with warranty..."
-                defaultValue={(business as any)?.description || ""}
+                value={description}
                 onChange={e => setDescription(e.target.value)}
                 className="min-h-[80px] text-sm"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contact Email</Label>
-              <Input type="email" defaultValue={business?.contact_email || ""} onChange={e => setContactEmail(e.target.value)} className="h-9 text-sm" />
+              <Input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="flex items-center gap-2 pt-2">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Role:</Label>
@@ -282,34 +335,34 @@ export default function SettingsPage() {
           <SectionCard title="Bank Details" desc="Configure your bank account details to share with customers for payments">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bank Name</Label>
-              <Input placeholder="e.g., Bank of America" defaultValue={business?.bank_name || ""} onChange={e => setBankName(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., Bank of America" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Account Holder Name</Label>
-              <Input placeholder="e.g., John's Business LLC" defaultValue={business?.bank_account_holder || ""} onChange={e => setBankAccountHolder(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., John's Business LLC" value={bankAccountHolder} onChange={e => setBankAccountHolder(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Account Number</Label>
-              <Input placeholder="e.g., 1234567890" defaultValue={business?.bank_account_number || ""} onChange={e => setBankAccountNumber(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., 1234567890" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bank Branch (Optional)</Label>
-              <Input placeholder="e.g., Main Street Branch" defaultValue={business?.bank_branch || ""} onChange={e => setBankBranch(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., Main Street Branch" value={bankBranch} onChange={e => setBankBranch(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">SWIFT/BIC Code (Optional)</Label>
-              <Input placeholder="e.g., BOFAUS3N" defaultValue={business?.bank_swift_code || ""} onChange={e => setBankSwiftCode(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., BOFAUS3N" value={bankSwiftCode} onChange={e => setBankSwiftCode(e.target.value)} className="h-9 text-sm" />
             </div>
           </SectionCard>
 
           <SectionCard title="Payment Gateway" desc="Configure payment gateway links to send to customers">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payment Gateway Name</Label>
-              <Input placeholder="e.g., PayPal, Stripe, Square" defaultValue={business?.payment_gateway_name || ""} onChange={e => setPaymentGatewayName(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g., PayPal, Stripe, Square" value={paymentGatewayName} onChange={e => setPaymentGatewayName(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payment Gateway Link</Label>
-              <Input type="url" placeholder="e.g., https://paypal.me/yourbusiness" defaultValue={business?.payment_gateway_link || ""} onChange={e => setPaymentGatewayLink(e.target.value)} className="h-9 text-sm" />
+              <Input type="url" placeholder="e.g., https://paypal.me/yourbusiness" value={paymentGatewayLink} onChange={e => setPaymentGatewayLink(e.target.value)} className="h-9 text-sm" />
             </div>
             {['owner', 'admin'].includes(user?.role) && (
               <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
@@ -400,13 +453,13 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Configure your WhatsApp contact details. The AI Bot will use this context.</p>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">WhatsApp Number (Contact Phone)</Label>
-              <Input placeholder="+1234567890" defaultValue={business?.contact_phone || ""} onChange={e => setWhatsappPhone(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="+1234567890" value={whatsappPhone} onChange={e => setWhatsappPhone(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 WhatsApp Phone Number ID <span className="normal-case text-muted-foreground/60">(From Meta Developer Portal)</span>
               </Label>
-              <Input placeholder="e.g. 1029384756..." defaultValue={business?.whatsapp_phone_number_id || ""} onChange={e => setWhatsappPhoneNumberId(e.target.value)} className="h-9 text-sm" />
+              <Input placeholder="e.g. 1029384756..." value={whatsappPhoneNumberId} onChange={e => setWhatsappPhoneNumberId(e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Webhook URL</Label>
@@ -427,48 +480,26 @@ export default function SettingsPage() {
           </SectionCard>
         </TabsContent>
 
-        <TabsContent value="plans" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              { name: "Starter", price: "$29", features: ["WhatsApp automation", "Basic analytics", "Up to 500 customers"] },
-              { name: "Growth", price: "$79", features: ["AI recommendations", "Advanced analytics", "Unlimited customers", "Priority support"] },
-              { name: "Pro", price: "$199", features: ["Demand prediction", "Voice AI readiness", "Dedicated support", "Custom integrations"] },
-            ].map(plan => (
-              <div key={plan.name} className={`border rounded-lg bg-white ${plan.name === "Growth" ? "border-primary shadow-sm shadow-primary/10 ring-1 ring-primary/20" : "border-border"}`}>
-                <div className="px-6 py-5 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-display text-lg font-semibold text-foreground">{plan.name}</h3>
-                    {plan.name === "Growth" && <Badge className="bg-primary/10 text-primary text-[10px] border-0">Popular</Badge>}
-                  </div>
-                  <p className="text-2xl font-semibold text-foreground font-sans mt-1">{plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                </div>
-                <div className="p-6">
-                  <ul className="space-y-2.5">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-foreground/80">
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button 
-                    variant={plan.name === "Growth" ? "default" : "outline"} 
-                    className={`w-full mt-5 text-sm h-9 ${plan.name === "Growth" ? "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20" : ""}`}
-                  >
-                    {plan.name === "Growth" ? "Current Plan" : "Upgrade"}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
         <TabsContent value="team" className="mt-6">
           <SectionCard title="Team Members" desc="Manage team access and roles. 'Owner' has full access. 'Staff' can only see Vehicles, Leads, and Chat.">
             <TeamManager />
           </SectionCard>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function SectionCard({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
+  return (
+    <div className="border border-border rounded-lg bg-white">
+      <div className="px-6 py-4 border-b border-border">
+        <h3 className="font-display text-base font-semibold text-foreground">{title}</h3>
+        {desc && <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>}
+      </div>
+      <div className="p-6 space-y-4">
+        {children}
+      </div>
     </div>
   );
 }

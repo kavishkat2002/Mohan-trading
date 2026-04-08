@@ -107,7 +107,7 @@ export default function Leads() {
         body: JSON.stringify({
           name: editLead.name,
           phone: editLead.phone,
-          interested_car: editLead.interested_car,
+          interested_product: editLead.interested_product || editLead.interested_car,
           budget: editLead.budget,
           status: editLead.status,
           source: editLead.source || "manual",
@@ -366,7 +366,7 @@ export default function Leads() {
                           <span className="text-xs text-foreground/70">{src.label}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-foreground/80">{lead.interested_car || "—"}</TableCell>
+                      <TableCell className="text-sm text-foreground/80">{lead.interested_product || lead.interested_car || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground font-mono">{lead.budget || "—"}</TableCell>
                       <TableCell>
                         {lead.current_step && (
@@ -389,11 +389,11 @@ export default function Leads() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm font-medium text-foreground/80">
-                        {lead.assigned_to_name ? (
+                        {lead.assigned_to ? (
                           lead.assigned_to === user?.id ? (
                             <span className="text-emerald-600 font-bold px-2 py-0.5 bg-emerald-50 rounded-full text-[10px]">Me</span>
                           ) : (
-                            <span className="text-[12px]">{lead.assigned_to_name}</span>
+                            <span className="text-[12px]">{lead.assigned_to_name || "Staff Assigned"}</span>
                           )
                         ) : (
                           <span className="text-muted-foreground italic text-[11px]">Unassigned</span>
@@ -462,8 +462,8 @@ export default function Leads() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Interested Car</Label>
-                  <Input value={editLead.interested_car || ""} onChange={e => setEditLead({...editLead, interested_car: e.target.value})} className="h-9 text-sm" />
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Interested Vehicle</Label>
+                  <Input value={editLead.interested_product || editLead.interested_car || ""} onChange={e => setEditLead({...editLead, interested_product: e.target.value})} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">Budget</Label>
