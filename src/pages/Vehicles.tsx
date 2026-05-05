@@ -185,7 +185,6 @@ export default function Vehicles() {
     if (!win) return;
     const inStockVehicles = vehicles.filter(v => v.stock > 0);
     const rows = inStockVehicles.map(v => {
-      const totalCost = (Number(v.purchase_price) + Number(v.transport_cost) + Number(v.repair_cost) + Number(v.registration_fee));
       const imgSrc = v.image_url ? `http://localhost:5001${v.image_url}` : '';
       return `
         <div class="card">
@@ -203,16 +202,10 @@ export default function Vehicles() {
               <span class="tag stock">${v.stock} in stock</span>
             </div>
             ${v.description ? `<p class="desc">${v.description}</p>` : ''}
-            <table class="costs">
-              <tr><td>Purchase Cost</td><td>Rs. ${Number(v.purchase_price).toLocaleString()}</td></tr>
-              ${Number(v.repair_cost) > 0 ? `<tr><td>Repair Cost</td><td>Rs. ${Number(v.repair_cost).toLocaleString()}</td></tr>` : ''}
-              ${Number(v.transport_cost) > 0 ? `<tr><td>Transport Cost</td><td>Rs. ${Number(v.transport_cost).toLocaleString()}</td></tr>` : ''}
-              ${Number(v.registration_fee) > 0 ? `<tr><td>Reg. / Taxes</td><td>Rs. ${Number(v.registration_fee).toLocaleString()}</td></tr>` : ''}
-              <tr class="total"><td>Total Cost</td><td>Rs. ${totalCost.toLocaleString()}</td></tr>
-            </table>
           </div>
         </div>`;
     }).join('');
+
 
     win.document.write(`<!DOCTYPE html>
 <html>
@@ -220,46 +213,64 @@ export default function Vehicles() {
   <meta charset="UTF-8" />
   <title>Mohan Trading — Vehicle Catalog</title>
   <style>
+    @page { size: A4 portrait; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fa; color: #1a1a2e; padding: 32px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1a1a2e; padding-bottom: 16px; margin-bottom: 32px; }
-    .header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
-    .header .meta { font-size: 12px; color: #666; text-align: right; }
-    .header .meta strong { display: block; font-size: 14px; color: #1a1a2e; }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-    .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); page-break-inside: avoid; }
-    .card-img img { width: 100%; height: 180px; object-fit: cover; object-position: center; }
-    .no-img { width: 100%; height: 180px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 13px; }
-    .card-body { padding: 16px; }
-    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .card-header h2 { font-size: 16px; font-weight: 700; color: #1a1a2e; }
-    .price { font-size: 15px; font-weight: 800; color: #16a34a; white-space: nowrap; margin-left: 8px; }
-    .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-    .tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: #f1f5f9; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+    html, body { width: 210mm; background: white; font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+
+    /* ── Watermark ── */
+    body::before {
+      content: 'MOHAN TRADING';
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 62px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: rgba(26, 26, 46, 0.055);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page { width: 210mm; min-height: 297mm; padding: 14mm 13mm 12mm; page-break-after: always; position: relative; z-index: 1; }
+    .page:last-child { page-break-after: auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1a1a2e; padding-bottom: 12px; margin-bottom: 20px; }
+    .header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .header .meta { font-size: 11px; color: #666; text-align: right; }
+    .header .meta strong { display: block; font-size: 13px; color: #1a1a2e; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .card { background: white; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; page-break-inside: avoid; }
+    .card-img img { width: 100%; height: 170px; object-fit: cover; object-position: center; display: block; }
+    .no-img { width: 100%; height: 170px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 13px; }
+    .card-body { padding: 14px; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .card-header h2 { font-size: 14px; font-weight: 700; color: #1a1a2e; line-height: 1.3; }
+    .price { font-size: 13px; font-weight: 800; color: #16a34a; white-space: nowrap; margin-left: 8px; }
+    .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tag { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 3px; background: #f1f5f9; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
     .tag.fuel { background: #fff7ed; color: #c2410c; }
     .tag.stock { background: #f0fdf4; color: #15803d; }
-    .desc { font-size: 12px; color: #64748b; margin-bottom: 10px; line-height: 1.5; }
-    .costs { width: 100%; font-size: 11.5px; border-collapse: collapse; margin-top: 8px; }
-    .costs td { padding: 4px 0; color: #64748b; }
-    .costs td:last-child { text-align: right; font-weight: 600; color: #374151; }
-    .costs tr.total td { border-top: 1px solid #e5e7eb; padding-top: 6px; color: #1a1a2e; font-weight: 700; font-size: 12.5px; }
-    .footer { margin-top: 32px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; }
-    @media print { body { background: white; padding: 16px; } .card { box-shadow: none; border: 1px solid #e5e7eb; } }
+    .desc { font-size: 11px; color: #64748b; line-height: 1.5; }
+    .footer { margin-top: 18px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+    @media print { body { background: white; } }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>Mohan Trading</h1>
-      <p style="font-size:13px;color:#666;margin-top:4px;">Available Vehicle Catalog</p>
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>Mohan Trading</h1>
+        <p style="font-size:12px;color:#666;margin-top:3px;">Available Vehicle Catalog</p>
+      </div>
+      <div class="meta">
+        <strong>${inStockVehicles.length} vehicles available</strong>
+        ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
+      </div>
     </div>
-    <div class="meta">
-      <strong>${inStockVehicles.length} vehicles available</strong>
-      Generated: ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
-    </div>
+    <div class="grid">${rows}</div>
+    <div class="footer">Mohan Trading &mdash; Confidential &mdash; ${new Date().toLocaleString()}</div>
   </div>
-  <div class="grid">${rows}</div>
-  <div class="footer">Mohan Trading &mdash; Confidential &mdash; Generated ${new Date().toLocaleString()}</div>
   <script>window.onload = () => { window.print(); }<\/script>
 </body></html>`);
     win.document.close();
