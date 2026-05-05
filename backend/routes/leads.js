@@ -6,10 +6,7 @@ const db = require('../db');
 router.get('/', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT l.*, u.name as assigned_to_name 
-      FROM leads l 
-      LEFT JOIN users u ON l.assigned_to = u.id 
-      ORDER BY l.created_at DESC
+      SELECT * FROM leads ORDER BY created_at DESC
     `);
     res.json(rows);
   } catch (err) {
@@ -62,19 +59,21 @@ router.put('/:id', async (req, res) => {
 // Assign lead
 router.put('/:id/assign', async (req, res) => {
   const { id } = req.params;
-  const { assigned_to, assigner_name } = req.body;
+  const { assigned_to, assigned_to_name, assigner_name } = req.body;
   try {
     const { rows } = await db.query(
-      `UPDATE leads SET assigned_to = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
-      [assigned_to, id]
+      `UPDATE leads 
+       SET assigned_to = $1, assigned_to_name = $2, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $3 RETURNING *`,
+      [assigned_to, assigned_to_name || assigned_to, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Lead not found' });
     
-    // Create a notification for the newly assigned staff member
+    // Create a notification for the newly assigned staff member (UUID-based user_id)
     if (assigned_to) {
       await db.query(
         `INSERT INTO notifications (user_id, message) VALUES ($1, $2)`,
-        [assigned_to, `You have been assigned a new lead: ${rows[0].name} (Budget: ${rows[0].budget}).`]
+        [assigned_to, `📋 You have been assigned a new lead: ${rows[0].name} (Budget: ${rows[0].budget || 'N/A'}). Assigned by ${assigner_name || 'Owner'}.`]
       );
     }
     
@@ -84,6 +83,7 @@ router.put('/:id/assign', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // Add commission to closed lead
 router.put('/:id/commission', async (req, res) => {

@@ -65,9 +65,13 @@ export default function Leads() {
   useEffect(() => { 
     fetchLeads(); 
     if (isElevated) {
-      fetch("http://localhost:5001/api/users")
+      fetch("http://localhost:5001/api/admin/users")
         .then(res => res.json())
-        .then(data => setTeam(data.filter((u: any) => u.role !== 'owner')));
+        .then(data => {
+          if (Array.isArray(data)) {
+            setTeam(data.filter((u: any) => u.role !== 'owner' && u.id !== user?.id));
+          }
+        });
     }
   }, [isElevated]);
 
@@ -148,20 +152,31 @@ export default function Leads() {
   const handleAssignLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignLead || !selectedAssignee) return;
+    // Find the selected member to get their name/email for display
+    const selectedMember = team.find((m: any) => m.id === selectedAssignee);
+    const assigneeName = selectedMember?.email || selectedAssignee;
     try {
       const res = await fetch(`http://localhost:5001/api/leads/${assignLead.id}/assign`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assigned_to: selectedAssignee, assigner_name: (user as any)?.name || user?.email })
+        body: JSON.stringify({ 
+          assigned_to: selectedAssignee,
+          assigned_to_name: assigneeName,
+          assigner_name: (user as any)?.name || user?.email 
+        })
       });
       if (res.ok) {
-        toast({ title: "Assigned", description: "Lead successfully assigned to team member." });
+        toast({ title: "Assigned", description: `Lead assigned to ${assigneeName}.` });
         setAssignLead(null);
         setSelectedAssignee("");
         fetchLeads();
+      } else {
+        const err = await res.json();
+        toast({ title: "Failed", description: err.error || "Could not assign lead", variant: "destructive" });
       }
     } catch (err) {
       console.error(err);
+      toast({ title: "Network error", variant: "destructive" });
     }
   };
 
@@ -542,8 +557,8 @@ export default function Leads() {
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select team member..." /></SelectTrigger>
                 <SelectContent>
                   {team.map(member => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.name || member.email} ({member.role?.replace('_', ' ') || member.role})
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.email} ({member.role?.replace('_', ' ') || member.role})
                     </SelectItem>
                   ))}
                 </SelectContent>

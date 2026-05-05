@@ -24,15 +24,16 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
 
   const fetchUsers = () => {
-    fetch("http://localhost:5001/api/users")
+    fetch("http://localhost:5001/api/admin/users")
       .then(res => res.json())
       .then(data => {
-         if(Array.isArray(data)) setUsers(data);
+        if (Array.isArray(data)) setUsers(data);
       })
       .catch(console.error);
   };
@@ -46,14 +47,17 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
     if (!newEmail || !newPassword) return;
     setIsAdding(true);
     try {
-      const res = await fetch("http://localhost:5001/api/users/register", {
+      const res = await fetch("http://localhost:5001/api/admin/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmail, password: newPassword, role: "sales" })
       });
       const data = await res.json();
       if (res.ok) {
-        toast({ title: "Team member added successfully" });
+        toast({
+          title: "✅ Team member added!",
+          description: `${newEmail} can now log in immediately with their temporary password.`
+        });
         setNewEmail("");
         setNewPassword("");
         fetchUsers();
@@ -68,9 +72,9 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
     }
   };
 
-  const changeRole = async (id: number, role: string) => {
+  const changeRole = async (supabaseId: string, role: string) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${id}/role`, {
+      const res = await fetch(`http://localhost:5001/api/admin/update-role/${supabaseId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role })
@@ -86,10 +90,10 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
     }
   };
 
-  const deleteMember = async (id: number) => {
+  const deleteMember = async (supabaseId: string) => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${id}`, { method: "DELETE" });
+      const res = await fetch(`http://localhost:5001/api/admin/delete-user/${supabaseId}`, { method: "DELETE" });
       if (res.ok) {
         toast({ title: "Account deleted", description: "The team member's account has been permanently removed." });
         setConfirmDeleteId(null);
@@ -110,22 +114,22 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
       <form onSubmit={addMember} className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-4 border border-primary/20 bg-primary/5 rounded-lg">
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wider text-primary/70 font-semibold">Email Address</Label>
-          <Input 
-            type="email" 
-            placeholder="staff@mohantrading.com" 
-            className="h-9 text-sm bg-white" 
-            value={newEmail} 
-            onChange={e => setNewEmail(e.target.value)} 
+          <Input
+            type="email"
+            placeholder="staff@mohantrading.com"
+            className="h-9 text-sm bg-white"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wider text-primary/70 font-semibold">Temporary Password</Label>
-          <Input 
-            type="password" 
-            placeholder="••••••••" 
-            className="h-9 text-sm bg-white" 
-            value={newPassword} 
-            onChange={e => setNewPassword(e.target.value)} 
+          <Input
+            type="password"
+            placeholder="••••••••"
+            className="h-9 text-sm bg-white"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
           />
         </div>
         <Button type="submit" disabled={isAdding || !newEmail || !newPassword} className="h-9 px-6 bg-primary text-white shadow-sm shadow-primary/20">
@@ -139,7 +143,12 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
           <div key={u.id} className="border border-border bg-background/50 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between p-3.5">
               <div>
-                <p className="text-sm font-medium text-foreground">{u.email}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground">{u.email}</p>
+                  {u.id === currentUser?.id && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">You</span>
+                  )}
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -155,7 +164,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
                     <SelectItem value="sales">Sales Person</SelectItem>
                   </SelectContent>
                 </Select>
-                {isOwner && (
+                {isOwner && u.id !== currentUser?.id && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -205,6 +214,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
     </div>
   );
 }
+
 
 export default function SettingsPage() {
   const { user } = useAuth();
