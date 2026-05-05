@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,13 +6,28 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { signIn } from "@/lib/auth";
 
+const backgroundImages = [
+  "/login-bg.png",
+  "/login-bg-2.jpg",
+  "/login-bg-3.jpg",
+  "/login-bg-4.jpg"
+];
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentBg, setCurrentBg] = useState(0);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBg((prev) => (prev + 1) % backgroundImages.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,36 +53,47 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left side — dark navy branding with MohanTrader logo */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden" style={{ background: 'hsl(220, 28%, 16%)' }}>
-        <div className="relative z-10 px-16 text-center">
-          {/* MohanTrader Logo */}
-          <img
-            src="/mohantrader-logo.png"
-            alt="MohanTrader"
-            className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/5 p-2"
+      {/* Left side — Branding with hero image slideshow */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        {/* Background Images with Fade Transition */}
+        {backgroundImages.map((img, idx) => (
+          <div 
+            key={img}
+            className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${idx === currentBg ? 'opacity-100' : 'opacity-0'}`} 
+            style={{ backgroundImage: `url("${img}")` }} 
           />
-          <h1 className="text-4xl font-semibold text-white tracking-tight leading-tight">
+        ))}
+
+        {/* Gradient Overlay for Legibility */}
+        <div className="absolute inset-0 z-[1] bg-gradient-to-br from-black/80 via-black/40 to-transparent" />
+
+        <div className="relative z-10 px-16 text-center w-full mt-auto mb-20">
+          {/* MohanTrader Logo */}
+          <img 
+            src="/mohantrader-logo.png" 
+            alt="MohanTrader" 
+            className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/10 backdrop-blur-sm p-2 border border-white/20"
+          />
+          <h1 className="text-4xl font-bold text-white tracking-tight leading-tight drop-shadow-lg">
             Mohan Trader
           </h1>
-          <p className="text-white/50 mt-2 text-base italic font-display tracking-wide">
+          <p className="text-white/80 mt-2 text-lg italic font-display tracking-wide drop-shadow-md">
             Delivering Dreams, Driving Trust
           </p>
-          <p className="text-white/30 mt-4 text-sm max-w-sm mx-auto leading-relaxed">
-            Your complete CRM for managing vehicle inventory, leads, and sales pipeline — all in one place.
+          <p className="text-white/60 mt-6 text-sm max-w-sm mx-auto leading-relaxed drop-shadow-sm">
+            The premium platform for managing your vehicle inventory and accelerating your sales pipeline.
           </p>
-          {/* Decorative dots */}
-          <div className="flex items-center justify-center gap-2 mt-8">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-            <div className="h-1.5 w-8 rounded-full bg-primary/30" />
-            <div className="h-1.5 w-1.5 rounded-full bg-primary/20" />
+          
+          {/* Slideshow dots */}
+          <div className="flex items-center justify-center gap-2 mt-10">
+            {backgroundImages.map((_, idx) => (
+              <div 
+                key={idx}
+                className={`h-1 transition-all duration-300 rounded-full ${idx === currentBg ? 'w-12 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'w-2 bg-white/20'}`} 
+              />
+            ))}
           </div>
         </div>
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`,
-          backgroundSize: '40px 40px'
-        }} />
       </div>
 
       {/* Right side — form */}
@@ -75,9 +101,9 @@ export default function Login() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <img
-              src="/mohantrader-logo.png"
-              alt="MohanTrader"
+            <img 
+              src="/mohantrader-logo.png" 
+              alt="MohanTrader" 
               className="h-12 w-12 rounded-xl object-contain"
             />
             <div>
@@ -102,7 +128,7 @@ export default function Login() {
               </label>
               <Input
                 type="email"
-                placeholder="sales@mohantrader.com"
+                placeholder=""
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -121,9 +147,9 @@ export default function Login() {
                 className="h-11 bg-background border-border text-sm focus:border-primary focus:ring-primary/20"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20"
+            <Button 
+              type="submit" 
+              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20" 
               disabled={loading}
             >
               {loading ? "Signing in..." : "Sign In"}
