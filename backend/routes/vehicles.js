@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 
 // Add a new vehicle
 router.post('/', upload.single('image'), async (req, res) => {
-  const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
+  const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
   const purchaseAmt = parseFloat(purchase_price) || 0;
@@ -44,8 +44,8 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   try {
     const { rows } = await db.query(
-      'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [brand, price, category, stock || 1, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt]
+      'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+      [brand, price, category, stock || 1, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol']
     );
 
     // Auto-record total purchase cost in cash_flow so Finance reflects it
@@ -66,7 +66,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 // Update vehicle stock or details
 router.put('/:id', upload.single('image'), async (req, res) => {
   const { id } = req.params;
-  const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
+  const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : existing_image;
 
   const purchaseAmt = parseFloat(purchase_price) || 0;
@@ -83,8 +83,8 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     const costDiff = totalCost - oldTotal;
 
     const { rows } = await db.query(
-      'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10 WHERE id = $11 RETURNING *',
-      [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, id]
+      'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10, fuel_type = $11 WHERE id = $12 RETURNING *',
+      [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol', id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Vehicle not found' });
 
