@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { signIn } from "@/lib/auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,20 +18,20 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5001/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        login(data.token, data.user);
+      const { data, error } = await signIn(email, password);
+      if (error) {
+        toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+      } else if (data?.session) {
+        const supabaseUser = data.session.user;
+        login(data.session.access_token, {
+          id: supabaseUser.id,
+          email: supabaseUser.email ?? "",
+          role: supabaseUser.user_metadata?.role ?? "user",
+        });
         navigate("/dashboard");
-      } else {
-        toast({ title: "Login Failed", description: data.error, variant: "destructive" });
       }
     } catch (err) {
-      toast({ title: "Error", description: "Could not connect to server.", variant: "destructive" });
+      toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
     }
     setLoading(false);
   };

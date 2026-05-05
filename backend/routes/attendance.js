@@ -66,9 +66,8 @@ router.get('/status/:userId', async (req, res) => {
 router.get('/all', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT a.*, u.email, u.name 
+      SELECT a.*
       FROM attendance a 
-      JOIN users u ON a.user_id = u.id 
       ORDER BY a.date DESC, a.check_in_time DESC
     `);
     res.json(rows);
@@ -113,9 +112,8 @@ router.post('/leaves', async (req, res) => {
 router.get('/leaves', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT l.*, u.email, u.name 
-      FROM leaves l 
-      JOIN users u ON l.user_id = u.id 
+      SELECT l.*
+      FROM leaves l
       ORDER BY l.created_at DESC
     `);
     res.json(rows);

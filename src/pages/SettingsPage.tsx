@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall } from "lucide-react";
+import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall, Trash2, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -19,11 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-function TeamManager() {
+function TeamManager({ isOwner }: { isOwner: boolean }) {
   const [users, setUsers] = useState<any[]>([]);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = () => {
@@ -47,7 +49,7 @@ function TeamManager() {
       const res = await fetch("http://localhost:5001/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newEmail, password: newPassword, role: "sales" }) // Default to staff
+        body: JSON.stringify({ email: newEmail, password: newPassword, role: "sales" })
       });
       const data = await res.json();
       if (res.ok) {
@@ -84,6 +86,25 @@ function TeamManager() {
     }
   };
 
+  const deleteMember = async (id: number) => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Account deleted", description: "The team member's account has been permanently removed." });
+        setConfirmDeleteId(null);
+        fetchUsers();
+      } else {
+        toast({ title: "Failed to delete account", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Network error", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <form onSubmit={addMember} className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-4 border border-primary/20 bg-primary/5 rounded-lg">
@@ -115,26 +136,71 @@ function TeamManager() {
       <div className="space-y-3">
         <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">Current Members</h4>
         {users.map(u => (
-          <div key={u.id} className="flex items-center justify-between p-3.5 border border-border bg-background/50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-foreground">{u.email}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+          <div key={u.id} className="border border-border bg-background/50 rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between p-3.5">
+              <div>
+                <p className="text-sm font-medium text-foreground">{u.email}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={u.role || 'sales'} onValueChange={(val) => changeRole(u.id, val)}>
+                  <SelectTrigger className="w-32 h-8 text-xs bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="accountant">Accountant</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="sales">Sales Person</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isOwner && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50"
+                    onClick={() => setConfirmDeleteId(confirmDeleteId === u.id ? null : u.id)}
+                    title="Delete account"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-            <Select value={u.role || 'sales'} onValueChange={(val) => changeRole(u.id, val)}>
-              <SelectTrigger className="w-32 h-8 text-xs bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="owner">Owner</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="accountant">Accountant</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="sales">Sales Person</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {/* Inline confirmation panel */}
+            {confirmDeleteId === u.id && (
+              <div className="border-t border-rose-100 bg-rose-50 px-4 py-3 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-rose-700">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <p className="text-xs font-medium">
+                    Permanently delete <span className="font-bold">{u.email}</span>? This cannot be undone.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-rose-200 text-rose-600"
+                    onClick={() => setConfirmDeleteId(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                    disabled={isDeleting}
+                    onClick={() => deleteMember(u.id)}
+                  >
+                    {isDeleting ? "Deleting..." : "Yes, Delete"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
-        {users.length === 0 && <p className="text-sm text-muted-foreground">Loading team members...</p>}
+        {users.length === 0 && <p className="text-sm text-muted-foreground">No team members yet.</p>}
       </div>
     </div>
   );
@@ -465,7 +531,7 @@ export default function SettingsPage() {
 
         <TabsContent value="team" className="mt-6">
           <SectionCard title="Team Members" desc="Manage team access and roles. 'Owner' has full access. 'Staff' can only see Vehicles, Leads, and Chat.">
-            <TeamManager />
+            <TeamManager isOwner={user?.role === 'owner'} />
           </SectionCard>
         </TabsContent>
       </Tabs>
