@@ -208,4 +208,28 @@ router.get('/:id/commissions', async (req, res) => {
   }
 });
 
+// Sync/Ensure user exists (for Supabase bridge)
+router.post('/sync', async (req, res) => {
+  const { email, role, name } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  
+  try {
+    // Check if user exists
+    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    }
+
+    // Create user if missing
+    const { rows: newRows } = await db.query(
+      'INSERT INTO users (email, role, name) VALUES ($1, $2, $3) RETURNING *',
+      [email, role || 'staff', name || email.split('@')[0]]
+    );
+    res.status(201).json(newRows[0]);
+  } catch (err) {
+    console.error('SYNC ERROR:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

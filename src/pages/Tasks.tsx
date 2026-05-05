@@ -39,43 +39,60 @@ export default function Tasks() {
   });
 
   const fetchData = async () => {
+    if (!user?.email) return;
+    
     try {
       setLoading(true);
       
-      // Fetch users and vehicles independently so one failure doesn't block others
-      const usersPromise = fetch("http://127.0.0.1:5001/api/users").then(res => res.json()).catch(err => {
-        console.error("Users Fetch Error:", err);
-        return [];
-      });
-      
-      const vehiclesPromise = fetch("http://127.0.0.1:5001/api/vehicles").then(res => res.json()).catch(err => {
-        console.error("Vehicles Fetch Error:", err);
-        return [];
-      });
+      // 1. Ensure user exists in local DB using existing /register route if /sync is unavailable
+      try {
+        const syncRes = await fetch("http://localhost:5001/api/users/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, role: user.role })
+        });
+        
+        if (!syncRes.ok) {
+          // Fallback to /register if sync is not found
+          await fetch("http://localhost:5001/api/users/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              email: user.email, 
+              password: "dummy_password_for_sync", 
+              role: user.role 
+            })
+          });
+        }
+      } catch (e) {
+        console.warn("User auto-registration attempt finished.");
+      }
 
-      const [usersData, vehiclesData] = await Promise.all([usersPromise, vehiclesPromise]);
+      // 2. Fetch Users & Vehicles
+      const uRes = await fetch("http://localhost:5001/api/users");
+      const usersData = uRes.ok ? await uRes.json() : [];
       
-      console.log("Tasks Debug - Users:", usersData);
-      console.log("Tasks Debug - Vehicles:", vehiclesData);
-      
-      setUsers(usersData);
-      setVehicles(vehiclesData);
+      let vehiclesData = [];
+      try {
+        const vRes = await fetch("http://localhost:5001/api/vehicles");
+        if (vRes.ok) vehiclesData = await vRes.json();
+      } catch (e) { console.error("Vehicles fetch failed", e); }
 
-      // Now fetch tasks using the local ID mapping
-      const localUser = usersData.find((u: any) => u.email === user?.email);
-      console.log("Tasks Debug - Current User Email:", user?.email);
-      console.log("Tasks Debug - Mapped Local User:", localUser);
-      
-      const localId = localUser ? localUser.id : user?.id;
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
+
+      // 3. Fetch Tasks
+      const localUser = (Array.isArray(usersData) ? usersData : []).find((u: any) => u.email === user?.email);
+      // Use the local ID if found, otherwise use a dummy ID that won't crash the query
+      const localId = localUser ? localUser.id : -1;
 
       try {
-        const tasksRes = await fetch(`http://127.0.0.1:5001/api/tasks?userId=${localId}&role=${user?.role}`);
-        const tasksData = await tasksRes.json();
-        setTasks(Array.isArray(tasksData) ? tasksData : []);
-      } catch (err) {
-        console.error("Tasks Fetch Error:", err);
-        setTasks([]);
-      }
+        const tRes = await fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user?.role}`);
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          setTasks(Array.isArray(tData) ? tData : []);
+        }
+      } catch (e) { console.error("Tasks fetch failed", e); }
 
       setLoading(false);
     } catch (err) {
@@ -85,15 +102,24 @@ export default function Tasks() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [user]);
+    if (user) {
+      fetchData();
+    }
+  }, [user?.id]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       // Find the local user ID for the current logged-in user (by email)
-      const currentUserLocal = users.find(u => u.email === user?.email);
+      let currentUserLocal = users.find(u => u.email === user?.email);
       
+      if (!currentUserLocal) {
+        // Try one last sync attempt
+        await fetchData();
+        // Check again
+        currentUserLocal = users.find(u => u.email === user?.email);
+      }
+
       const taskData = {
         ...newTask,
         vehicle_id: (newTask.vehicle_id === "" || newTask.vehicle_id === "none") ? null : parseInt(newTask.vehicle_id),
@@ -102,7 +128,11 @@ export default function Tasks() {
       };
 
       if (!taskData.created_by) {
-        toast({ title: "Auth Error", description: "Could not link your local profile. Please try logging out and in.", variant: "destructive" });
+        toast({ 
+          title: "Profile Syncing...", 
+          description: "We're setting up your local profile. Please try clicking 'Create Task' again in 2 seconds.",
+          variant: "default" 
+        });
         return;
       }
 
@@ -228,7 +258,12 @@ export default function Tasks() {
                             {u.name || u.email}
                           </SelectItem>
                         )) : (
-                          <SelectItem disabled value="none">No employees found</SelectItem>
+                          <div className="p-2">
+                            <p className="text-xs text-muted-foreground mb-2 text-center">No employees found</p>
+                            <Button variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={(e) => { e.stopPropagation(); fetchData(); }}>
+                              Retry Loading
+                            </Button>
+                          </div>
                         )}
                       </SelectContent>
                     </Select>
@@ -249,7 +284,12 @@ export default function Tasks() {
                             {v.brand}
                           </SelectItem>
                         )) : (
-                          <SelectItem disabled value="none-v">No vehicles found</SelectItem>
+                          <div className="p-2">
+                            <p className="text-xs text-muted-foreground mb-2 text-center">No vehicles found</p>
+                            <Button variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={(e) => { e.stopPropagation(); fetchData(); }}>
+                              Retry Loading
+                            </Button>
+                          </div>
                         )}
                       </SelectContent>
                     </Select>
