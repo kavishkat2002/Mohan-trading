@@ -42,9 +42,9 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 items-center justify-center relative overflow-hidden" style={{ background: 'hsl(220, 28%, 16%)' }}>
         <div className="relative z-10 px-16 text-center">
           {/* MohanTrader Logo */}
-          <img 
-            src="/mohantrader-logo.png" 
-            alt="MohanTrader" 
+          <img
+            src="/mohantrader-logo.png"
+            alt="MohanTrader"
             className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/5 p-2"
           />
           <h1 className="text-4xl font-semibold text-white tracking-tight leading-tight">
@@ -75,9 +75,9 @@ export default function Login() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <img 
-              src="/mohantrader-logo.png" 
-              alt="MohanTrader" 
+            <img
+              src="/mohantrader-logo.png"
+              alt="MohanTrader"
               className="h-12 w-12 rounded-xl object-contain"
             />
             <div>
@@ -121,9 +121,9 @@ export default function Login() {
                 className="h-11 bg-background border-border text-sm focus:border-primary focus:ring-primary/20"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20" 
+            <Button
+              type="submit"
+              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20"
               disabled={loading}
             >
               {loading ? "Signing in..." : "Sign In"}

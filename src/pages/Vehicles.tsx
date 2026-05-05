@@ -265,7 +265,7 @@ export default function Vehicles() {
       </div>
       <div class="meta">
         <strong>${inStockVehicles.length} vehicles available</strong>
-        ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })}
+        ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
       </div>
     </div>
     <div class="grid">${rows}</div>
@@ -296,110 +296,110 @@ export default function Vehicles() {
           )}
 
           {canUpdate && (
-          <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) {
-              setEditingVehicle(null);
-              setNewVehicle({
-                brand: "", price: "", category: "", stock: "1", description: "",
-                purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0",
-                fuel_type: "Petrol"
-              });
-              setImageFile(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
-                <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle className="font-display">
-                  {editingVehicle ? "Edit Vehicle" : "Add New Vehicle"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingVehicle ? "Update the vehicle details below." : "Enter the car's details and upload a photo."}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddVehicle} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand & Model</Label>
-                    <Input required value={newVehicle.brand} onChange={e => setNewVehicle({ ...newVehicle, brand: e.target.value })} placeholder="Toyota Prius" className="h-9 text-sm" />
+            <Dialog open={isOpen} onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) {
+                setEditingVehicle(null);
+                setNewVehicle({
+                  brand: "", price: "", category: "", stock: "1", description: "",
+                  purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0",
+                  fuel_type: "Petrol"
+                });
+                setImageFile(null);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
+                  <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle className="font-display">
+                    {editingVehicle ? "Edit Vehicle" : "Add New Vehicle"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingVehicle ? "Update the vehicle details below." : "Enter the car's details and upload a photo."}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddVehicle} className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand & Model</Label>
+                      <Input required value={newVehicle.brand} onChange={e => setNewVehicle({ ...newVehicle, brand: e.target.value })} placeholder="Toyota Prius" className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price (Rs.)</Label>
+                      <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({ ...newVehicle, price: e.target.value })} placeholder="7500000" className="h-9 text-sm" />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Price (Rs.)</Label>
-                    <Input required type="number" step="0.01" value={newVehicle.price} onChange={e => setNewVehicle({ ...newVehicle, price: e.target.value })} placeholder="7500000" className="h-9 text-sm" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Category</Label>
+                      <Input value={newVehicle.category} onChange={e => setNewVehicle({ ...newVehicle, category: e.target.value })} placeholder="Sedan" className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stock</Label>
+                      <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({ ...newVehicle, stock: e.target.value })} className="h-9 text-sm" />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Category</Label>
-                    <Input value={newVehicle.category} onChange={e => setNewVehicle({ ...newVehicle, category: e.target.value })} placeholder="Sedan" className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Stock</Label>
-                    <Input type="number" value={newVehicle.stock} onChange={e => setNewVehicle({ ...newVehicle, stock: e.target.value })} className="h-9 text-sm" />
-                  </div>
-                </div>
 
-                {/* Fuel Type */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Type</Label>
-                  <Select value={newVehicle.fuel_type} onValueChange={v => setNewVehicle({ ...newVehicle, fuel_type: v })}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Select fuel type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Petrol">Petrol</SelectItem>
-                      <SelectItem value="Diesel">Diesel</SelectItem>
-                      <SelectItem value="Electric">Electric</SelectItem>
-                      <SelectItem value="Hybrid">Hybrid</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
-                  <Input value={newVehicle.description} onChange={e => setNewVehicle({ ...newVehicle, description: e.target.value })} placeholder="Excellent condition..." className="h-9 text-sm" />
-                </div>
+                  {/* Fuel Type */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Fuel Type</Label>
+                    <Select value={newVehicle.fuel_type} onValueChange={v => setNewVehicle({ ...newVehicle, fuel_type: v })}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select fuel type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Petrol">Petrol</SelectItem>
+                        <SelectItem value="Diesel">Diesel</SelectItem>
+                        <SelectItem value="Electric">Electric</SelectItem>
+                        <SelectItem value="Hybrid">Hybrid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</Label>
+                    <Input value={newVehicle.description} onChange={e => setNewVehicle({ ...newVehicle, description: e.target.value })} placeholder="Excellent condition..." className="h-9 text-sm" />
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3 border-t pt-3 mt-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold text-emerald-600">Purchase Price (Cost)</Label>
-                    <Input type="number" value={newVehicle.purchase_price} onChange={e => setNewVehicle({ ...newVehicle, purchase_price: e.target.value })} className="h-9 text-sm" />
+                  <div className="grid grid-cols-2 gap-3 border-t pt-3 mt-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold text-emerald-600">Purchase Price (Cost)</Label>
+                      <Input type="number" value={newVehicle.purchase_price} onChange={e => setNewVehicle({ ...newVehicle, purchase_price: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Repair Cost</Label>
+                      <Input type="number" value={newVehicle.repair_cost} onChange={e => setNewVehicle({ ...newVehicle, repair_cost: e.target.value })} className="h-9 text-sm" />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Repair Cost</Label>
-                    <Input type="number" value={newVehicle.repair_cost} onChange={e => setNewVehicle({ ...newVehicle, repair_cost: e.target.value })} className="h-9 text-sm" />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 pb-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transport Cost</Label>
-                    <Input type="number" value={newVehicle.transport_cost} onChange={e => setNewVehicle({ ...newVehicle, transport_cost: e.target.value })} className="h-9 text-sm" />
+                  <div className="grid grid-cols-2 gap-3 pb-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transport Cost</Label>
+                      <Input type="number" value={newVehicle.transport_cost} onChange={e => setNewVehicle({ ...newVehicle, transport_cost: e.target.value })} className="h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reg. / Taxes</Label>
+                      <Input type="number" value={newVehicle.registration_fee} onChange={e => setNewVehicle({ ...newVehicle, registration_fee: e.target.value })} className="h-9 text-sm" />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reg. / Taxes</Label>
-                    <Input type="number" value={newVehicle.registration_fee} onChange={e => setNewVehicle({ ...newVehicle, registration_fee: e.target.value })} className="h-9 text-sm" />
-                  </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
-                  <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
-                </div>
-                <DialogFooter className="pt-2">
-                  <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
-                  <Button type="submit" disabled={isAdding} className="bg-primary text-white hover:bg-primary/90 text-sm h-9">
-                    {isAdding && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                    Save Vehicle
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
+                    <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
+                  </div>
+                  <DialogFooter className="pt-2">
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
+                    <Button type="submit" disabled={isAdding} className="bg-primary text-white hover:bg-primary/90 text-sm h-9">
+                      {isAdding && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Save Vehicle
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </div>
