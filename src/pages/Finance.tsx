@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   DollarSign, ArrowUpRight, ArrowDownRight, Users, Loader2, 
   Wallet, Landmark, Receipt, TrendingUp, PieChart, AlertCircle, 
-  MoreHorizontal, Pencil, Trash2, FileText, Download, Briefcase
+  MoreHorizontal, Pencil, Trash2, FileText, Download, Briefcase,
+  RotateCcw, AlertTriangle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -13,14 +14,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription
+} from "@/components/ui/dialog";
 
 export default function Finance() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Reset dialog state
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+
 
   // State for all data
   const [overview, setOverview] = useState<any>(null);
@@ -66,7 +79,36 @@ export default function Finance() {
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh when window gets focus (e.g. user comes back from Vehicles page)
+    const onFocus = () => fetchData();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
+
+  const handleResetFinancialData = async () => {
+    if (resetConfirmText !== 'RESET') return;
+    setIsResetting(true);
+    try {
+      const res = await fetch('http://localhost:5001/api/finance/reset', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'RESET_FINANCIAL_DATA' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: '✅ Financial data reset', description: 'All sales, expenses and cash flow records have been cleared.' });
+        setShowResetDialog(false);
+        setResetConfirmText('');
+        fetchData();
+      } else {
+        toast({ title: 'Reset failed', description: data.error, variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Network error', variant: 'destructive' });
+    }
+    setIsResetting(false);
+  };
+
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +158,16 @@ export default function Finance() {
            <Button variant="outline" size="sm" onClick={fetchData} className="h-10 text-xs gap-2 px-4 border-2">
              <ArrowUpRight className="h-3.5 w-3.5" /> Force Sync
            </Button>
+           {isElevated && (
+             <Button
+               size="sm"
+               variant="outline"
+               className="h-10 text-xs px-4 border-2 border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-400"
+               onClick={() => { setResetConfirmText(''); setShowResetDialog(true); }}
+             >
+               <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Data
+             </Button>
+           )}
            <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-200 px-4" onClick={() => setIsAddingSale(true)}>
              <Wallet className="mr-2 h-3.5 w-3.5" /> New Sale
            </Button>
@@ -561,6 +613,71 @@ export default function Finance() {
           </div>
         </div>
       )}
+
+      {/* ── Reset Financial Data Confirmation Dialog ── */}
+      <Dialog open={showResetDialog} onOpenChange={(o) => { setShowResetDialog(o); setResetConfirmText(''); }}>
+        <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-4 bg-rose-50 border-b border-rose-100">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-rose-700 font-bold text-lg">Reset Financial Data</DialogTitle>
+                <DialogDescription className="text-rose-600/70 text-xs mt-0.5">
+                  This action is permanent and cannot be undone.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-1.5">
+              <p className="text-sm font-semibold text-rose-800">The following data will be permanently deleted:</p>
+              <ul className="text-xs text-rose-700 space-y-1 mt-2 list-disc list-inside">
+                <li>All vehicle sales records</li>
+                <li>All expense entries</li>
+                <li>All cash flow transactions</li>
+                <li>Vehicle stock will be restored</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-foreground uppercase tracking-wider">
+                Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-rose-600">RESET</span> to confirm
+              </Label>
+              <Input
+                value={resetConfirmText}
+                onChange={e => setResetConfirmText(e.target.value)}
+                placeholder="Type RESET here..."
+                className="h-11 border-2 font-mono text-center tracking-widest text-rose-600 border-rose-200 focus:border-rose-400"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t bg-muted/20 flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1 h-10 border-2"
+              onClick={() => { setShowResetDialog(false); setResetConfirmText(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 h-10 bg-rose-600 hover:bg-rose-700 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={resetConfirmText !== 'RESET' || isResetting}
+              onClick={handleResetFinancialData}
+            >
+              {isResetting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resetting...</>
+              ) : (
+                <><RotateCcw className="mr-2 h-4 w-4" /> Reset All Data</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

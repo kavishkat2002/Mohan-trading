@@ -36,11 +36,26 @@ router.post('/', upload.single('image'), async (req, res) => {
   const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
+  const purchaseAmt = parseFloat(purchase_price) || 0;
+  const transportAmt = parseFloat(transport_cost) || 0;
+  const repairAmt = parseFloat(repair_cost) || 0;
+  const regAmt = parseFloat(registration_fee) || 0;
+  const totalCost = purchaseAmt + transportAmt + repairAmt + regAmt;
+
   try {
     const { rows } = await db.query(
       'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [brand, price, category, stock || 1, description, imageUrl, purchase_price || 0, transport_cost || 0, repair_cost || 0, registration_fee || 0]
+      [brand, price, category, stock || 1, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt]
     );
+
+    // Auto-record total purchase cost in cash_flow so Finance reflects it
+    if (totalCost > 0) {
+      await db.query(
+        "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Expense', 'Bank', $1, $2, CURRENT_DATE)",
+        [totalCost, `Vehicle Purchase: ${brand} (purchase + costs)`]
+      );
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -54,12 +69,40 @@ router.put('/:id', upload.single('image'), async (req, res) => {
   const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee } = req.body;
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : existing_image;
 
+  const purchaseAmt = parseFloat(purchase_price) || 0;
+  const transportAmt = parseFloat(transport_cost) || 0;
+  const repairAmt = parseFloat(repair_cost) || 0;
+  const regAmt = parseFloat(registration_fee) || 0;
+  const totalCost = purchaseAmt + transportAmt + repairAmt + regAmt;
+
   try {
+    // Get old values to calculate cost difference
+    const oldRes = await db.query('SELECT purchase_price, transport_cost, repair_cost, registration_fee, brand FROM vehicles WHERE id = $1', [id]);
+    const old = oldRes.rows[0];
+    const oldTotal = old ? (parseFloat(old.purchase_price) + parseFloat(old.transport_cost) + parseFloat(old.repair_cost) + parseFloat(old.registration_fee)) : 0;
+    const costDiff = totalCost - oldTotal;
+
     const { rows } = await db.query(
       'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10 WHERE id = $11 RETURNING *',
-      [brand, price, category, stock, description, imageUrl, purchase_price, transport_cost, repair_cost, registration_fee, id]
+      [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Vehicle not found' });
+
+    // Update cash_flow if cost changed
+    if (Math.abs(costDiff) > 0) {
+      // Remove old vehicle purchase entry and re-insert with new total
+      await db.query(
+        "DELETE FROM cash_flow WHERE description LIKE $1",
+        [`Vehicle Purchase: ${old?.brand || brand}%`]
+      );
+      if (totalCost > 0) {
+        await db.query(
+          "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Expense', 'Bank', $1, $2, CURRENT_DATE)",
+          [totalCost, `Vehicle Purchase: ${brand} (purchase + costs)`]
+        );
+      }
+    }
+
     res.json(rows[0]);
   } catch (err) {
     console.error(err);

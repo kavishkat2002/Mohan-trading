@@ -400,14 +400,14 @@ export default function Noticeboard() {
                   )}
                 </div>
 
-                {/* Attached Image */}
+                {/* Attached Image — fixed crop height, fills full width on all screens */}
                 {n.image_url && (
-                  <div className="rounded-xl overflow-hidden border border-border/50">
+                  <div className="w-full rounded-xl overflow-hidden border border-border/50" style={{ height: "clamp(180px, 35vw, 380px)" }}>
                     <img
                       src={n.image_url}
                       alt="Notice attachment"
-                      className="w-full max-h-80 object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      className="w-full h-full object-cover object-center"
+                      onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
                     />
                   </div>
                 )}

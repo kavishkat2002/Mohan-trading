@@ -82,4 +82,50 @@ router.post('/sales', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
+// DELETE /finance/expenses/:id
+router.delete('/expenses/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM expenses WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// DELETE /finance/sales/:id
+router.delete('/sales/:id', async (req, res) => {
+  try {
+    // Restore vehicle stock before deleting
+    const sale = await db.query('SELECT vehicle_id FROM vehicle_sales WHERE id = $1', [req.params.id]);
+    if (sale.rows.length > 0) {
+      await db.query('UPDATE vehicles SET stock = stock + 1 WHERE id = $1', [sale.rows[0].vehicle_id]);
+    }
+    await db.query('DELETE FROM vehicle_sales WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// DELETE /finance/reset — wipes all financial data (admin/owner only)
+router.delete('/reset', async (req, res) => {
+  const { confirm } = req.body;
+  if (confirm !== 'RESET_FINANCIAL_DATA') {
+    return res.status(400).json({ error: 'Invalid confirmation token' });
+  }
+  try {
+    // Restore vehicle stock for all sold vehicles first
+    await db.query(`
+      UPDATE vehicles v
+      SET stock = stock + subq.sold_count
+      FROM (
+        SELECT vehicle_id, COUNT(*) as sold_count FROM vehicle_sales GROUP BY vehicle_id
+      ) subq
+      WHERE v.id = subq.vehicle_id
+    `);
+    // Clear all financial tables
+    await db.query('TRUNCATE TABLE vehicle_sales, expenses, cash_flow RESTART IDENTITY CASCADE');
+    res.json({ success: true, message: 'All financial data has been reset.' });
+  } catch (err) {
+    console.error('[Finance Reset Error]', err);
+    res.status(500).json({ error: 'Server error during reset' });
+  }
+});
+
 module.exports = router;
