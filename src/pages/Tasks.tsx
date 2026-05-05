@@ -28,6 +28,7 @@ export default function Tasks() {
   const [users, setUsers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -82,7 +83,9 @@ export default function Tasks() {
       setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
 
       // 3. Fetch Tasks
-      const localUser = (Array.isArray(usersData) ? usersData : []).find((u: any) => u.email === user?.email);
+      const localUser = (Array.isArray(usersData) ? usersData : []).find(
+        (u: any) => u.email?.toLowerCase() === user?.email?.toLowerCase()
+      );
       // Use the local ID if found, otherwise use a dummy ID that won't crash the query
       const localId = localUser ? localUser.id : -1;
 
@@ -109,15 +112,19 @@ export default function Tasks() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newTask.title || !newTask.assigned_to) {
+      toast({ title: "Missing Fields", description: "Please enter a title and select an employee.", variant: "destructive" });
+      return;
+    }
+
     try {
+      setCreating(true);
       // Find the local user ID for the current logged-in user (by email)
-      let currentUserLocal = users.find(u => u.email === user?.email);
+      let currentUserLocal = users.find(u => u.email?.toLowerCase() === user?.email?.toLowerCase());
       
       if (!currentUserLocal) {
-        // Try one last sync attempt
         await fetchData();
-        // Check again
-        currentUserLocal = users.find(u => u.email === user?.email);
+        currentUserLocal = users.find(u => u.email?.toLowerCase() === user?.email?.toLowerCase());
       }
 
       const taskData = {
@@ -129,14 +136,14 @@ export default function Tasks() {
 
       if (!taskData.created_by) {
         toast({ 
-          title: "Profile Syncing...", 
-          description: "We're setting up your local profile. Please try clicking 'Create Task' again in 2 seconds.",
-          variant: "default" 
+          title: "Setup Needed", 
+          description: "Your local profile is still being synchronized. Please wait a few seconds and try again.",
         });
+        setCreating(false);
         return;
       }
 
-      const res = await fetch("http://127.0.0.1:5001/api/tasks", {
+      const res = await fetch("http://localhost:5001/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(taskData)
@@ -147,9 +154,15 @@ export default function Tasks() {
         setIsOpen(false);
         setNewTask({ title: "", description: "", assigned_to: "", vehicle_id: "", priority: "Medium", due_date: "" });
         fetchData();
+      } else {
+        const errData = await res.json();
+        toast({ title: "Error", description: errData.error || "Could not save task.", variant: "destructive" });
       }
     } catch (err) {
-      toast({ title: "Error", description: "Failed to create task.", variant: "destructive" });
+      console.error(err);
+      toast({ title: "Connection Error", description: "Could not reach the server. Please try again.", variant: "destructive" });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -331,7 +344,16 @@ export default function Tasks() {
                 </div>
 
                 <DialogFooter>
-                  <Button type="submit" className="w-full">Create Task</Button>
+                  <Button type="submit" className="w-full" disabled={creating}>
+                    {creating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Create Task"
+                    )}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>

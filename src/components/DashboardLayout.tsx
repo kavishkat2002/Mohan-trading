@@ -52,31 +52,49 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [companyStats, setCompanyStats] = useState<{revenue: number, payout: number} | null>(null);
 
   useEffect(() => {
-    if (!user?.id) return;
-    // Check Notifications
-    fetch(`http://localhost:5001/api/users/${user.id}/notifications`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          data.forEach(n => {
-            // Push toast notification
-            toast({ title: "New Notification", description: n.message });
-            // Mark as read
-            fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
-          });
-        }
+    if (!user?.email) return;
+
+    // First, sync the user to get their local database ID
+    fetch("http://localhost:5001/api/users/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        email: user.email.toLowerCase(), 
+        role: user.role,
+        name: user.email.split('@')[0]
       })
-      .catch(console.error);
+    })
+    .then(res => res.json())
+    .then(localUser => {
+      const localId = localUser.id;
+      if (!localId) return;
 
-    // Fetch Commissions if Sales Person
-    if (!isElevated) {
-      fetch(`http://localhost:5001/api/users/${user.id}/commissions`)
+      // Check Notifications using localId
+      fetch(`http://localhost:5001/api/users/${localId}/notifications`)
         .then(res => res.json())
-        .then(data => setCommissionTotal(data.total))
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            data.forEach(n => {
+              // Push toast notification
+              toast({ title: "New Task Assigned", description: n.message });
+              // Mark as read
+              fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
+            });
+          }
+        })
         .catch(console.error);
-    }
 
-    // Fetch Company Stats for Owner & Accountant
+      // Fetch Commissions if Sales Person
+      if (!isElevated) {
+        fetch(`http://localhost:5001/api/users/${localId}/commissions`)
+          .then(res => res.json())
+          .then(data => setCommissionTotal(data.total))
+          .catch(console.error);
+      }
+    })
+    .catch(console.error);
+
+    // Fetch Company Stats for Owner & Accountant (Independent of localId)
     if (user?.role === 'owner' || user?.role === 'accountant') {
       fetch("http://localhost:5001/api/leads")
         .then(res => res.json())
