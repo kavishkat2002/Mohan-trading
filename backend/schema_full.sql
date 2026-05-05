@@ -113,3 +113,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   read BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tasks table
+CREATE TABLE IF NOT EXISTS tasks (
+  id SERIAL PRIMARY KEY,
+  assigned_to INT REFERENCES users(id) ON DELETE CASCADE,
+  created_by INT REFERENCES users(id) ON DELETE CASCADE,
+  vehicle_id INT REFERENCES vehicles(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status VARCHAR(50) DEFAULT 'Pending',
+  priority VARCHAR(50) DEFAULT 'Medium',
+  due_date TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

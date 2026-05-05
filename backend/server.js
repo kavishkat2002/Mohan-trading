@@ -10,6 +10,7 @@ const vehiclesRouter = require('./routes/vehicles');
 const attendanceRouter = require('./routes/attendance');
 const financeRouter = require('./routes/finance');
 const noticesRouter = require('./routes/notices');
+const tasksRouter = require('./routes/tasks');
 const supabaseAdminRouter = require('./routes/supabaseAdmin');
 const db = require('./db');
 
@@ -30,6 +31,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/notices', noticesRouter);
+app.use('/api/tasks', tasksRouter);
 app.use('/api/admin', supabaseAdminRouter);
 
 // Basic health check

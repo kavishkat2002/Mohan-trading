@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,9 +20,9 @@ const navItems = [
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
+  { label: "Tasks", icon: ClipboardList, path: "/dashboard/tasks" },
   { label: "Attendance", icon: CalendarClock, path: "/dashboard/attendance" },
   { label: "Finance", icon: Banknote, path: "/dashboard/finance" },
-  { label: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
   { label: "Settings", icon: Settings, path: "/dashboard/settings" },
 ];
 
@@ -43,9 +43,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (item.label === "Noticeboard") return false;
     if (isElevated) return true;
     if (user?.role === 'accountant') {
-      return ["Dashboard", "Vehicles", "Leads", "Attendance", "Finance"].includes(item.label);
+      return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Finance"].includes(item.label);
     }
-    return ["Dashboard", "Vehicles", "Leads", "Chat Box", "Attendance"].includes(item.label);
+    return ["Dashboard", "Vehicles", "Leads", "Chat Box", "Tasks", "Attendance"].includes(item.label);
   });
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
