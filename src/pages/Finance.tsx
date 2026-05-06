@@ -27,6 +27,7 @@ export default function Finance() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { business } = useBusiness();
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const [activeTab, setActiveTab] = useState("overview");
 

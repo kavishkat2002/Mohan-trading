@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { business } = useBusiness();
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  
+
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const filteredNavItems = navItems.filter(item => {
     if (item.label === "Noticeboard") return false;
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   });
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
-  const [companyStats, setCompanyStats] = useState<{revenue: number, payout: number} | null>(null);
+  const [companyStats, setCompanyStats] = useState<{ revenue: number, payout: number } | null>(null);
   const [localUserId, setLocalUserId] = useState<number | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
 
@@ -84,42 +84,42 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     fetch("http://localhost:5001/api/users/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        email: user.email.toLowerCase(), 
+      body: JSON.stringify({
+        email: user.email.toLowerCase(),
         role: user.role,
         name: user.email.split('@')[0]
       })
     })
-    .then(res => res.json())
-    .then(localUser => {
-      const localId = localUser.id;
-      if (!localId) return;
-      setLocalUserId(localId);
+      .then(res => res.json())
+      .then(localUser => {
+        const localId = localUser.id;
+        if (!localId) return;
+        setLocalUserId(localId);
 
-      // Check Notifications using localId
-      fetch(`http://localhost:5001/api/users/${localId}/notifications`)
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
-            data.forEach(n => {
-              // Push toast notification
-              toast({ title: "New Task Assigned", description: n.message });
-              // Mark as read
-              fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
-            });
-          }
-        })
-        .catch(console.error);
-
-      // Fetch Commissions if Sales Person
-      if (!isElevated) {
-        fetch(`http://localhost:5001/api/users/${localId}/commissions`)
+        // Check Notifications using localId
+        fetch(`http://localhost:5001/api/users/${localId}/notifications`)
           .then(res => res.json())
-          .then(data => setCommissionTotal(data.total))
+          .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+              data.forEach(n => {
+                // Push toast notification
+                toast({ title: "New Task Assigned", description: n.message });
+                // Mark as read
+                fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
+              });
+            }
+          })
           .catch(console.error);
-      }
-    })
-    .catch(console.error);
+
+        // Fetch Commissions if Sales Person
+        if (!isElevated) {
+          fetch(`http://localhost:5001/api/users/${localId}/commissions`)
+            .then(res => res.json())
+            .then(data => setCommissionTotal(data.total))
+            .catch(console.error);
+        }
+      })
+      .catch(console.error);
 
     // Fetch Company Stats for Owner & Accountant (Independent of localId)
     if (user?.role === 'owner' || user?.role === 'accountant') {
@@ -154,9 +154,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         "flex items-center gap-3 px-5 py-5",
         collapsed && "justify-center px-3"
       )}>
-        <img 
-          src={business?.logo_url || "/mohantrader-logo.png"} 
-          alt={business?.name || "MohanTrader"} 
+        <img
+          src={business?.logo_url || "/mohantrader-logo.png"}
+          alt={business?.name || "MohanTrader"}
           className="h-10 w-10 rounded-xl object-contain bg-white/10 p-1 shrink-0"
         />
         <AnimatePresence>
@@ -184,7 +184,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {filteredNavItems.map((item) => {
-          const active = location.pathname === item.path || 
+          const active = location.pathname === item.path ||
             (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"));
           return (
             <Link
@@ -268,12 +268,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <AnimatePresence>
         {isMobile && mobileOpen && (
           <div className="fixed inset-0 z-50 flex">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" 
-              onClick={() => setMobileOpen(false)} 
+              className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+              onClick={() => setMobileOpen(false)}
             />
             <motion.aside
               initial={{ x: -260 }}
@@ -313,10 +313,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 {!isElevated && user?.role !== 'accountant' && commissionTotal > 0 && (
                   <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Comm: LKR {commissionTotal}</p>
                 )}
-                
+
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setProfileOpen(true)}
               className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm hover:bg-primary/20 transition-all cursor-pointer overflow-hidden relative"
             >
@@ -329,9 +329,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <ProfileSettingsDialog 
-          open={profileOpen} 
-          onOpenChange={setProfileOpen} 
+        <ProfileSettingsDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
           user={user}
           localUserId={localUserId}
           setProfileName={setProfileName}
@@ -362,73 +362,73 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           )}
 
           <div className="flex-1 p-5 md:p-8">
-          <div className="relative flex-1">
-            {/* Blur overlay when suspended/expired */}
-            {isAccountBlocked && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backdropFilter: 'blur(16px)', backgroundColor: 'rgba(15,23,42,0.55)' }}>
-                <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full mx-4 overflow-hidden">
-                  {/* Red top bar */}
-                  <div className="h-2 bg-gradient-to-r from-red-500 via-orange-500 to-red-600" />
-                  <div className="p-8 text-center space-y-5">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                        {subscription?.status === 'Suspended' ? 'Account Suspended' : 'Subscription Expired'}
-                      </h2>
-                      <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                        {subscription?.status === 'Suspended'
-                          ? 'Your account has been temporarily suspended. Please contact support to restore access.'
-                          : 'Your subscription plan has expired. Please renew your plan to continue using the CRM.'}
-                      </p>
-                    </div>
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-left space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Plan</span>
-                        <span className="text-slate-800 font-semibold">{subscription?.plan_type || 'Starter'} — $30/mo</span>
+            <div className="relative flex-1">
+              {/* Blur overlay when suspended/expired */}
+              {isAccountBlocked && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backdropFilter: 'blur(16px)', backgroundColor: 'rgba(15,23,42,0.55)' }}>
+                  <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full mx-4 overflow-hidden">
+                    {/* Red top bar */}
+                    <div className="h-2 bg-gradient-to-r from-red-500 via-orange-500 to-red-600" />
+                    <div className="p-8 text-center space-y-5">
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                          {subscription?.status === 'Suspended' ? 'Account Suspended' : 'Subscription Expired'}
+                        </h2>
+                        <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                          {subscription?.status === 'Suspended'
+                            ? 'Your account has been temporarily suspended. Please contact support to restore access.'
+                            : 'Your subscription plan has expired. Please renew your plan to continue using the CRM.'}
+                        </p>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Status</span>
-                        <span className="text-red-600 font-semibold">{subscription?.status === 'Suspended' ? 'Suspended' : 'Expired'}</span>
+                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-left space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500 font-medium">Plan</span>
+                          <span className="text-slate-800 font-semibold">{subscription?.plan_type || 'Starter'} — $30/mo</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500 font-medium">Status</span>
+                          <span className="text-red-600 font-semibold">{subscription?.status === 'Suspended' ? 'Suspended' : 'Expired'}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500 font-medium">Expired on</span>
+                          <span className="text-slate-700 font-mono text-xs">
+                            {subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Expired on</span>
-                        <span className="text-slate-700 font-mono text-xs">
-                          {subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
-                        </span>
+                      <div className="space-y-2.5 pt-1">
+                        <a
+                          href="https://wa.me/94762345336?text=Hi,%20I%20would%20like%20to%20renew%20my%20CRM%20subscription."
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-center gap-2 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm shadow-sm shadow-emerald-200"
+                        >
+                          <Phone className="h-4 w-4" /> Contact on WhatsApp
+                        </a>
+                        <p className="text-[11px] text-slate-400">
+                          Powered by <span className="font-semibold text-slate-500">Creativex Technology</span> · <a href="https://www.creativexlab.online/" target="_blank" rel="noreferrer" className="underline hover:text-slate-600">creativexlab.online</a>
+                        </p>
                       </div>
-                    </div>
-                    <div className="space-y-2.5 pt-1">
-                      <a
-                        href="https://wa.me/94762345336?text=Hi,%20I%20would%20like%20to%20renew%20my%20CRM%20subscription."
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-2 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm shadow-sm shadow-emerald-200"
-                      >
-                        <Phone className="h-4 w-4" /> Contact on WhatsApp
-                      </a>
-                      <p className="text-[11px] text-slate-400">
-                        Powered by <span className="font-semibold text-slate-500">Creativex Technology</span> · <a href="https://www.creativexlab.online/" target="_blank" rel="noreferrer" className="underline hover:text-slate-600">creativexlab.online</a>
-                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className={`flex-1 ${isAccountBlocked ? 'pointer-events-none select-none' : ''}`}
-            >
-              {children}
-            </motion.div>
-          </div>
+              )}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className={`flex-1 ${isAccountBlocked ? 'pointer-events-none select-none' : ''}`}
+              >
+                {children}
+              </motion.div>
+            </div>
 
-          {/* Footer */}
-          <footer className="mt-12 pt-4 border-t border-border text-center">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Design & Developed By © 2026 <a href="https://www.creativexlab.online/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/70 hover:text-primary transition-colors">Creativex Technology</a> All Rights Reserved.
-            </p>
-          </footer>
+            {/* Footer */}
+            <footer className="mt-12 pt-4 border-t border-border text-center">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Design & Developed By © 2026 <a href="https://www.creativexlab.online/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/70 hover:text-primary transition-colors">Creativex Technology</a> All Rights Reserved.
+              </p>
+            </footer>
           </div> {/* end footer wrapper */}
         </div>
       </main>
@@ -436,7 +436,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfileName, setProfileAvatar }: { open: boolean; onOpenChange: (open: boolean) => void; user: any; localUserId: number | null; setProfileName: (n:string)=>void; setProfileAvatar: (a:string)=>void; }) {
+function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfileName, setProfileAvatar }: { open: boolean; onOpenChange: (open: boolean) => void; user: any; localUserId: number | null; setProfileName: (n: string) => void; setProfileAvatar: (a: string) => void; }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -450,7 +450,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append('avatar', file);
-    
+
     setLoading(true);
     try {
       const res = await fetch(`http://localhost:5001/api/users/${localUserId}/avatar`, {
@@ -478,13 +478,13 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
         .then(res => res.json())
         .then(data => {
           if (data.name) {
-             setName(data.name);
-             setProfileName(data.name);
+            setName(data.name);
+            setProfileName(data.name);
           }
           if (data.mobile_number) setMobileNumber(data.mobile_number);
           if (data.avatar_url) {
-             setAvatarUrl(data.avatar_url);
-             setProfileAvatar(data.avatar_url);
+            setAvatarUrl(data.avatar_url);
+            setProfileAvatar(data.avatar_url);
           }
         })
         .catch(console.error);
@@ -501,18 +501,18 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
       toast({ title: "Old Password required", description: "You must enter your old password to set a new one.", variant: "destructive" });
       return;
     }
-    
+
     setLoading(true);
     try {
       const res = await fetch(`http://localhost:5001/api/users/${localUserId}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-           name, 
-           mobile_number: mobileNumber,
-           avatar_url: avatarUrl,
-           oldPassword: oldPassword || undefined,
-           newPassword: newPassword || undefined 
+        body: JSON.stringify({
+          name,
+          mobile_number: mobileNumber,
+          avatar_url: avatarUrl,
+          oldPassword: oldPassword || undefined,
+          newPassword: newPassword || undefined
         })
       });
       const data = await res.json();
