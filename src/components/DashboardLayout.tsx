@@ -344,7 +344,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {user?.role === 'owner' && !isAccountBlocked && daysLeft !== null && daysLeft <= 2 && daysLeft > 0 && (
             <div className={`flex items-center justify-between gap-4 px-5 py-3 text-sm font-medium ${daysLeft === 1 ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
               <div className="flex items-center gap-2.5">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>
                   {daysLeft === 1
                     ? '🚨 Your subscription expires TOMORROW! Renew now to avoid losing access.'
@@ -580,4 +579,4 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
     </Dialog>
   );
 }
-___BEGIN___COMMAND_DONE_MARKER___0
+
