@@ -11,6 +11,7 @@ export default function SuperAdmin() {
   const { user, loading } = useAuth();
   const [subStatus, setSubStatus] = useState<any>(null);
   const [fetching, setFetching] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [customDate, setCustomDate] = useState("");
 
   // ONLY ALLOW SPECIFIC EMAILS
@@ -20,7 +21,7 @@ export default function SuperAdmin() {
     try {
       const res = await fetch("http://localhost:5001/api/subscription");
       const data = await res.json();
-      setSubStatus(data);
+      setSubStatus(data); // Instantly updates daysLeft & isExpired
     } catch (err) {
       console.error(err);
     } finally {
@@ -34,50 +35,56 @@ export default function SuperAdmin() {
 
   const handleRenew = async () => {
     try {
-      setFetching(true);
+      setActionLoading(true);
       const res = await fetch("http://localhost:5001/api/subscription/renew", { method: "POST", headers: { "Content-Type": "application/json" } });
       if (res.ok) {
+        const data = await res.json();
+        setSubStatus(data); // Instantly update UI
         toast.success("Subscription renewed for 30 days!");
-        fetchSubscription();
       }
     } catch (err) {
       toast.error("Failed to renew");
-      setFetching(false);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleSetCustomDate = async () => {
     if (!customDate) { toast.error("Please select a date first."); return; }
     try {
-      setFetching(true);
+      setActionLoading(true);
       const res = await fetch("http://localhost:5001/api/subscription/renew", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expires_at: customDate, status: "Active" })
       });
       if (res.ok) {
-        toast.success(`Subscription set to expire on ${new Date(customDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+        const data = await res.json();
+        setSubStatus(data); // Instantly update both Status + Expiration Date
+        toast.success(`Expiry set to ${new Date(customDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
         setCustomDate("");
-        fetchSubscription();
       }
     } catch (err) {
       toast.error("Failed to set custom date");
-      setFetching(false);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleSuspend = async () => {
     if (!window.confirm("WARNING: This will instantly lock the client out of their dashboard. Are you sure?")) return;
     try {
-      setFetching(true);
+      setActionLoading(true);
       const res = await fetch("http://localhost:5001/api/subscription/suspend", { method: "POST" });
       if (res.ok) {
+        const data = await res.json();
+        setSubStatus(data); // Instantly update UI
         toast.error("Account suspended.");
-        fetchSubscription();
       }
     } catch (err) {
       toast.error("Failed to suspend");
-      setFetching(false);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -150,11 +157,11 @@ export default function SuperAdmin() {
                 <div className="space-y-4">
                   <p className="text-sm font-medium text-slate-600">Subscription Actions</p>
                   <div className="flex gap-3">
-                    <Button onClick={handleRenew} disabled={fetching} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200">
-                      {fetching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    <Button onClick={handleRenew} disabled={actionLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200">
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                       Add 30 Days
                     </Button>
-                    <Button onClick={handleSuspend} disabled={fetching || isExpired} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
+                    <Button onClick={handleSuspend} disabled={actionLoading || isExpired} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
                       <Power className="h-4 w-4 mr-2" /> Suspend
                     </Button>
                   </div>
@@ -174,10 +181,10 @@ export default function SuperAdmin() {
                       />
                       <Button
                         onClick={handleSetCustomDate}
-                        disabled={fetching || !customDate}
+                        disabled={actionLoading || !customDate}
                         className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 shrink-0"
                       >
-                        Set Date
+                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Set Date"}
                       </Button>
                     </div>
                     <p className="text-[11px] text-indigo-500">Pick any date to set as the exact expiry date for this tenant.</p>
