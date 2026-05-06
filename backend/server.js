@@ -22,6 +22,8 @@ app.use(express.json());
 // Serve static image uploads
 app.use('/uploads', express.static('uploads'));
 
+const subscriptionRouter = require('./routes/subscription');
+
 // Routes
 app.use('/api/leads', leadsRouter);
 app.use('/api/users', usersRouter);
@@ -33,6 +35,7 @@ app.use('/api/finance', financeRouter);
 app.use('/api/notices', noticesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/admin', supabaseAdminRouter);
+app.use('/api/subscription', subscriptionRouter);
 
 // Basic health check
 app.get('/health', (req, res) => {
