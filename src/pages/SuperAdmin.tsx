@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Loader2, ShieldAlert, Power, RefreshCw, CalendarDays, AlertTriangle, Building2, ExternalLink } from "lucide-react";
+import { Loader2, ShieldAlert, Power, RefreshCw, CalendarDays, AlertTriangle, Building2, ExternalLink, CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +11,7 @@ export default function SuperAdmin() {
   const { user, loading } = useAuth();
   const [subStatus, setSubStatus] = useState<any>(null);
   const [fetching, setFetching] = useState(true);
+  const [customDate, setCustomDate] = useState("");
 
   // ONLY ALLOW SPECIFIC EMAILS
   const isSuperAdmin = user?.email?.toLowerCase() === "info@creativexlab.com" || user?.email?.toLowerCase() === "tkavishka101@gmail.com";
@@ -40,6 +42,26 @@ export default function SuperAdmin() {
       }
     } catch (err) {
       toast.error("Failed to renew");
+      setFetching(false);
+    }
+  };
+
+  const handleSetCustomDate = async () => {
+    if (!customDate) { toast.error("Please select a date first."); return; }
+    try {
+      setFetching(true);
+      const res = await fetch("http://localhost:5001/api/subscription/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expires_at: customDate, status: "Active" })
+      });
+      if (res.ok) {
+        toast.success(`Subscription set to expire on ${new Date(customDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+        setCustomDate("");
+        fetchSubscription();
+      }
+    } catch (err) {
+      toast.error("Failed to set custom date");
       setFetching(false);
     }
   };
@@ -125,16 +147,40 @@ export default function SuperAdmin() {
               </div>
 
               <div className="pt-6 grid md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 mb-4">Subscription Actions</p>
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-slate-600">Subscription Actions</p>
                   <div className="flex gap-3">
-                    <Button onClick={handleRenew} disabled={fetching} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200 w-full sm:w-auto">
+                    <Button onClick={handleRenew} disabled={fetching} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-200">
                       {fetching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                       Add 30 Days
                     </Button>
-                    <Button onClick={handleSuspend} disabled={fetching || isExpired} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 w-full sm:w-auto">
+                    <Button onClick={handleSuspend} disabled={fetching || isExpired} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
                       <Power className="h-4 w-4 mr-2" /> Suspend
                     </Button>
+                  </div>
+
+                  {/* Custom Date Setter */}
+                  <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 space-y-2.5">
+                    <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <CalendarCheck className="h-3.5 w-3.5" /> Set Custom Expiry Date
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={customDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={e => setCustomDate(e.target.value)}
+                        className="h-9 text-sm bg-white border-indigo-200 focus-visible:ring-indigo-400"
+                      />
+                      <Button
+                        onClick={handleSetCustomDate}
+                        disabled={fetching || !customDate}
+                        className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 shrink-0"
+                      >
+                        Set Date
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-indigo-500">Pick any date to set as the exact expiry date for this tenant.</p>
                   </div>
                 </div>
 

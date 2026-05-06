@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList,
+  AlertTriangle, CreditCard, Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
   const [companyStats, setCompanyStats] = useState<{revenue: number, payout: number} | null>(null);
   const [localUserId, setLocalUserId] = useState<number | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
+
+  useEffect(() => {
+    const checkSubscription = () => {
+      fetch("http://localhost:5001/api/subscription")
+        .then(res => res.json())
+        .then(data => setSubscription(data))
+        .catch(() => setSubscription(null));
+    };
+
+    checkSubscription(); // Fetch immediately on mount
+    const interval = setInterval(checkSubscription, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const isAccountBlocked = subscription && (
+    subscription.status === 'Suspended' ||
+    new Date(subscription.expires_at) < new Date()
+  );
+  const daysLeft = subscription
+    ? Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / 86400000)
+    : null;
 
   useEffect(() => {
     if (!user?.email) return;
@@ -313,15 +336,91 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           setProfileAvatar={setProfileAvatar}
         />
 
-        <div className="flex-1 overflow-auto p-5 md:p-8 scrollbar-minimal flex flex-col">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex-1"
-          >
-            {children}
-          </motion.div>
+        <div className="flex-1 overflow-auto scrollbar-minimal flex flex-col">
+
+          {/* ⚠️ Expiry warning banner — only for owner, only when ≤ 2 days left */}
+          {user?.role === 'owner' && !isAccountBlocked && daysLeft !== null && daysLeft <= 2 && daysLeft > 0 && (
+            <div className={`flex items-center justify-between gap-4 px-5 py-3 text-sm font-medium ${daysLeft === 1 ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>
+                  {daysLeft === 1
+                    ? '🚨 Your subscription expires TOMORROW! Renew now to avoid losing access.'
+                    : `⚠️ Your subscription expires in ${daysLeft} days. Please renew soon to avoid interruption.`}
+                </span>
+              </div>
+              <a
+                href="https://wa.me/94762345336?text=Hi,%20I%20would%20like%20to%20renew%20my%20CRM%20subscription."
+                target="_blank"
+                rel="noreferrer"
+                className={`shrink-0 text-xs font-bold underline underline-offset-2 hover:opacity-80 transition-opacity`}
+              >
+                Contact to Renew →
+              </a>
+            </div>
+          )}
+
+          <div className="flex-1 p-5 md:p-8">
+          <div className="relative flex-1">
+            {/* Blur overlay when suspended/expired */}
+            {isAccountBlocked && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backdropFilter: 'blur(16px)', backgroundColor: 'rgba(15,23,42,0.55)' }}>
+                <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full mx-4 overflow-hidden">
+                  {/* Red top bar */}
+                  <div className="h-2 bg-gradient-to-r from-red-500 via-orange-500 to-red-600" />
+                  <div className="p-8 text-center space-y-5">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                        {subscription?.status === 'Suspended' ? 'Account Suspended' : 'Subscription Expired'}
+                      </h2>
+                      <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                        {subscription?.status === 'Suspended'
+                          ? 'Your account has been temporarily suspended. Please contact support to restore access.'
+                          : 'Your subscription plan has expired. Please renew your plan to continue using the CRM.'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-left space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500 font-medium">Plan</span>
+                        <span className="text-slate-800 font-semibold">{subscription?.plan_type || 'Starter'} — $30/mo</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500 font-medium">Status</span>
+                        <span className="text-red-600 font-semibold">{subscription?.status === 'Suspended' ? 'Suspended' : 'Expired'}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500 font-medium">Expired on</span>
+                        <span className="text-slate-700 font-mono text-xs">
+                          {subscription?.expires_at ? new Date(subscription.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-2.5 pt-1">
+                      <a
+                        href="https://wa.me/94762345336?text=Hi,%20I%20would%20like%20to%20renew%20my%20CRM%20subscription."
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm shadow-sm shadow-emerald-200"
+                      >
+                        <Phone className="h-4 w-4" /> Contact on WhatsApp
+                      </a>
+                      <p className="text-[11px] text-slate-400">
+                        Powered by <span className="font-semibold text-slate-500">Creativex Technology</span> · <a href="https://www.creativexlab.online/" target="_blank" rel="noreferrer" className="underline hover:text-slate-600">creativexlab.online</a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className={`flex-1 ${isAccountBlocked ? 'pointer-events-none select-none' : ''}`}
+            >
+              {children}
+            </motion.div>
+          </div>
 
           {/* Footer */}
           <footer className="mt-12 pt-4 border-t border-border text-center">
@@ -329,6 +428,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               Design & Developed By © 2026 <a href="https://www.creativexlab.online/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/70 hover:text-primary transition-colors">Creativex Technology</a> All Rights Reserved.
             </p>
           </footer>
+          </div> {/* end footer wrapper */}
         </div>
       </main>
     </div>

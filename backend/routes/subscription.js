@@ -36,14 +36,19 @@ router.get('/', async (req, res) => {
 
 // Admin ONLY: Update subscription
 router.post('/renew', async (req, res) => {
-  const { days, status } = req.body;
+  const { days, status, expires_at } = req.body;
   try {
-    const { rows } = await db.query(`
-      UPDATE tenant_subscription 
-      SET expires_at = CURRENT_TIMESTAMP + ($1 || ' days')::INTERVAL, 
-          status = $2 
-      WHERE id = 1 RETURNING *
-    `, [days || 30, status || 'Active']);
+    let query, params;
+    if (expires_at) {
+      // Set a specific custom expiry date
+      query = `UPDATE tenant_subscription SET expires_at = $1, status = $2 WHERE id = 1 RETURNING *`;
+      params = [expires_at, status || 'Active'];
+    } else {
+      // Default: add N days from now
+      query = `UPDATE tenant_subscription SET expires_at = CURRENT_TIMESTAMP + ($1 || ' days')::INTERVAL, status = $2 WHERE id = 1 RETURNING *`;
+      params = [days || 30, status || 'Active'];
+    }
+    const { rows } = await db.query(query, params);
     res.json(rows[0]);
   } catch (err) {
     console.error(err);
