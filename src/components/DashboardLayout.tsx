@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
   const [companyStats, setCompanyStats] = useState<{revenue: number, payout: number} | null>(null);
+  const [localUserId, setLocalUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -68,6 +69,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     .then(localUser => {
       const localId = localUser.id;
       if (!localId) return;
+      setLocalUserId(localId);
 
       // Check Notifications using localId
       fetch(`http://localhost:5001/api/users/${localId}/notifications`)
@@ -305,7 +307,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <ProfileSettingsDialog 
           open={profileOpen} 
           onOpenChange={setProfileOpen} 
-          user={user} 
+          user={user}
+          localUserId={localUserId}
           setProfileName={setProfileName}
           setProfileAvatar={setProfileAvatar}
         />
@@ -335,7 +338,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setProfileAvatar }: { open: boolean; onOpenChange: (open: boolean) => void; user: any; setProfileName: (n:string)=>void; setProfileAvatar: (a:string)=>void; }) {
+function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfileName, setProfileAvatar }: { open: boolean; onOpenChange: (open: boolean) => void; user: any; localUserId: number | null; setProfileName: (n:string)=>void; setProfileAvatar: (a:string)=>void; }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -345,14 +348,14 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
   const [loading, setLoading] = useState(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !user) return;
+    if (!e.target.files?.[0] || !localUserId) return;
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append('avatar', file);
     
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${user.id}/avatar`, {
+      const res = await fetch(`http://localhost:5001/api/users/${localUserId}/avatar`, {
         method: "POST",
         body: formData
       });
@@ -372,8 +375,8 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
   };
 
   useEffect(() => {
-    if (open && user?.id) {
-      fetch(`http://localhost:5001/api/users/${user.id}/profile`)
+    if (open && localUserId) {
+      fetch(`http://localhost:5001/api/users/${localUserId}/profile`)
         .then(res => res.json())
         .then(data => {
           if (data.name) {
@@ -388,11 +391,14 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
         })
         .catch(console.error);
     }
-  }, [open, user]);
+  }, [open, localUserId]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!localUserId) {
+      toast({ title: "Profile Syncing", description: "Please wait a moment while your profile is synchronized.", variant: "destructive" });
+      return;
+    }
     if (newPassword && !oldPassword) {
       toast({ title: "Old Password required", description: "You must enter your old password to set a new one.", variant: "destructive" });
       return;
@@ -400,7 +406,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, setProfileName, setPr
     
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${user.id}/profile`, {
+      const res = await fetch(`http://localhost:5001/api/users/${localUserId}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

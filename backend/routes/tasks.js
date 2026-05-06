@@ -61,6 +61,15 @@ router.put('/:id/status', async (req, res) => {
       'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [status, id]
     );
+    
+    // Notify the creator of the task that the status was updated
+    if (rows[0] && rows[0].created_by) {
+      await db.query(
+        'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
+        [rows[0].created_by, `Task "${rows[0].title}" was marked as ${status}`]
+      );
+    }
+    
     res.json(rows[0]);
   } catch (err) {
     console.error(err);

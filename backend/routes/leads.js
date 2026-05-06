@@ -15,6 +15,43 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Sync leads from external source (WhatsApp Supabase)
+router.post('/sync', async (req, res) => {
+  const { leads } = req.body;
+  if (!Array.isArray(leads)) return res.status(400).json({ error: "leads must be an array" });
+  
+  try {
+    for (let lead of leads) {
+      // Check if lead with this phone already exists
+      const { rows } = await db.query('SELECT id FROM leads WHERE phone = $1', [lead.phone]);
+      
+      if (rows.length === 0) {
+        // Insert new lead
+        await db.query(
+          `INSERT INTO leads (name, phone, interested_car, budget, status, source, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [lead.name || 'WhatsApp User', lead.phone, lead.interested_car, lead.budget, lead.status || 'New', 'whatsapp', lead.notes || null]
+        );
+      } else {
+        // Update existing lead if there's new car interest data
+        if (lead.interested_car || lead.budget) {
+          await db.query(
+            `UPDATE leads 
+             SET interested_car = COALESCE($1, interested_car), 
+                 budget = COALESCE($2, budget) 
+             WHERE phone = $3`,
+            [lead.interested_car, lead.budget, lead.phone]
+          );
+        }
+      }
+    }
+    res.json({ message: "Synced successfully" });
+  } catch (err) {
+    console.error("Lead sync error:", err);
+    res.status(500).json({ error: "Server error during sync" });
+  }
+});
+
 // Create new lead
 router.post('/', async (req, res) => {
   const { name, phone, interested_car, budget, status, source, notes } = req.body;

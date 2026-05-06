@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, Plus, Calendar, User, Car, CheckCircle2,
-  Clock, AlertCircle, Trash2, Filter
+  Clock, AlertCircle, Trash2, Filter, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -29,6 +31,10 @@ export default function Tasks() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  const currentLocalUserId = users.find(u => u.email?.toLowerCase() === user?.email?.toLowerCase())?.id;
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -39,11 +45,11 @@ export default function Tasks() {
     due_date: ""
   });
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     if (!user?.email) return;
     
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       
       // 1. Ensure user exists in local DB using existing /register route if /sync is unavailable
       try {
@@ -97,16 +103,18 @@ export default function Tasks() {
         }
       } catch (e) { console.error("Tasks fetch failed", e); }
 
-      setLoading(false);
+      if (!silent) setLoading(false);
     } catch (err) {
       console.error("General Fetch Error:", err);
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (user) {
       fetchData();
+      const interval = setInterval(() => fetchData(true), 15000);
+      return () => clearInterval(interval);
     }
   }, [user?.id]);
 
@@ -168,7 +176,7 @@ export default function Tasks() {
 
   const handleUpdateStatus = async (taskId: number, status: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:5001/api/tasks/${taskId}/status`, {
+      const res = await fetch(`http://localhost:5001/api/tasks/${taskId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -186,7 +194,7 @@ export default function Tasks() {
   const handleDeleteTask = async (taskId: number) => {
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:5001/api/tasks/${taskId}`, {
+      const res = await fetch(`http://localhost:5001/api/tasks/${taskId}`, {
         method: "DELETE"
       });
 
@@ -266,7 +274,7 @@ export default function Tasks() {
                         <SelectValue placeholder="Select Employee" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.length > 0 ? users.map(u => (
+                        {users.length > 0 ? users.filter(u => u.role !== 'owner' && u.role !== 'admin').map(u => (
                           <SelectItem key={`user-${u.id}`} value={u.id.toString()}>
                             {u.name || u.email}
                           </SelectItem>
@@ -332,14 +340,22 @@ export default function Tasks() {
                     />
                   </div>
                 </div>
-
-                <div className="space-y-2">
+                <div className="space-y-2 pb-12">
                   <Label>Description</Label>
-                  <Textarea 
-                    placeholder="Describe the task details..." 
+                  <ReactQuill 
+                    theme="snow"
+                    placeholder="Describe the task details... Use bullets, links, etc." 
                     value={newTask.description} 
-                    onChange={e => setNewTask({...newTask, description: e.target.value})}
-                    className="min-h-[100px]"
+                    onChange={val => setNewTask({...newTask, description: val})}
+                    className="bg-background h-[120px] rounded-md"
+                    modules={{
+                      toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{'list': 'ordered'}, {'list': 'bullet'}],
+                        ['link', 'image'],
+                        ['clean']
+                      ],
+                    }}
                   />
                 </div>
 
@@ -361,10 +377,10 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-blue-50/30 border-blue-100 shadow-none">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-slate-50 border-slate-200 shadow-none">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total Tasks</CardTitle>
+            <CardTitle className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Total Tasks</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{tasks.length}</p>
@@ -376,6 +392,14 @@ export default function Tasks() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'Pending').length}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-blue-50/30 border-blue-100 shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-blue-600 uppercase tracking-wider">In Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'In Progress').length}</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50/30 border-green-100 shadow-none">
@@ -412,9 +436,13 @@ export default function Tasks() {
               tasks.map((task) => (
                 <TableRow key={task.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-sm leading-none">{task.title}</span>
-                      <span className="text-xs text-muted-foreground line-clamp-1">{task.description || "No description"}</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm leading-none">{task.title}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground line-clamp-1">
+                        {task.description ? task.description.replace(/<[^>]+>/g, '') : "No description"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -444,10 +472,11 @@ export default function Tasks() {
                   </TableCell>
                   <TableCell>
                     <Select 
-                      defaultValue={task.status} 
+                      value={task.status} 
                       onValueChange={(val) => handleUpdateStatus(task.id, val)}
+                      disabled={task.assigned_to !== currentLocalUserId}
                     >
-                      <SelectTrigger className="w-[130px] h-8 text-xs border-0 bg-transparent hover:bg-muted p-0 shadow-none focus:ring-0">
+                      <SelectTrigger className="w-[130px] h-8 text-xs border-0 bg-transparent hover:bg-muted p-0 shadow-none focus:ring-0 disabled:opacity-100 disabled:cursor-default">
                         <SelectValue>
                           {getStatusBadge(task.status)}
                         </SelectValue>
@@ -455,11 +484,22 @@ export default function Tasks() {
                       <SelectContent>
                         <SelectItem value="Pending">Pending</SelectItem>
                         <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Completed">Done</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 mr-1"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsViewOpen(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     {isAdmin && (
                       <Button 
                         variant="ghost" 
@@ -467,6 +507,7 @@ export default function Tasks() {
                         className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleDeleteTask(task.id)}
                       >
+
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
@@ -477,6 +518,67 @@ export default function Tasks() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Task Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div>
+              <h3 className="font-semibold text-lg">{selectedTask?.title}</h3>
+              {selectedTask?.description ? (
+                <div 
+                  className="text-sm text-muted-foreground mt-3 prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:p-0 prose-ul:list-disc prose-ul:ml-4 prose-ol:list-decimal prose-ol:ml-4"
+                  dangerouslySetInnerHTML={{ __html: selectedTask.description }} 
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground mt-2 italic">No description provided.</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-3 w-3 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium">{selectedTask?.assigned_to_name}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
+                {selectedTask?.status && getStatusBadge(selectedTask.status)}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Priority</p>
+                {selectedTask?.priority && getPriorityBadge(selectedTask.priority)}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Due Date</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {selectedTask?.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'N/A'}
+                </div>
+              </div>
+              {selectedTask?.vehicle_name && (
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground mb-1">Linked Vehicle</p>
+                  <div className="flex items-center gap-2 text-sm font-medium bg-muted/30 p-2 rounded-md">
+                    <Car className="h-4 w-4 text-primary" />
+                    {selectedTask.vehicle_name}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

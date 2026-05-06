@@ -18,6 +18,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const sourceIcons: Record<string, { label: string; color: string }> = {
   whatsapp:  { label: "WhatsApp",  color: "bg-emerald-500" },
@@ -55,11 +61,29 @@ export default function Leads() {
     name: "", phone: "", interested_car: "", budget: "", status: "New", source: "manual"
   });
 
-  const fetchLeads = () => {
-    fetch("http://localhost:5001/api/leads")
-      .then(res => res.json())
-      .then(data => { setLeads(data); setLoading(false); })
-      .catch(err => { console.error(err); setLoading(false); });
+  const fetchLeads = async () => {
+    try {
+      // 1. Fetch from Supabase WhatsApp Leads
+      const { data: supaLeads, error: supaErr } = await supabase.from('leads').select('*');
+      
+      if (!supaErr && supaLeads && supaLeads.length > 0) {
+        // Sync them to backend
+        await fetch("http://localhost:5001/api/leads/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leads: supaLeads })
+        });
+      }
+
+      // 2. Fetch the newly merged data from main CRM
+      const res = await fetch("http://localhost:5001/api/leads");
+      const data = await res.json();
+      setLeads(data);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
   };
 
   useEffect(() => { 
