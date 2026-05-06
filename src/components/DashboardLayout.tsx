@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (user?.role === 'accountant') {
       return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Finance"].includes(item.label);
     }
-    return ["Dashboard", "Vehicles", "Leads", "Chat Box", "Tasks", "Attendance"].includes(item.label);
+    return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance"].includes(item.label);
   });
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
