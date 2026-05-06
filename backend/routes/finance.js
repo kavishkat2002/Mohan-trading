@@ -24,7 +24,7 @@ router.get('/overview', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -33,7 +33,7 @@ router.get('/expenses', async (req, res) => {
   try {
     const { rows } = await db.query("SELECT * FROM expenses ORDER BY date DESC");
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.post('/expenses', async (req, res) => {
@@ -49,7 +49,7 @@ router.post('/expenses', async (req, res) => {
       [account || 'Cash', amount, `Expense: ${category} - ${description}`, date || new Date()]
     );
     res.status(201).json(rows[0]);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.get('/sales', async (req, res) => {
@@ -61,7 +61,7 @@ router.get('/sales', async (req, res) => {
       ORDER BY vs.sale_date DESC
     `);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.post('/sales', async (req, res) => {
@@ -79,7 +79,7 @@ router.post('/sales', async (req, res) => {
       [account || 'Bank', selling_price, `Vehicle Sale ID: ${vehicle_id}`, sale_date || new Date()]
     );
     res.status(201).json(rows[0]);
-  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // DELETE /finance/expenses/:id

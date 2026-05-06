@@ -12,6 +12,7 @@ const financeRouter = require('./routes/finance');
 const noticesRouter = require('./routes/notices');
 const tasksRouter = require('./routes/tasks');
 const supabaseAdminRouter = require('./routes/supabaseAdmin');
+const settingsRouter = require('./routes/settings');
 const db = require('./db');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/notices', noticesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/admin', supabaseAdminRouter);
 app.use('/api/subscription', subscriptionRouter);
+app.use('/api/settings', settingsRouter);
 
 // Basic health check
 app.get('/health', (req, res) => {

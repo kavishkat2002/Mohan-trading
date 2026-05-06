@@ -10,6 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useBusiness } from "@/hooks/useBusiness";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -123,33 +124,63 @@ export default function Finance() {
         setIsAddingExpense(false);
         setNewExpense({ category: "Fuel", amount: "", description: "", date: new Date().toISOString().split('T')[0], account: "Cash" });
         fetchData();
+      } else {
+        const errData = await res.json().catch(() => null);
+        toast({ title: "Failed to Add Expense", description: errData?.error || "Server error", variant: "destructive" });
       }
-    } catch (err) { console.error(err); }
+    } catch (err: any) { 
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   const handleAddSale = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!newSale.vehicle_id) {
+         return toast({ title: "Missing Information", description: "Please select a vehicle to sell.", variant: "destructive" });
+      }
+      if (!newSale.lead_id) {
+         return toast({ title: "Missing Information", description: "Please select a linked customer lead.", variant: "destructive" });
+      }
+
+      const payload = {
+        ...newSale,
+        payment_method: newSale.account
+      };
+
       const res = await fetch("http://localhost:5001/api/finance/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newSale)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         toast({ title: "Sale Recorded", description: "Vehicle marked as sold and cash flow updated." });
         setIsAddingSale(false);
         setNewSale({ vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank" });
         fetchData();
+      } else {
+        const errData = await res.json().catch(() => null);
+        toast({ title: "Failed to Record Sale", description: errData?.error || "Server error", variant: "destructive" });
       }
-    } catch (err) { console.error(err); }
+    } catch (err: any) { 
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   const cashBalance = overview?.balances?.find((b: any) => b.account === 'Cash')?.balance || 0;
   const bankBalance = overview?.balances?.find((b: any) => b.account === 'Bank')?.balance || 0;
 
+  const handleExportAudit = async () => {
+    // Rely on native browser print engine with print modifiers
+    window.print();
+    setTimeout(() => {
+      toast({ title: "Audit Prepared for PDF Export", description: "Use the browser dialog to Save as PDF." });
+    }, 500);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 print:space-y-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div>
           <h1 className="font-display text-4xl font-bold text-foreground tracking-tight">Mohan Trading Finance</h1>
           <p className="text-sm text-muted-foreground mt-1 font-medium">Accounting, Profit Analysis & Inventory tracking.</p>
@@ -177,8 +208,8 @@ export default function Finance() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6" onValueChange={v => setActiveTab(v)}>
-        <TabsList className="bg-muted p-1 rounded-xl h-11">
+      <Tabs defaultValue="overview" className="space-y-6 print:space-y-0" onValueChange={v => setActiveTab(v)}>
+        <TabsList className="bg-muted p-1 rounded-xl h-11 print:hidden">
           <TabsTrigger value="overview" className="text-xs px-6 rounded-lg data-[state=active]:shadow-md">Dashboard</TabsTrigger>
           <TabsTrigger value="sales" className="text-xs px-6 rounded-lg data-[state=active]:shadow-md">Sales Tracking</TabsTrigger>
           <TabsTrigger value="inventory" className="text-xs px-6 rounded-lg data-[state=active]:shadow-md">Stock Value</TabsTrigger>
@@ -412,46 +443,88 @@ export default function Finance() {
            </Card>
         </TabsContent>
 
-        <TabsContent value="pnl">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-none shadow-2xl bg-gradient-to-br from-emerald-950 to-emerald-900 text-white min-h-[400px]">
-                <CardHeader className="border-b border-white/10">
-                   <CardTitle className="text-emerald-50 flex items-center gap-3">
-                     <FileText className="h-6 w-6 text-emerald-400" /> Professional P&L Report
+        <TabsContent value="pnl" className="print:m-0 print:p-0">
+           {/* Custom Print Header just for the PDF export */}
+           <div className="hidden print:flex w-full items-center gap-6 border-b-4 border-emerald-950 pb-6 mb-8 mt-10 px-8">
+              {business?.logo_url ? (
+                 <img src={`http://localhost:5001${business.logo_url.replace('http://localhost:5001', '')}`} className="w-24 h-24 object-contain rounded-xl shadow-lg border" alt="Logo" />
+              ) : (
+                 <div className="w-24 h-24 bg-emerald-950 rounded-xl flex items-center justify-center shadow-lg"><Briefcase className="h-10 w-10 text-white" /></div>
+              )}
+              <div className="flex flex-col">
+                 <h1 className="text-5xl font-black font-display text-emerald-950 tracking-tight">{business?.name || "Mohan Trading"}</h1>
+                 <p className="text-xl text-emerald-800 font-medium italic mt-2">{business?.slogan || "Delivering Dreams, Driving Trust"}</p>
+                 <Badge className="w-fit mt-3 bg-emerald-100 text-emerald-900 border-emerald-200">Official Financial Audit Report - {new Date().toLocaleDateString()}</Badge>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:block print:w-full print:px-8">
+              <Card className="border-none shadow-2xl bg-gradient-to-br from-emerald-950 to-emerald-900 text-white min-h-[400px] print:shadow-none print:bg-none print:min-h-0 print:border print:border-emerald-200">
+                <CardHeader className="border-b border-white/10 print:border-black/10">
+                   <CardTitle className="text-emerald-50 print:text-black flex items-center gap-3">
+                     <FileText className="h-6 w-6 text-emerald-400 print:text-black" /> Professional P&L Report
                    </CardTitle>
-                   <CardDescription className="text-white/40">Consolidated Statement for Fiscal Period</CardDescription>
+                   <CardDescription className="text-white/40 print:text-black/60">Consolidated Statement for Fiscal Period</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-8">
-                   <div className="flex justify-between border-b border-white/5 pb-4">
-                      <span className="text-sm text-white/70">Vehicle Sales Gross Revenue</span>
-                      <span className="text-lg font-black font-mono">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</span>
+                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4">
+                      <span className="text-sm text-white/70 print:text-black/70">Vehicle Sales Gross Revenue</span>
+                      <span className="text-lg font-black font-mono print:text-black">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between border-b border-white/5 pb-4 text-rose-300">
+                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4 text-rose-300 print:text-rose-700">
                       <span className="text-sm opacity-80">Cost of Goods Sold (Inventory Net)</span>
                       <span className="text-sm font-bold font-mono">Rs. {(sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between border-b border-white/5 pb-4 text-rose-300">
+                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4 text-rose-300 print:text-rose-700">
                       <span className="text-sm opacity-80">Operational Expenses & Salaries</span>
                       <span className="text-sm font-bold font-mono">Rs. {Number(overview?.totalExpenses || 0).toLocaleString()}</span>
                    </div>
                    
                    <div className="flex flex-col gap-1 pt-4">
                       <div className="flex justify-between items-end">
-                         <span className="text-lg font-bold text-emerald-300">NET BUSINESS PROFIT</span>
-                         <span className="text-4xl font-black text-emerald-400 font-display">
+                         <span className="text-lg font-bold text-emerald-300 print:text-emerald-800">NET BUSINESS PROFIT</span>
+                         <span className="text-4xl font-black text-emerald-400 font-display print:text-emerald-900">
                            Rs. {((Number(overview?.monthSales || 0)) - (sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)) - (Number(overview?.totalExpenses || 0))).toLocaleString()}
                          </span>
                       </div>
-                      <p className="text-[10px] text-white/30 text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
+                      <p className="text-[10px] text-white/30 print:text-black/30 text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
                    </div>
                    
-                   <Button size="lg" className="w-full mt-6 bg-white text-emerald-950 font-black hover:bg-emerald-50 hover:scale-[1.01] transition-all flex gap-3">
+                   <Button onClick={handleExportAudit} size="lg" className="w-full mt-6 bg-white text-emerald-950 font-black hover:bg-emerald-50 hover:scale-[1.01] transition-all flex gap-3 outline-none print:hidden">
                       <Download className="h-4 w-4" /> Export Professional Audit PDF
                    </Button>
                 </CardContent>
               </Card>
 
-              <div className="flex flex-col gap-6">
+              {/* Print Only Table Extension */}
+              <div className="hidden print:block col-span-2 pt-10">
+                <h3 className="font-bold text-lg border-b pb-2 mb-4">Detailed Vehicle Sale Logs</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead>Purch+Rep+Tax</TableHead>
+                      <TableHead>Selling Price</TableHead>
+                      <TableHead className="text-right">Net Margin</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.slice(0, 15).map(s => {
+                       const scost = Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee);
+                       return (
+                         <TableRow key={s.id}>
+                           <TableCell className="font-semibold">{s.brand}</TableCell>
+                           <TableCell className="text-muted-foreground font-mono">Rs. {scost.toLocaleString()}</TableCell>
+                           <TableCell className="font-bold font-mono">Rs. {Number(s.selling_price).toLocaleString()}</TableCell>
+                           <TableCell className="text-right font-black text-emerald-600 font-mono">Rs. {(Number(s.selling_price) - scost).toLocaleString()}</TableCell>
+                         </TableRow>
+                       )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex flex-col gap-6 print:hidden">
                  <Card className="border-border shadow-sm bg-background">
                     <CardHeader className="pb-3">
                        <CardTitle className="text-sm">Compliance & Tax Control</CardTitle>
