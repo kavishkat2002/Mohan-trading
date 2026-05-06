@@ -295,12 +295,12 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground mt-1">Manage your business configuration</p>
       </div>
 
-      <Tabs defaultValue="business">
+      <Tabs defaultValue="whatsapp">
         <TabsList className="bg-background border border-border p-0.5 rounded-lg h-auto">
-          <TabsTrigger value="business" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Building2 className="h-3.5 w-3.5" />Business</TabsTrigger>
-          <TabsTrigger value="bank" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Banknote className="h-3.5 w-3.5" />Bank & Payment</TabsTrigger>
+          {/* <TabsTrigger value="business" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Building2 className="h-3.5 w-3.5" />Business</TabsTrigger> */}
+          {/* <TabsTrigger value="bank" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Banknote className="h-3.5 w-3.5" />Bank & Payment</TabsTrigger> */}
           <TabsTrigger value="whatsapp" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><MessageSquare className="h-3.5 w-3.5" />WhatsApp</TabsTrigger>
-          <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger>
+          {/* <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger> */}
           <TabsTrigger value="plans" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><CreditCard className="h-3.5 w-3.5" />Plans</TabsTrigger>
           <TabsTrigger value="team" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Users className="h-3.5 w-3.5" />Team</TabsTrigger>
         </TabsList>
@@ -506,15 +506,20 @@ export default function SettingsPage() {
         <TabsContent value="plans" className="mt-6">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { name: "Starter", price: "$29", features: ["WhatsApp automation", "Basic analytics", "Up to 500 customers"] },
+              { name: "Starter", price: "$30", features: ["WhatsApp automation", "Basic analytics", "Up to 500 customers"] },
               { name: "Growth", price: "$79", features: ["AI recommendations", "Advanced analytics", "Unlimited customers", "Priority support"] },
               { name: "Pro", price: "$199", features: ["Demand prediction", "Voice AI readiness", "Dedicated support", "Custom integrations"] },
             ].map(plan => (
-              <div key={plan.name} className={`border rounded-lg bg-white ${plan.name === "Growth" ? "border-primary shadow-sm shadow-primary/10 ring-1 ring-primary/20" : "border-border"}`}>
+              <div key={plan.name} className={`relative border rounded-lg bg-white overflow-hidden ${plan.name === "Starter" ? "border-primary shadow-sm shadow-primary/10 ring-1 ring-primary/20" : "border-border"}`}>
+                {plan.name === "Growth" && (
+                  <div className="absolute top-0 right-0 bg-blue-100 text-blue-600 px-3 py-1 text-[10px] font-bold tracking-wide uppercase rounded-bl-lg">
+                    Popular
+                  </div>
+                )}
                 <div className="px-6 py-5 border-b border-border">
                   <div className="flex items-center gap-2">
                     <h3 className="font-display text-lg font-semibold text-foreground">{plan.name}</h3>
-                    {plan.name === "Growth" && <Badge className="bg-primary/10 text-primary text-[10px] border-0">Popular</Badge>}
+                    {plan.name === "Starter" && <Badge className="bg-primary/10 text-primary text-[10px] border-0">Active</Badge>}
                   </div>
                   <p className="text-2xl font-semibold text-foreground font-sans mt-1">{plan.price}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
                 </div>
@@ -528,10 +533,10 @@ export default function SettingsPage() {
                     ))}
                   </ul>
                   <Button 
-                    variant={plan.name === "Growth" ? "default" : "outline"} 
-                    className={`w-full mt-5 text-sm h-9 ${plan.name === "Growth" ? "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20" : ""}`}
+                    variant={plan.name === "Starter" ? "default" : "outline"} 
+                    className={`w-full mt-5 text-sm h-9 ${plan.name === "Starter" ? "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20" : ""}`}
                   >
-                    {plan.name === "Growth" ? "Current Plan" : "Upgrade"}
+                    {plan.name === "Starter" ? "Current Plan" : "Upgrade"}
                   </Button>
                 </div>
               </div>

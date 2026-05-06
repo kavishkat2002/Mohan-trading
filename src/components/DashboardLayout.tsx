@@ -326,10 +326,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Footer */}
           <footer className="mt-12 pt-4 border-t border-border text-center">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Design & Developed By © 2026 <span className="font-medium text-foreground/70">Creativex Lab</span> All Rights Reserved.
-            </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-              Powered by <span className="font-medium text-foreground/50">Clientplus Digital</span>
+              Design & Developed By © 2026 <a href="https://www.creativexlab.online/" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground/70 hover:text-primary transition-colors">Creativex Technology</a> All Rights Reserved.
             </p>
           </footer>
         </div>
