@@ -560,7 +560,7 @@ export default function SettingsPage() {
         <TabsContent value="plans" className="mt-6">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { name: "Starter", price: "$30", features: ["WhatsApp automation", "Basic analytics", "Up to 500 customers"] },
+              { name: "Starter", price: "$30", features: ["WhatsApp automation", "Basic analytics", "Up to 100 customers"] },
               { name: "Growth", price: "$79", features: ["AI recommendations", "Advanced analytics", "Unlimited customers", "Priority support"] },
               { name: "Pro", price: "$199", features: ["Demand prediction", "Voice AI readiness", "Dedicated support", "Custom integrations"] },
             ].map(plan => (
