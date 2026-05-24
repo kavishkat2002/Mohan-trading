@@ -32,18 +32,26 @@ router.get('/', async (req, res) => {
 // Create task
 router.post('/', async (req, res) => {
   const { assigned_to, created_by, vehicle_id, title, description, priority, due_date } = req.body;
+  
+  const assignedToVal = assigned_to === "" || assigned_to === undefined ? null : assigned_to;
+  const createdByVal = created_by === "" || created_by === undefined ? null : created_by;
+  const vehicleIdVal = vehicle_id === "" || vehicle_id === undefined ? null : vehicle_id;
+  const dueDateVal = due_date === "" || due_date === undefined ? null : due_date;
+
   try {
     const { rows } = await db.query(
       `INSERT INTO tasks (assigned_to, created_by, vehicle_id, title, description, priority, due_date)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [assigned_to, created_by, vehicle_id, title, description, priority || 'Medium', due_date]
+      [assignedToVal, createdByVal, vehicleIdVal, title, description, priority || 'Medium', dueDateVal]
     );
 
-    // Also create a notification for the assigned user
-    await db.query(
-      'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
-      [assigned_to, `New task assigned: ${title}`]
-    );
+    // Also create a notification for the assigned user if one exists
+    if (assignedToVal) {
+      await db.query(
+        'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
+        [assignedToVal, `New task assigned: ${title}`]
+      );
+    }
 
     res.status(201).json(rows[0]);
   } catch (err) {

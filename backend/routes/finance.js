@@ -38,15 +38,18 @@ router.get('/expenses', async (req, res) => {
 
 router.post('/expenses', async (req, res) => {
   const { category, amount, description, date, account } = req.body;
+  const amountVal = amount === "" || amount === undefined ? 0 : amount;
+  const dateVal = date === "" || date === undefined ? new Date() : date;
+  
   try {
     const { rows } = await db.query(
       "INSERT INTO expenses (category, amount, description, date) VALUES ($1, $2, $3, $4) RETURNING *",
-      [category, amount, description, date || new Date()]
+      [category, amountVal, description, dateVal]
     );
     // Also record in cash flow
     await db.query(
       "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Expense', $1, $2, $3, $4)",
-      [account || 'Cash', amount, `Expense: ${category} - ${description}`, date || new Date()]
+      [account || 'Cash', amountVal, `Expense: ${category} - ${description}`, dateVal]
     );
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -66,17 +69,24 @@ router.get('/sales', async (req, res) => {
 
 router.post('/sales', async (req, res) => {
   const { vehicle_id, lead_id, selling_price, sale_date, payment_method, account } = req.body;
+  const vehicleIdVal = vehicle_id === "" || vehicle_id === undefined ? null : vehicle_id;
+  const leadIdVal = lead_id === "" || lead_id === undefined ? null : lead_id;
+  const sellingPriceVal = selling_price === "" || selling_price === undefined ? 0 : selling_price;
+  const saleDateVal = sale_date === "" || sale_date === undefined ? new Date() : sale_date;
+
   try {
     const { rows } = await db.query(
       "INSERT INTO vehicle_sales (vehicle_id, lead_id, selling_price, sale_date, payment_method) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [vehicle_id, lead_id, selling_price, sale_date || new Date(), payment_method]
+      [vehicleIdVal, leadIdVal, sellingPriceVal, saleDateVal, payment_method]
     );
     // Mark car as stock = 0
-    await db.query("UPDATE vehicles SET stock = stock - 1 WHERE id = $1", [vehicle_id]);
+    if (vehicleIdVal) {
+      await db.query("UPDATE vehicles SET stock = stock - 1 WHERE id = $1", [vehicleIdVal]);
+    }
     // Record in cash flow
     await db.query(
       "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Income', $1, $2, $3, $4)",
-      [account || 'Bank', selling_price, `Vehicle Sale ID: ${vehicle_id}`, sale_date || new Date()]
+      [account || 'Bank', sellingPriceVal, `Vehicle Sale ID: ${vehicleIdVal}`, saleDateVal]
     );
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
