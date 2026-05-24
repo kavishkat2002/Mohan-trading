@@ -1,134 +1,720 @@
 import { useEffect, useState } from "react";
-import { Car, Users, Target, TrendingUp, Bell } from "lucide-react";
+import { 
+  Car, Users, Target, TrendingUp, Bell, DollarSign, Award, Trophy,
+  ClipboardList, CheckCircle2, AlertCircle, Clock, Calendar, ArrowRight,
+  ShieldCheck, UserCheck, Kanban, ArrowUpRight
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ leads: 0, new: 0, closed: 0 });
+  const isAdmin = user?.role === 'owner' || user?.role === 'admin';
+
+  // State Management
+  const [localUserId, setLocalUserId] = useState<number | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [commissionTotal, setCommissionTotal] = useState<number>(0);
+  const [myAttendance, setMyAttendance] = useState<any>(null);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const fetchDashboardData = async (silent = false) => {
+    if (!user?.email) return;
+
+    try {
+      if (!silent) setLoading(true);
+
+      // 1. Sync User to get Local database ID
+      const syncRes = await fetch("http://localhost:5001/api/users/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email.toLowerCase(),
+          role: user.role,
+          name: user.email.split('@')[0]
+        })
+      });
+      const localUserData = await syncRes.json();
+      const localId = localUserData.id;
+      if (!localId) throw new Error("Could not sync local user ID");
+      setLocalUserId(localId);
+
+      // Fetch latest profile details to get updated custom profile name
+      try {
+        const profileRes = await fetch(`http://localhost:5001/api/users/${localId}/profile`);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setDisplayName(profileData.name || profileData.email.split('@')[0]);
+        } else {
+          setDisplayName(localUserData.name || localUserData.email.split('@')[0]);
+        }
+      } catch (e) {
+        setDisplayName(localUserData.name || localUserData.email.split('@')[0]);
+      }
+
+      // 2. Fetch Notices (Both roles)
+      const noticeRes = await fetch("http://localhost:5001/api/notices");
+      const noticeData = noticeRes.ok ? await noticeRes.json() : [];
+      setNotices(Array.isArray(noticeData) ? noticeData.slice(0, 5) : []);
+
+      // 3. Fetch data dynamically based on roles
+      if (user?.role === 'owner' || user?.role === 'admin') {
+        // Owner / Admin fetches
+        const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes] = await Promise.all([
+          fetch("http://localhost:5001/api/leads"),
+          fetch("http://localhost:5001/api/vehicles"),
+          fetch("http://localhost:5001/api/attendance/all"),
+          fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
+          fetch("http://localhost:5001/api/users")
+        ]);
+
+        setLeads(leadsRes.ok ? await leadsRes.json() : []);
+        setVehicles(vehiclesRes.ok ? await vehiclesRes.json() : []);
+        setAttendance(attendanceRes.ok ? await attendanceRes.json() : []);
+        setTasks(tasksRes.ok ? await tasksRes.json() : []);
+        setUsers(usersRes.ok ? await usersRes.json() : []);
+      } else {
+        // Employee / Accountant fetches
+        const [leadsRes, tasksRes, commRes, attRes] = await Promise.all([
+          fetch("http://localhost:5001/api/leads"),
+          fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
+          fetch(`http://localhost:5001/api/users/${localId}/commissions`),
+          fetch(`http://localhost:5001/api/attendance/status/${localId}`)
+        ]);
+
+        setLeads(leadsRes.ok ? await leadsRes.json() : []);
+        setTasks(tasksRes.ok ? await tasksRes.json() : []);
+        
+        const commData = commRes.ok ? await commRes.json() : { total: 0 };
+        setCommissionTotal(commData.total || 0);
+
+        const attData = attRes.ok ? await attRes.json() : null;
+        setMyAttendance(attData);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Dashboard Loading Error:", err);
+      if (!silent) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/leads")
-      .then(res => res.json())
-      .then(data => {
-        setStats({
-          leads: data.length,
-          new: data.filter((l: any) => l.status === "New").length,
-          closed: data.filter((l: any) => l.status === "Closed Deal").length,
-        });
-      })
-      .catch(console.error);
+    fetchDashboardData();
+    const interval = setInterval(() => fetchDashboardData(true), 15000);
+    return () => clearInterval(interval);
+  }, [user?.email]);
 
-    fetch("http://localhost:5001/api/notices")
-      .then(res => res.json())
-      .then(data => setNotices(Array.isArray(data) ? data.slice(0, 5) : []))
-      .catch(console.error);
-  }, []);
+  // OWNER/ADMIN DATA COMPUTATIONS
+  const closedLeads = leads.filter(l => l.status === 'Closed');
+  const revenueTotal = closedLeads.reduce((sum, l) => {
+    const budgetStr = l.budget || "0";
+    return sum + (parseInt(budgetStr.replace(/[^0-9]/g, ''), 10) || 0);
+  }, 0);
+  const commissionPayout = closedLeads.reduce((sum, l) => sum + (parseFloat(l.commission_amount) || 0), 0);
+  
+  const todayCheckedInCount = attendance.filter(a => {
+    try {
+      const recDate = new Date(a.date).toISOString().split('T')[0];
+      return recDate === todayStr && a.check_in_time;
+    } catch (e) { return false; }
+  }).length;
 
-  const cards = [
-    { label: "Total Leads", value: stats.leads, icon: Users, accent: "border-l-primary" },
-    { label: "New This Week", value: stats.new, icon: TrendingUp, accent: "border-l-amber-400" },
-    { label: "Closed Deals", value: stats.closed, icon: Target, accent: "border-l-emerald-500" },
-  ];
+  const activeLeadsCount = leads.filter(l => l.status !== 'Closed').length;
+  const inStockVehiclesCount = vehicles.reduce((sum, v) => sum + (v.stock || 0), 0);
+
+  // Employee Performance breakdown for Owner/Admin
+  const salespersonList = users
+    .filter(u => u.role !== 'owner' && u.role !== 'admin')
+    .map(u => {
+      const myUserLeads = leads.filter(l => l.assigned_to === u.id);
+      const myUserClosedLeads = myUserLeads.filter(l => l.status === 'Closed');
+      const closedCount = myUserClosedLeads.length;
+      const totalEarnedCommission = myUserClosedLeads.reduce((sum, l) => sum + (parseFloat(l.commission_amount) || 0), 0);
+
+      return {
+        ...u,
+        closedCount,
+        totalEarnedCommission
+      };
+    })
+    .sort((a, b) => b.closedCount - a.closedCount || b.totalEarnedCommission - a.totalEarnedCommission);
+
+  // EMPLOYEE DATA COMPUTATIONS
+  const myAssignedLeads = leads.filter(l => l.assigned_to === localUserId);
+  const myActiveLeads = myAssignedLeads.filter(l => l.status !== 'Closed');
+  const myPendingTasksCount = tasks.filter(t => t.status !== 'Completed').length;
+
+  // Render Loading
+  if (loading) {
+    return (
+      <div className="flex h-[70vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <TrendingUp className="h-8 w-8 animate-pulse text-primary" />
+          <span className="text-sm text-muted-foreground font-medium">Crunching dashboard statistics...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Greeting Message
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return "Good morning";
+    if (hr < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
   return (
-    <div className="space-y-10">
-      {/* Page header */}
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">
-          Overview
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Your dealership at a glance.
-        </p>
+    <div className="space-y-10 animate-in fade-in duration-500">
+      
+      {/* 1. Header Greeting Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans">
+            {getGreeting()}, {displayName || user?.email.split('@')[0]}!
+          </h1>
+          <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
+            {isAdmin 
+              ? "Here is the operational efficiency and financial health of Mohan Traders today."
+              : "Manage your assigned clients, track active operations, and view notifications."}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-sm self-start md:self-center shrink-0">
+          <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+            <Calendar className="h-4.5 w-4.5" />
+          </div>
+          <div className="text-left">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">Today's Date</p>
+            <p className="text-xs font-semibold text-slate-700 mt-1 leading-none">
+              {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
-        {cards.map((card, i) => (
+      {/* 2. STATS CARDS SECTION */}
+      {isAdmin ? (
+        /* =================== OWNER / ADMIN ACCESS VIEW =================== */
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.3 }}
-            className={`bg-white border border-border rounded-lg p-5 border-l-[3px] ${card.accent} hover:shadow-sm transition-all duration-200`}
+            transition={{ delay: 0.05 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {card.label}
-              </span>
-              <card.icon className="h-4 w-4 text-primary/40" />
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Sales Volume</span>
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {revenueTotal.toLocaleString()}</h3>
             </div>
-            <div className="text-3xl font-semibold text-foreground tabular-nums font-sans tracking-tight">
-              {card.value}
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+              <span>From closed vehicle sales</span>
             </div>
           </motion.div>
-        ))}
-      </div>
 
-      {/* Noticeboard Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <h2 className="font-display text-xl font-bold text-foreground">Noticeboard</h2>
-            <p className="text-xs text-muted-foreground">Company-wide announcements</p>
-          </div>
-          <Button variant="ghost" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs font-semibold text-primary gap-1 h-8 px-3">
-            View All →
-          </Button>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Commissions Paid</span>
+                <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <DollarSign className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionPayout.toLocaleString()}</h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span>Total payouts to staff</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active CRM Leads</span>
+                <div className="h-9 w-9 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Users className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
+                {activeLeadsCount} <span className="text-sm font-normal text-slate-450 text-slate-400">/ {leads.length} total</span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
+              <span>Interested customer enquiries</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Staff Today</span>
+                <div className="h-9 w-9 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                  <UserCheck className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
+                {todayCheckedInCount} <span className="text-sm font-normal text-slate-400">on site</span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>Currently on site operations</span>
+            </div>
+          </motion.div>
+        </div>
+      ) : (
+        /* =================== SALES / EMPLOYEE ACCESS VIEW =================== */
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Commissions (Month)</span>
+                <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <Trophy className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionTotal.toLocaleString()}</h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span>Earning commission payouts</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Active Clients</span>
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                  <Users className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
+                {myActiveLeads.length} <span className="text-sm font-normal text-slate-400">/ {myAssignedLeads.length} total</span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+              <span>Assigned leads in progress</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Actions & Tasks</span>
+                <div className="h-9 w-9 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                  <ClipboardList className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
+                {myPendingTasksCount} <span className="text-sm font-normal text-slate-400">Pending</span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+              <span>Task assignments needing review</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Work Attendance</span>
+                <div className="h-9 w-9 rounded-full bg-slate-55/40 border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              </div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
+                {myAttendance ? (myAttendance.check_out_time ? "Finished" : "Checked In") : "Absent"}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                myAttendance ? (myAttendance.check_out_time ? "bg-slate-400" : "bg-green-500") : "bg-amber-500"
+              }`} />
+              <span>
+                Today: {myAttendance ? (myAttendance.check_out_time ? "Shift Finished" : "Shift Active") : "Not Checked In"}
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* 3. DYNAMIC CONTENT GRID */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+        
+        {/* Left Column: Role specific statistics summaries */}
+        <div className="lg:col-span-2 space-y-6">
+          {isAdmin ? (
+            /* ================= OWNER SPECIFIC: PERFORMANCE TABLE ================= */
+            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-4 bg-transparent border-none">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
+                      <Trophy className="h-5 w-5 text-primary" /> Sales Staff Performance
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">Tracking closed vehicle acquisitions and commission records.</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/leads")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    Manage Leads <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Employee Details</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">System Role</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Closed Deals</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Commissions Generated</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100/50">
+                    {salespersonList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs">
+                          No sales employee records registered.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      salespersonList.map((salesp) => {
+                        const name = salesp.name || salesp.email.split('@')[0];
+                        const initials = name.slice(0, 2).toUpperCase();
+                        
+                        return (
+                          <TableRow key={`staff-${salesp.id}`} className="hover:bg-slate-50/20 transition-colors border-none">
+                            <TableCell className="py-4 px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                                  {initials}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-sm text-slate-800 leading-tight truncate">{name}</div>
+                                  <div className="text-xs text-slate-400 font-mono mt-0.5 truncate">{salesp.email}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              <Badge className={
+                                salesp.role === 'sales' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
+                                salesp.role === 'accountant' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
+                                "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md"
+                              }>
+                                {salesp.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-4 text-center font-bold text-slate-700">
+                              {salesp.closedCount}
+                            </TableCell>
+                            <TableCell className="py-4 text-right px-6 font-mono text-sm font-bold text-emerald-600">
+                              LKR {salesp.totalEarnedCommission.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ) : (
+            /* ================= EMPLOYEE SPECIFIC: MY LEADS ================= */
+            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-4 bg-transparent border-none">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
+                      <Kanban className="h-5 w-5 text-blue-600" /> My Assigned Leads
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">Leads assigned to you that require customer relationship management.</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/leads")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    All Leads <ArrowUpRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Customer Name</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Interested Vehicle</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Target Budget</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Lead Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100/50">
+                    {myAssignedLeads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs">
+                          No leads currently assigned to your profile.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      myAssignedLeads.slice(0, 5).map((l) => (
+                        <TableRow key={`lead-${l.id}`} className="hover:bg-slate-50/20 transition-colors cursor-pointer border-none" onClick={() => navigate("/dashboard/leads")}>
+                          <TableCell className="py-4 px-6">
+                            <div className="font-semibold text-sm text-slate-800 leading-tight">{l.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{l.phone}</div>
+                          </TableCell>
+                          <TableCell className="py-4 text-xs font-semibold text-slate-600">
+                            {l.interested_product || l.interested_car || "General Enquiry"}
+                          </TableCell>
+                          <TableCell className="py-4 font-mono text-xs font-semibold text-slate-700">
+                            {l.budget || "N/A"}
+                          </TableCell>
+                          <TableCell className="py-4 text-right px-6">
+                            <Badge className={
+                              l.status === 'Closed' ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100/60 font-bold px-2 py-0.5 text-[10px]" : 
+                              l.status === 'New' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100/60 font-bold px-2 py-0.5 text-[10px]" : 
+                              "bg-orange-50 text-orange-700 hover:bg-orange-50 border border-orange-100/60 font-bold px-2 py-0.5 text-[10px]"
+                            }>
+                              {l.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional details for Owner or Employee: Mini Inventory list or my Tasks list */}
+          {isAdmin ? (
+            /* Mini Inventory overview for Owner */
+            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-4 bg-transparent border-none">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                      <Car className="h-4.5 w-4.5 text-orange-500" /> Dealership Inventory
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/vehicles")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    Inventory Page <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Brand & Model</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Selling Price</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Category</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">In Stock</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100/50">
+                    {vehicles.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-xs">
+                          No vehicle records in database.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      vehicles.slice(0, 4).map((veh) => (
+                        <TableRow key={`veh-${veh.id}`} className="hover:bg-slate-50/20 transition-colors border-none">
+                          <TableCell className="py-3 px-6 font-bold text-sm text-slate-850 text-slate-800">
+                            {veh.brand}
+                          </TableCell>
+                          <TableCell className="py-3 font-mono text-xs font-semibold text-slate-700">
+                            LKR {parseFloat(veh.price).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className="text-xs text-slate-500 bg-slate-50 border border-slate-200/50 rounded-md px-2 py-0.5 font-medium">
+                              {veh.category || 'Standard'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3 text-right px-6">
+                            <Badge className={
+                              veh.stock > 1 
+                                ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100 font-bold px-2 py-0.5 text-[10px]"
+                                : "bg-amber-50 text-amber-700 hover:bg-amber-50 border border-amber-100 font-bold px-2 py-0.5 text-[10px]"
+                            }>
+                              {veh.stock > 1 ? `${veh.stock} units` : `${veh.stock} Unit Left`}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Tasks Feed for Employee */
+            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-6 pb-4 bg-transparent border-none">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                      <ClipboardList className="h-4.5 w-4.5 text-amber-500" /> My Assigned Tasks
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">Operations assigned to your user account.</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/tasks")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    Tasks Page <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {tasks.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 space-y-2 text-xs">
+                    <CheckCircle2 className="h-6 w-6 mx-auto opacity-30 text-green-500" />
+                    <p>All clean! No tasks currently assigned.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100/50">
+                    {tasks.slice(0, 4).map((task) => (
+                      <div key={`task-${task.id}`} className="p-4 flex items-center justify-between hover:bg-slate-50/20 transition-colors">
+                        <div className="space-y-1 min-w-0 flex-1 pr-4">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{task.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-slate-400" /> Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</span>
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span className="font-semibold text-slate-500">Priority: {task.priority}</span>
+                          </div>
+                        </div>
+                        <Badge className={
+                          task.status === 'Completed' ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100 font-bold text-[10px] px-2 py-0.5 rounded-md" :
+                          task.status === 'In Progress' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 font-bold text-[10px] px-2 py-0.5 rounded-md" : 
+                          "bg-slate-50 text-slate-600 hover:bg-slate-50 border border-slate-200 font-bold text-[10px] px-2 py-0.5 rounded-md"
+                        }>
+                          {task.status === 'Completed' ? 'Done' : task.status === 'In Progress' ? 'Doing' : 'Pending'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {notices.length === 0 ? (
-          <div className="border-2 border-dashed border-border rounded-2xl p-10 text-center bg-muted/20">
-            <div className="py-2" />
-            <p className="text-sm text-muted-foreground">No notices posted yet.</p>
-            {(user?.role === "owner" || user?.role === "admin") && (
-              <Button variant="outline" size="sm" className="mt-3 border-2 text-xs font-bold" onClick={() => navigate("/dashboard/noticeboard")}>
-                Post First Notice
+        {/* Right Column: Noticeboard Announcements Feed */}
+        <div>
+          <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white h-full flex flex-col">
+            <CardHeader className="p-6 pb-4 bg-transparent border-none flex flex-row items-center justify-between shrink-0">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
+                  <Bell className="h-5 w-5 text-primary animate-pulse" /> Announcement Feed
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">Company-wide updates & notices</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs h-8 text-primary hover:text-primary/80 font-bold px-2 rounded-lg shrink-0">
+                View All
               </Button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {notices.map((n, i) => (
-              <motion.div
-                key={n.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className={`relative border-2 rounded-2xl bg-white overflow-hidden cursor-pointer hover:shadow-md transition-all group ${n.pinned ? "border-amber-300" : "border-border"}`}
-                onClick={() => navigate("/dashboard/noticeboard")}
-              >
-                {n.pinned && <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-400" />}
-                <div className="p-5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    {n.pinned && (
-                      <Badge className="bg-amber-100 text-amber-700 border-0 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5">
-                        📌 Pinned
-                      </Badge>
-                    )}
-                    <h3 className="text-base font-bold text-foreground">{n.title}</h3>
-                  </div>
-                  <div
-                    className="text-sm text-foreground/70 line-clamp-3 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: n.content }}
-                  />
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-muted-foreground font-medium">{n.author_name || "Admin"}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {new Date(n.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
-                  </div>
+            </CardHeader>
+            <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[500px] scrollbar-minimal">
+              {notices.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 space-y-2">
+                  <Bell className="h-8 w-8 mx-auto opacity-30" />
+                  <p className="text-xs">No notices posted yet.</p>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+              ) : (
+                <div className="space-y-4">
+                  {notices.map((n, i) => (
+                    <motion.div
+                      key={`notice-${n.id}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`p-4 rounded-xl border relative transition-all group flex flex-col justify-between hover:shadow-sm hover:-translate-y-0.5 duration-200 ${
+                        n.pinned 
+                          ? "border-l-4 border-l-amber-500 border-t border-r border-b border-slate-100 bg-amber-50/15" 
+                          : "border-l-4 border-l-slate-300 border-t border-r border-b border-slate-100 bg-slate-50/30"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          {n.pinned && (
+                            <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-none text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+                              Pinned
+                            </Badge>
+                          )}
+                          <h4 className="text-sm font-semibold text-slate-800 group-hover:text-primary transition-colors line-clamp-1 leading-tight">{n.title}</h4>
+                        </div>
+                        <div
+                          className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-3"
+                          dangerouslySetInnerHTML={{ __html: n.content }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-100/50 pt-2 shrink-0">
+                        <span className="font-semibold text-slate-500">{n.author_name || "Admin"}</span>
+                        <span>{new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
     </div>
   );
