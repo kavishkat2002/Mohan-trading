@@ -190,6 +190,21 @@ router.put('/notifications/:notifId/read', async (req, res) => {
   }
 });
 
+// Mark all user notifications as read
+router.put('/:id/notifications/read-all', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await db.query(
+      'UPDATE notifications SET read = true WHERE user_id = $1 RETURNING *',
+      [id]
+    );
+    res.json({ message: 'All notifications marked as read', count: rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get user commissions for current month
 router.get('/:id/commissions', async (req, res) => {
   const { id } = req.params;

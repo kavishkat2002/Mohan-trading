@@ -1,10 +1,10 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessageSquare, ListTodo,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList,
-  AlertTriangle, CreditCard, Phone
+  AlertTriangle, CreditCard, Phone, CheckCircle2, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [companyStats, setCompanyStats] = useState<{ revenue: number, payout: number } | null>(null);
   const [localUserId, setLocalUserId] = useState<number | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const toastedIdsRef = useRef<number[]>([]);
 
   useEffect(() => {
     const checkSubscription = () => {
@@ -96,21 +99,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         if (!localId) return;
         setLocalUserId(localId);
 
-        // Check Notifications using localId
-        fetch(`http://localhost:5001/api/users/${localId}/notifications`)
-          .then(res => res.json())
-          .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-              data.forEach(n => {
-                // Push toast notification
-                toast({ title: "New Task Assigned", description: n.message });
-                // Mark as read
-                fetch(`http://localhost:5001/api/users/notifications/${n.id}/read`, { method: "PUT" });
-              });
-            }
-          })
-          .catch(console.error);
-
         // Fetch Commissions if Sales Person
         if (!isElevated) {
           fetch(`http://localhost:5001/api/users/${localId}/commissions`)
@@ -139,6 +127,78 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         .catch(console.error);
     }
   }, [user, isElevated]);
+
+  // Polling for real-time notifications
+  useEffect(() => {
+    if (!localUserId) return;
+
+    const fetchNotifications = () => {
+      fetch(`http://localhost:5001/api/users/${localUserId}/notifications`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            // Find notifications we haven't toasted yet
+            const newNotifs = data.filter(n => !toastedIdsRef.current.includes(n.id));
+            if (newNotifs.length > 0) {
+              newNotifs.forEach(n => {
+                let title = "Notification 🔔";
+                
+                if (n.message.includes("Completed")) {
+                  title = "Task Completed ✅";
+                } else if (n.message.includes("In Progress")) {
+                  title = "Task in Progress ⚡";
+                } else if (n.message.includes("assigned")) {
+                  title = "New Task Assigned 📋";
+                }
+
+                toast({
+                  title,
+                  description: n.message,
+                });
+              });
+              
+              // Store toasted IDs to prevent repeats
+              toastedIdsRef.current = [...toastedIdsRef.current, ...newNotifs.map(n => n.id)];
+            }
+            
+            // Set unread notifications
+            setNotifications(data);
+          }
+        })
+        .catch(console.error);
+    };
+
+    fetchNotifications(); // Fetch immediately
+    const interval = setInterval(fetchNotifications, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [localUserId, toast]);
+
+  const handleMarkAsRead = async (notifId: number) => {
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/notifications/${notifId}/read`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== notifId));
+      }
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!localUserId) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/users/${localUserId}/notifications/read-all`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        setNotifications([]);
+      }
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    }
+  };
 
   const handleSignOut = () => {
     logout();
@@ -306,6 +366,93 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             {navItems.find(n => location.pathname.startsWith(n.path))?.label || "Dashboard"}
           </h2>
           <div className="ml-auto flex items-center gap-4">
+            {/* Notification Bell Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="h-9 w-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer relative"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-white animate-pulse leading-none">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {notificationsOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setNotificationsOpen(false)}
+                    />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden"
+                    >
+                      <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <span className="text-xs font-semibold text-slate-800">Notifications ({notifications.length})</span>
+                        {notifications.length > 0 && (
+                          <button 
+                            onClick={handleMarkAllAsRead}
+                            className="text-[10px] text-primary hover:underline font-medium"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto scrollbar-minimal">
+                        {notifications.length === 0 ? (
+                          <div className="p-8 text-center text-slate-400 space-y-2">
+                            <Bell className="h-8 w-8 mx-auto opacity-30" />
+                            <p className="text-xs">No unread notifications</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-100">
+                            {notifications.map((n) => {
+                              const isCompleted = n.message.includes("Completed");
+                              const isInProgress = n.message.includes("In Progress");
+                              
+                              return (
+                                <div key={n.id} className="p-3 hover:bg-slate-50 transition-colors flex gap-2.5 items-start">
+                                  <div className={cn(
+                                    "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                                    isCompleted ? "bg-green-50 text-green-600" :
+                                    isInProgress ? "bg-blue-50 text-blue-600" : "bg-primary/5 text-primary"
+                                  )}>
+                                    {isCompleted ? <CheckCircle2 className="h-4 w-4" /> :
+                                     isInProgress ? <Clock className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-slate-700 leading-normal break-words">{n.message}</p>
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                      {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleMarkAsRead(n.id)}
+                                    className="text-[10px] text-slate-400 hover:text-slate-600 shrink-0 font-medium self-center px-1.5 py-0.5 hover:bg-slate-100 rounded transition-colors"
+                                  >
+                                    Read
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="text-right hidden sm:block">
               <p className="text-[13px] font-semibold text-foreground capitalize tracking-wide">{user?.role?.replace('_', ' ') || user?.role} Profile</p>
               <div className="flex flex-col items-end">
