@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { 
   Car, Users, Target, TrendingUp, Bell, DollarSign, Award, Trophy,
   ClipboardList, CheckCircle2, AlertCircle, Clock, Calendar, ArrowRight,
-  ShieldCheck, UserCheck, Kanban, ArrowUpRight
+  ShieldCheck, UserCheck, Kanban, ArrowUpRight, CalendarDays, LogIn, XCircle
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [staffAttendanceList, setStaffAttendanceList] = useState<any[]>([]);
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
   const [myAttendance, setMyAttendance] = useState<any>(null);
 
@@ -61,7 +62,8 @@ export default function Dashboard() {
         body: JSON.stringify({
           email: user.email.toLowerCase(),
           role: user.role,
-          name: user.email.split('@')[0]
+          name: user.email.split('@')[0],
+          supabase_uid: String(user.id)
         })
       });
       const localUserData = await syncRes.json();
@@ -90,13 +92,14 @@ export default function Dashboard() {
       // 3. Fetch data dynamically based on roles
       if (user?.role === 'owner' || user?.role === 'admin') {
         // Owner / Admin fetches
-        const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes, salesRes] = await Promise.all([
+        const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes, salesRes, attSummaryRes] = await Promise.all([
           fetch("http://localhost:5001/api/leads"),
           fetch("http://localhost:5001/api/vehicles"),
           fetch("http://localhost:5001/api/attendance/all"),
           fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
           fetch("http://localhost:5001/api/users"),
-          fetch("http://localhost:5001/api/finance/sales")
+          fetch("http://localhost:5001/api/finance/sales"),
+          fetch("http://localhost:5001/api/attendance/dashboard-summary")
         ]);
 
         setLeads(leadsRes.ok ? await leadsRes.json() : []);
@@ -105,6 +108,7 @@ export default function Dashboard() {
         setTasks(tasksRes.ok ? await tasksRes.json() : []);
         setUsers(usersRes.ok ? await usersRes.json() : []);
         setSales(salesRes.ok ? await salesRes.json() : []);
+        setStaffAttendanceList(attSummaryRes.ok ? await attSummaryRes.json() : []);
       } else {
         // Employee / Accountant fetches
         const [leadsRes, tasksRes, commRes, attRes] = await Promise.all([
@@ -176,6 +180,10 @@ export default function Dashboard() {
       };
     })
     .sort((a, b) => b.closedCount - a.closedCount || b.totalEarnedCommission - a.totalEarnedCommission);
+
+  // Attendance & Leave Stats: now sourced directly from the backend dashboard-summary endpoint
+  // (avoids UUID vs integer user_id mismatch)
+  const pendingLeavesTotal = staffAttendanceList.reduce((sum, s) => sum + (s.pendingLeavesCount || 0), 0);
 
   // EMPLOYEE DATA COMPUTATIONS
   const myAssignedLeads = leads.filter(l => l.assigned_to === localUserId);
@@ -427,18 +435,25 @@ export default function Dashboard() {
         {/* Left Column: Role specific statistics summaries */}
         <div className="lg:col-span-2 space-y-6">
           {isAdmin ? (
-            /* ================= OWNER SPECIFIC: PERFORMANCE TABLE ================= */
+            /* ================= OWNER SPECIFIC: ATTENDANCE & LEAVE TABLE ================= */
             <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
               <CardHeader className="p-6 pb-4 bg-transparent border-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                      <Trophy className="h-5 w-5 text-primary" /> Sales Staff Performance
+                      <CalendarDays className="h-5 w-5 text-primary" /> Attendance & Leave Requests
                     </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 mt-0.5">Tracking closed vehicle acquisitions and commission records.</CardDescription>
+                    <CardDescription className="text-xs text-slate-500 mt-0.5">
+                      Today's staff check-in status and pending leave requests.
+                      {pendingLeavesTotal > 0 && (
+                        <span className="ml-2 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0 text-[10px] font-bold">
+                          <Clock className="h-2.5 w-2.5" /> {pendingLeavesTotal} pending
+                        </span>
+                      )}
+                    </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/leads")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
-                    Manage Leads <ArrowRight className="h-3 w-3" />
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    Attendance Page <ArrowRight className="h-3 w-3" />
                   </Button>
                 </div>
               </CardHeader>
@@ -446,26 +461,33 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Employee Details</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">System Role</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Closed Deals</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Commissions Generated</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Employee</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Role</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Today's Status</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Check-In Time</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Leave Requests</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-slate-100/50">
-                    {salespersonList.length === 0 ? (
+                    {staffAttendanceList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs">
-                          No sales employee records registered.
+                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-xs">
+                          No staff registered in the system.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      salespersonList.map((salesp) => {
-                        const name = salesp.name || salesp.email.split('@')[0];
+                      staffAttendanceList.map((staffMember) => {
+                        const name = staffMember.name || staffMember.email.split('@')[0];
                         const initials = name.slice(0, 2).toUpperCase();
-                        
+                        const rec = staffMember.todayRecord;
+                        const checkedIn = !!rec?.check_in_time;
+                        const checkedOut = !!rec?.check_out_time;
+                        const checkInTime = rec?.check_in_time 
+                          ? new Date(rec.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                          : null;
+
                         return (
-                          <TableRow key={`staff-${salesp.id}`} className="hover:bg-slate-50/20 transition-colors border-none">
+                          <TableRow key={`att-${staffMember.id}`} className="hover:bg-slate-50/20 transition-colors border-none cursor-pointer" onClick={() => navigate("/dashboard/attendance")}>
                             <TableCell className="py-4 px-6">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
@@ -473,24 +495,51 @@ export default function Dashboard() {
                                 </div>
                                 <div className="min-w-0">
                                   <div className="font-semibold text-sm text-slate-800 leading-tight truncate">{name}</div>
-                                  <div className="text-xs text-slate-400 font-mono mt-0.5 truncate">{salesp.email}</div>
+                                  <div className="text-xs text-slate-400 font-mono mt-0.5 truncate">{staffMember.email}</div>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell className="py-4">
                               <Badge className={
-                                salesp.role === 'sales' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
-                                salesp.role === 'accountant' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
+                                staffMember.role === 'sales' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
+                                staffMember.role === 'accountant' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
                                 "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md"
                               }>
-                                {salesp.role}
+                                {staffMember.role}
                               </Badge>
                             </TableCell>
-                            <TableCell className="py-4 text-center font-bold text-slate-700">
-                              {salesp.closedCount}
+                            <TableCell className="py-4 text-center">
+                              {checkedOut ? (
+                                <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                                  <CheckCircle2 className="h-3 w-3" /> Shift Done
+                                </span>
+                              ) : checkedIn ? (
+                                <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> On Site
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 bg-red-50 text-red-500 border border-red-100 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                                  <XCircle className="h-3 w-3" /> Absent
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell className="py-4 text-right px-6 font-mono text-sm font-bold text-emerald-600">
-                              LKR {salesp.totalEarnedCommission.toLocaleString()}
+                            <TableCell className="py-4 text-center">
+                              {checkInTime ? (
+                                <span className="flex items-center justify-center gap-1 text-xs font-mono font-semibold text-slate-700">
+                                  <LogIn className="h-3 w-3 text-slate-400" />{checkInTime}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-300 font-mono">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-4 text-right px-6">
+                              {staffMember.pendingLeavesCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                                  <Clock className="h-3 w-3" /> {staffMember.pendingLeavesCount} Pending
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-300 font-mono">None</span>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

@@ -97,7 +97,7 @@ export default function Attendance() {
           const res = await fetch(`http://localhost:5001/api/attendance/check-in`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: user?.id, lat: pos.coords.latitude, lng: pos.coords.longitude })
+            body: JSON.stringify({ user_id: user?.id, email: user?.email, lat: pos.coords.latitude, lng: pos.coords.longitude })
           });
           if (res.ok) {
             toast({ title: "Checked in successfully" });
@@ -134,7 +134,7 @@ export default function Attendance() {
           const res = await fetch(`http://localhost:5001/api/attendance/check-out`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: user?.id, lat: pos.coords.latitude, lng: pos.coords.longitude })
+            body: JSON.stringify({ user_id: user?.id, email: user?.email, lat: pos.coords.latitude, lng: pos.coords.longitude })
           });
           if (res.ok) {
             toast({ title: "Checked out successfully" });
@@ -166,7 +166,7 @@ export default function Attendance() {
       const res = await fetch(`http://localhost:5001/api/attendance/leaves`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user?.id, leave_type: leaveType, start_date: startDate, end_date: endDate, reason })
+        body: JSON.stringify({ user_id: user?.id, email: user?.email, leave_type: leaveType, start_date: startDate, end_date: endDate, reason })
       });
       if (res.ok) {
         toast({ title: "Leave request submitted" });
