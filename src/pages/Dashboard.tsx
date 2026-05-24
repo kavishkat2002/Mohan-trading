@@ -26,11 +26,27 @@ export default function Dashboard() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
   const [myAttendance, setMyAttendance] = useState<any>(null);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Date and Timezone helper
+  const getLocalDateString = (dateInput: Date | string) => {
+    const d = new Date(dateInput);
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+  };
+
+  const todayStr = getLocalDateString(new Date());
+
+  // Closed status helper (supports 'Closed', 'Closed Deal', and 'Sale Completed')
+  const isClosedStatus = (status?: string) => {
+    if (!status) return false;
+    const s = status.toLowerCase();
+    return s === 'closed' || s === 'closed deal' || s === 'sale completed';
+  };
 
   const fetchDashboardData = async (silent = false) => {
     if (!user?.email) return;
@@ -74,12 +90,13 @@ export default function Dashboard() {
       // 3. Fetch data dynamically based on roles
       if (user?.role === 'owner' || user?.role === 'admin') {
         // Owner / Admin fetches
-        const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes] = await Promise.all([
+        const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes, salesRes] = await Promise.all([
           fetch("http://localhost:5001/api/leads"),
           fetch("http://localhost:5001/api/vehicles"),
           fetch("http://localhost:5001/api/attendance/all"),
           fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
-          fetch("http://localhost:5001/api/users")
+          fetch("http://localhost:5001/api/users"),
+          fetch("http://localhost:5001/api/finance/sales")
         ]);
 
         setLeads(leadsRes.ok ? await leadsRes.json() : []);
@@ -87,6 +104,7 @@ export default function Dashboard() {
         setAttendance(attendanceRes.ok ? await attendanceRes.json() : []);
         setTasks(tasksRes.ok ? await tasksRes.json() : []);
         setUsers(usersRes.ok ? await usersRes.json() : []);
+        setSales(salesRes.ok ? await salesRes.json() : []);
       } else {
         // Employee / Accountant fetches
         const [leadsRes, tasksRes, commRes, attRes] = await Promise.all([
@@ -120,21 +138,26 @@ export default function Dashboard() {
   }, [user?.email]);
 
   // OWNER/ADMIN DATA COMPUTATIONS
-  const closedLeads = leads.filter(l => l.status === 'Closed');
-  const revenueTotal = closedLeads.reduce((sum, l) => {
-    const budgetStr = l.budget || "0";
-    return sum + (parseInt(budgetStr.replace(/[^0-9]/g, ''), 10) || 0);
-  }, 0);
+  const closedLeads = leads.filter(l => isClosedStatus(l.status));
+  
+  // Total Sales Volume: sum of selling_price from recorded sales, or fallback to budget of closed leads if sales is empty
+  const revenueTotal = sales.length > 0 
+    ? sales.reduce((sum, s) => sum + (parseFloat(s.selling_price) || 0), 0)
+    : closedLeads.reduce((sum, l) => {
+        const budgetStr = l.budget || "0";
+        return sum + (parseInt(budgetStr.replace(/[^0-9]/g, ''), 10) || 0);
+      }, 0);
+
   const commissionPayout = closedLeads.reduce((sum, l) => sum + (parseFloat(l.commission_amount) || 0), 0);
   
   const todayCheckedInCount = attendance.filter(a => {
     try {
-      const recDate = new Date(a.date).toISOString().split('T')[0];
+      const recDate = getLocalDateString(a.date);
       return recDate === todayStr && a.check_in_time;
     } catch (e) { return false; }
   }).length;
 
-  const activeLeadsCount = leads.filter(l => l.status !== 'Closed').length;
+  const activeLeadsCount = leads.filter(l => !isClosedStatus(l.status)).length;
   const inStockVehiclesCount = vehicles.reduce((sum, v) => sum + (v.stock || 0), 0);
 
   // Employee Performance breakdown for Owner/Admin
@@ -142,7 +165,7 @@ export default function Dashboard() {
     .filter(u => u.role !== 'owner' && u.role !== 'admin')
     .map(u => {
       const myUserLeads = leads.filter(l => l.assigned_to === u.id);
-      const myUserClosedLeads = myUserLeads.filter(l => l.status === 'Closed');
+      const myUserClosedLeads = myUserLeads.filter(l => isClosedStatus(l.status));
       const closedCount = myUserClosedLeads.length;
       const totalEarnedCommission = myUserClosedLeads.reduce((sum, l) => sum + (parseFloat(l.commission_amount) || 0), 0);
 
@@ -156,7 +179,7 @@ export default function Dashboard() {
 
   // EMPLOYEE DATA COMPUTATIONS
   const myAssignedLeads = leads.filter(l => l.assigned_to === localUserId);
-  const myActiveLeads = myAssignedLeads.filter(l => l.status !== 'Closed');
+  const myActiveLeads = myAssignedLeads.filter(l => !isClosedStatus(l.status));
   const myPendingTasksCount = tasks.filter(t => t.status !== 'Completed').length;
 
   // Render Loading
@@ -525,7 +548,7 @@ export default function Dashboard() {
                           </TableCell>
                           <TableCell className="py-4 text-right px-6">
                             <Badge className={
-                              l.status === 'Closed' ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100/60 font-bold px-2 py-0.5 text-[10px]" : 
+                              isClosedStatus(l.status) ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100/60 font-bold px-2 py-0.5 text-[10px]" : 
                               l.status === 'New' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100/60 font-bold px-2 py-0.5 text-[10px]" : 
                               "bg-orange-50 text-orange-700 hover:bg-orange-50 border border-orange-100/60 font-bold px-2 py-0.5 text-[10px]"
                             }>

@@ -211,7 +211,7 @@ router.get('/:id/commissions', async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT SUM(commission_amount) as total_commission FROM leads 
-       WHERE assigned_to = $1 AND status = 'Closed' 
+       WHERE assigned_to = $1 AND status IN ('Closed', 'Closed Deal', 'Sale Completed') 
        AND EXTRACT(MONTH FROM updated_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
        AND EXTRACT(YEAR FROM updated_at) = EXTRACT(YEAR FROM CURRENT_DATE)`,
       [id]
