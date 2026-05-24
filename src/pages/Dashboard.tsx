@@ -549,7 +549,7 @@ export default function Dashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
-                      <Car className="h-4.5 w-4.5 text-orange-500" /> Dealership Inventory
+                      <img src="/red-car-icon.png" alt="Inventory" className="h-5 w-5 object-contain" /> Dealership Inventory
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
                   </div>
