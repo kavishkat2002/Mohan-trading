@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     const { rows } = await db.query(`
       SELECT l.*, COALESCE(NULLIF(u.name, ''), u.email) as assigned_to_name 
       FROM leads l 
-      LEFT JOIN users u ON l.assigned_to = u.id 
+      LEFT JOIN users u ON l.assigned_to = u.id::text 
       ORDER BY l.created_at DESC
     `);
     res.json(rows);
