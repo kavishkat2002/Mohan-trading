@@ -35,60 +35,46 @@ const supabase = createClient(
 const sourceStyles: Record<string, {
   label: string;
   dotColor: string;
-  activeClass: string;
-  inactiveClass: string;
   badgeClass: string;
 }> = {
   whatsapp: { 
     label: "WhatsApp", 
     dotColor: "bg-emerald-500", 
-    activeClass: "bg-emerald-500 text-white border-emerald-600 shadow-sm shadow-emerald-500/20",
-    inactiveClass: "bg-emerald-50/40 text-emerald-800 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-200",
-    badgeClass: "bg-emerald-100/80 text-emerald-800"
+    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-100"
   },
   facebook: { 
     label: "Facebook", 
-    dotColor: "bg-blue-600", 
-    activeClass: "bg-blue-600 text-white border-blue-700 shadow-sm shadow-blue-600/20",
-    inactiveClass: "bg-blue-50/40 text-blue-800 border-blue-100 hover:bg-blue-50 hover:border-blue-200",
-    badgeClass: "bg-blue-100/80 text-blue-800"
+    dotColor: "bg-blue-500", 
+    badgeClass: "bg-blue-50 text-blue-700 border-blue-100"
   },
   instagram: { 
     label: "Instagram", 
     dotColor: "bg-pink-500", 
-    activeClass: "bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 text-white border-pink-600 shadow-sm shadow-pink-500/20",
-    inactiveClass: "bg-pink-50/40 text-pink-800 border-pink-100 hover:bg-pink-50 hover:border-pink-200",
-    badgeClass: "bg-pink-100/80 text-pink-800"
+    badgeClass: "bg-pink-50 text-pink-700 border-pink-100"
   },
   tiktok: { 
     label: "TikTok", 
-    dotColor: "bg-slate-900", 
-    activeClass: "bg-slate-950 text-white border-slate-900 shadow-sm shadow-slate-950/20",
-    inactiveClass: "bg-slate-100/60 text-slate-800 border-slate-200 hover:bg-slate-200/80",
-    badgeClass: "bg-slate-250 text-slate-800"
+    dotColor: "bg-slate-700", 
+    badgeClass: "bg-slate-100 text-slate-705 border-slate-200"
   },
   web: { 
     label: "Website", 
-    dotColor: "bg-indigo-600", 
-    activeClass: "bg-indigo-600 text-white border-indigo-700 shadow-sm shadow-indigo-600/20",
-    inactiveClass: "bg-indigo-50/40 text-indigo-800 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200",
-    badgeClass: "bg-indigo-100/80 text-indigo-800"
+    dotColor: "bg-indigo-500", 
+    badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-100"
   },
   manual: { 
     label: "Manual", 
-    dotColor: "bg-slate-500", 
-    activeClass: "bg-slate-600 text-white border-slate-700 shadow-sm shadow-slate-600/20",
-    inactiveClass: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300",
-    badgeClass: "bg-slate-200 text-slate-700"
+    dotColor: "bg-slate-400", 
+    badgeClass: "bg-slate-100 text-slate-600 border-slate-200"
   },
 };
 
 const KANBAN_COLUMNS = [
-  { id: "New", title: "New Stage", color: "bg-blue-500 border-blue-200 bg-blue-50/20" },
-  { id: "Contacted", title: "Contacted", color: "bg-amber-500 border-amber-200 bg-amber-50/20" },
-  { id: "Test Drive", title: "Test Drive", color: "bg-sky-500 border-sky-200 bg-sky-50/20" },
-  { id: "Negotiating", title: "Negotiating", color: "bg-violet-500 border-violet-200 bg-violet-50/20" },
-  { id: "Closed Deal", title: "Closed Deal", color: "bg-emerald-500 border-emerald-200 bg-emerald-50/20" },
+  { id: "New", title: "New Stage", color: "bg-blue-500" },
+  { id: "Contacted", title: "Contacted", color: "bg-amber-500" },
+  { id: "Test Drive", title: "Test Drive", color: "bg-sky-500" },
+  { id: "Negotiating", title: "Negotiating", color: "bg-violet-500" },
+  { id: "Closed Deal", title: "Closed Deal", color: "bg-emerald-500" },
 ];
 
 export default function Leads() {
@@ -474,60 +460,60 @@ export default function Leads() {
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Sales Pipeline Card */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 h-24 w-24 bg-blue-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
+          <div className="absolute right-0 top-0 h-24 w-24 bg-slate-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Pipeline</span>
-              <div className="h-8 w-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-500/5">
+              <div className="h-8 w-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
                 <TrendingUp className="h-4 w-4" />
               </div>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-3">{formatLKR(totalPipeline)}</h3>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight mt-3">{formatLKR(totalPipeline)}</h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">Excludes finalized deals</p>
           </div>
         </div>
 
         {/* Total Leads Card */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 h-24 w-24 bg-indigo-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
+          <div className="absolute right-0 top-0 h-24 w-24 bg-slate-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Leads</span>
-              <div className="h-8 w-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shadow-indigo-500/5">
+              <div className="h-8 w-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
                 <Users className="h-4 w-4" />
               </div>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-3">{leads.length}</h3>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight mt-3">{leads.length}</h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">Across all platforms</p>
           </div>
         </div>
 
         {/* Warm Leads Card */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 h-24 w-24 bg-amber-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
+          <div className="absolute right-0 top-0 h-24 w-24 bg-slate-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hot Enquiries</span>
-              <div className="h-8 w-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-sm shadow-amber-500/5">
+              <div className="h-8 w-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
                 <Clock className="h-4 w-4" />
               </div>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-3">{warmLeads}</h3>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight mt-3">{warmLeads}</h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">Negotiating or test drive</p>
           </div>
         </div>
 
         {/* Finalized Deals Card */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 h-24 w-24 bg-emerald-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
+          <div className="absolute right-0 top-0 h-24 w-24 bg-slate-50/50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300" />
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Closed deals</span>
-              <div className="h-8 w-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm shadow-emerald-500/5">
+              <div className="h-8 w-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shadow-sm">
                 <Percent className="h-4 w-4" />
               </div>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-3">{closedLeads.length} <span className="text-xs text-slate-450 font-normal text-slate-400">({conversionRate}%)</span></h3>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight mt-3">{closedLeads.length} <span className="text-xs font-normal text-slate-400">({conversionRate}%)</span></h3>
             <p className="text-[10px] text-slate-400 font-medium mt-1">Conversion success rate</p>
           </div>
         </div>
@@ -540,7 +526,7 @@ export default function Leads() {
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-200 ${
             sourceFilter === "all"
               ? "bg-slate-900 text-white border-slate-950 shadow-md shadow-slate-900/10"
-              : "bg-white text-slate-600 border-slate-200 hover:border-slate-355 hover:bg-slate-50"
+              : "bg-white text-slate-650 border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
           }`}
         >
           <div className={`h-1.5 w-1.5 rounded-full ${sourceFilter === "all" ? "bg-white" : "bg-slate-400"}`} />
@@ -558,12 +544,14 @@ export default function Leads() {
               key={key}
               onClick={() => setSourceFilter(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-200 ${
-                isActive ? style.activeClass : `${style.inactiveClass} border-slate-200`
+                isActive 
+                  ? "bg-slate-900 text-white border-slate-950 shadow-sm" 
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
               }`}
             >
               <div className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-white" : style.dotColor}`} />
               {style.label}
-              <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-md font-bold ${isActive ? "bg-white/20 text-white" : style.badgeClass}`}>
+              <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-md font-bold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-550"}`}>
                 {count}
               </span>
             </button>
@@ -630,7 +618,8 @@ export default function Leads() {
                                   </div>
                                 </div>
                                 
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${src.activeClass.split(" shadow")[0]}`}>
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold border border-slate-200 bg-slate-50 text-slate-650">
+                                  <div className={`h-1 w-1 rounded-full ${src.dotColor}`} />
                                   {src.label}
                                 </span>
                               </div>
@@ -798,8 +787,8 @@ export default function Leads() {
                         <TableCell className="text-xs text-slate-500 font-mono font-semibold">{lead.phone}</TableCell>
 
                         <TableCell>
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${src.activeClass.split(" shadow")[0]}`}>
-                            <div className={`h-1 w-1 rounded-full bg-current`} />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-600">
+                            <div className={`h-1.5 w-1.5 rounded-full ${src.dotColor}`} />
                             {src.label}
                           </span>
                         </TableCell>
