@@ -478,7 +478,7 @@ export default function Finance() {
                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Data
              </Button>
            )}
-           <Button size="sm" variant="outline" className="h-10 text-xs px-4 border-2 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40" onClick={() => setShowChatModal(true)}>
+           <Button size="sm" className="h-10 text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 shadow-sm" onClick={() => setShowChatModal(true)}>
              <Bot className="mr-1.5 h-3.5 w-3.5" /> FinAI
            </Button>
            <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4" onClick={() => setIsAddingSale(true)}>
@@ -528,7 +528,7 @@ export default function Finance() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-2 border-amber-50 shadow-sm border-l-4 border-amber-500 overflow-hidden">
+            <Card className="bg-white border-2 border-amber-50 shadow-sm border-l-4 border-l-amber-500 overflow-hidden">
               <CardContent className="pt-6 relative">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Bank Holdings</p>
                 <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {Number(bankBalance).toLocaleString()}</h3>
@@ -646,7 +646,7 @@ export default function Finance() {
                 )}
                 
                 <div className="pt-2">
-                  <Button variant="outline" className="w-full text-xs border-primary/20 text-primary hover:bg-primary/5" onClick={() => setShowChatModal(true)}>
+                  <Button className="w-full text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm" onClick={() => setShowChatModal(true)}>
                     <MessageSquare className="h-3.5 w-3.5 mr-2" /> Ask FinAI for details
                   </Button>
                 </div>
