@@ -47,21 +47,6 @@ const sourceStyles: Record<string, {
     dotColor: "bg-blue-500", 
     badgeClass: "bg-blue-50 text-blue-700 border-blue-100"
   },
-  instagram: { 
-    label: "Instagram", 
-    dotColor: "bg-pink-500", 
-    badgeClass: "bg-pink-50 text-pink-700 border-pink-100"
-  },
-  tiktok: { 
-    label: "TikTok", 
-    dotColor: "bg-slate-700", 
-    badgeClass: "bg-slate-100 text-slate-705 border-slate-200"
-  },
-  web: { 
-    label: "Website", 
-    dotColor: "bg-indigo-500", 
-    badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-100"
-  },
   manual: { 
     label: "Manual", 
     dotColor: "bg-slate-400", 
@@ -370,7 +355,7 @@ export default function Leads() {
         <div>
           <h1 className="font-display text-3xl font-extrabold text-slate-900 tracking-tight">Lead Registry</h1>
           <p className="text-sm text-slate-500 mt-1.5 max-w-xl leading-relaxed">
-            Manage incoming <span className="text-emerald-600 font-semibold">WhatsApp</span>, <span className="text-blue-600 font-semibold">Facebook</span>, <span className="text-pink-500 font-semibold">Instagram</span> & <span className="font-semibold text-slate-700">TikTok</span> deals. Track metrics, assign members, and declare commissions.
+            Manage incoming <span className="text-emerald-600 font-semibold">WhatsApp</span> & <span className="text-blue-600 font-semibold">Facebook</span> deals. Track metrics, assign members, and declare commissions.
           </p>
         </div>
         
@@ -451,9 +436,6 @@ export default function Leads() {
                     <SelectContent>
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
-                      <SelectItem value="web">Website</SelectItem>
                       <SelectItem value="manual">Manual Entry</SelectItem>
                     </SelectContent>
                   </Select>
@@ -769,7 +751,7 @@ export default function Leads() {
                       <div className="flex flex-col items-center gap-2">
                         <MessageCircle className="h-10 w-10 text-slate-200" />
                         <p className="text-sm font-semibold text-slate-655 text-slate-700">No matching leads found</p>
-                        <p className="text-xs text-slate-400">Connect your WhatsApp, Facebook, or Instagram feeds to auto-sync leads.</p>
+                        <p className="text-xs text-slate-400">Connect your WhatsApp or Facebook feeds to auto-sync leads.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1134,10 +1116,7 @@ export default function Leads() {
                     <SelectContent>
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
-                      <SelectItem value="web">Website</SelectItem>
-                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="manual">Manual Entry</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
