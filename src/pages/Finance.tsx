@@ -459,9 +459,7 @@ export default function Finance() {
                    <CardTitle className="text-lg">Recent Cash Flow Statement</CardTitle>
                    <CardDescription>Daily ins and outs across all accounts.</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 text-xs text-primary gap-1">
-                  <Download className="h-3 w-3" /> Export CSV
-                </Button>
+
               </CardHeader>
               <CardContent>
                  <div className="h-[250px] mt-2">
@@ -500,6 +498,35 @@ export default function Finance() {
                       </ResponsiveContainer>
                     )}
                  </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Insights Card */}
+            <Card className="border-border shadow-sm flex flex-col relative overflow-hidden">
+              <div className="absolute -top-4 -right-4 p-4 opacity-5 pointer-events-none">
+                <Bot className="h-32 w-32" />
+              </div>
+              <CardHeader className="pb-3 border-b bg-primary/5">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> AI Insights
+                </CardTitle>
+                <CardDescription>Automated financial analysis & prediction.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 p-5 text-sm space-y-4">
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                  <h4 className="font-semibold text-primary mb-1 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Trend Prediction</h4>
+                  <p className="text-muted-foreground leading-relaxed">Based on recent cash flow, sales are projected to grow by <strong className="text-foreground">8%</strong> next month. Expense reduction strategies could yield an additional <strong className="text-foreground">Rs. 250,000</strong> in net profit.</p>
+                </div>
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                  <h4 className="font-semibold text-amber-600 mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Financial Health</h4>
+                  <p className="text-muted-foreground leading-relaxed">Your cash reserves are stable. Watch out for a slight increase in operating expenses observed over the last two weeks.</p>
+                </div>
+                
+                <div className="pt-2">
+                  <Button variant="outline" className="w-full text-xs border-primary/20 text-primary hover:bg-primary/5" onClick={() => setShowChatModal(true)}>
+                    <MessageSquare className="h-3.5 w-3.5 mr-2" /> Ask FinAI for details
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1018,7 +1045,7 @@ export default function Finance() {
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden flex flex-col sm:flex-row h-[600px] border-border shadow-lg">
           
           {/* History Sidebar */}
-          <div className={`sm:w-64 bg-muted/20 border-r flex flex-col transition-all duration-300 ${showSidebar ? 'w-64 border-r' : 'w-0 border-r-0'} overflow-hidden shrink-0 absolute sm:relative h-full z-10 backdrop-blur-md sm:backdrop-blur-none`}>
+          <div className={`bg-muted/20 flex flex-col transition-all duration-300 ${showSidebar ? 'w-64 border-r' : 'w-0 border-r-0'} overflow-hidden shrink-0 absolute sm:relative h-full z-10 backdrop-blur-md sm:backdrop-blur-none`}>
             <div className="p-4 border-b flex items-center justify-between min-w-[256px]">
               <h3 className="font-semibold text-sm">Chat History</h3>
               <div className="flex gap-1">
