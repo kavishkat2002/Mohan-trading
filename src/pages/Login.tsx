@@ -57,10 +57,10 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Background Images with Fade Transition */}
         {backgroundImages.map((img, idx) => (
-          <div 
+          <div
             key={img}
-            className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${idx === currentBg ? 'opacity-100' : 'opacity-0'}`} 
-            style={{ backgroundImage: `url("${img}")` }} 
+            className={`absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${idx === currentBg ? 'opacity-100' : 'opacity-0'}`}
+            style={{ backgroundImage: `url("${img}")` }}
           />
         ))}
 
@@ -69,9 +69,9 @@ export default function Login() {
 
         <div className="relative z-10 px-16 text-center w-full mt-auto mb-20">
           {/* MohanTrader Logo */}
-          <img 
-            src="/mohantrader-logo.png" 
-            alt="MohanTrader" 
+          <img
+            src="/mohantrader-logo.png"
+            alt="MohanTrader"
             className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/10 backdrop-blur-sm p-2 border border-white/20"
           />
           <h1 className="text-4xl font-bold text-white tracking-tight leading-tight drop-shadow-lg">
@@ -83,13 +83,13 @@ export default function Login() {
           <p className="text-white/60 mt-6 text-sm max-w-sm mx-auto leading-relaxed drop-shadow-sm">
             The premium platform for managing your vehicle inventory and accelerating your sales pipeline.
           </p>
-          
+
           {/* Slideshow dots */}
           <div className="flex items-center justify-center gap-2 mt-10">
             {backgroundImages.map((_, idx) => (
-              <div 
+              <div
                 key={idx}
-                className={`h-1 transition-all duration-300 rounded-full ${idx === currentBg ? 'w-12 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'w-2 bg-white/20'}`} 
+                className={`h-1 transition-all duration-300 rounded-full ${idx === currentBg ? 'w-12 bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]' : 'w-2 bg-white/20'}`}
               />
             ))}
           </div>
@@ -97,13 +97,14 @@ export default function Login() {
       </div>
 
       {/* Right side — form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white relative overflow-hidden">
+
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <img 
-              src="/mohantrader-logo.png" 
-              alt="MohanTrader" 
+            <img
+              src="/mohantrader-logo.png"
+              alt="MohanTrader"
               className="h-12 w-12 rounded-xl object-contain"
             />
             <div>
@@ -113,6 +114,11 @@ export default function Login() {
           </div>
 
           <div className="mb-8">
+            <img
+              src="/mohantrader-logo.png"
+              alt="Mohan Trading"
+              className="h-12 w-auto object-contain mb-6"
+            />
             <h2 className="font-display text-2xl font-semibold text-foreground tracking-tight">
               Welcome back
             </h2>
@@ -147,18 +153,14 @@ export default function Login() {
                 className="h-11 bg-background border-border text-sm focus:border-primary focus:ring-primary/20"
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20" 
+            <Button
+              type="submit"
+              className="w-full h-11 bg-primary text-white hover:bg-primary/90 text-sm font-medium rounded-lg shadow-sm shadow-primary/20"
               disabled={loading}
             >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-
-          <p className="text-center text-xs text-muted-foreground mt-8 italic">
-            Mohan Trading · Delivering Dreams, Driving Trust
-          </p>
         </div>
       </div>
     </div>
