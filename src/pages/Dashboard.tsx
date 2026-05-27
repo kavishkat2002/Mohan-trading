@@ -265,10 +265,6 @@ export default function Dashboard() {
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {revenueTotal.toLocaleString()}</h3>
             </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
-              <span>From closed vehicle sales</span>
-            </div>
           </motion.div>
 
           <motion.div
@@ -285,10 +281,6 @@ export default function Dashboard() {
                 </div>
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionPayout.toLocaleString()}</h3>
-            </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span>Total payouts to staff</span>
             </div>
           </motion.div>
 
@@ -309,10 +301,6 @@ export default function Dashboard() {
                 {activeLeadsCount} <span className="text-sm font-normal text-slate-450 text-slate-400">/ {leads.length} total</span>
               </h3>
             </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
-              <span>Interested customer enquiries</span>
-            </div>
           </motion.div>
 
           <motion.div
@@ -331,10 +319,6 @@ export default function Dashboard() {
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
                 {todayCheckedInCount} <span className="text-sm font-normal text-slate-400">on site</span>
               </h3>
-            </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-              <span>Currently on site operations</span>
             </div>
           </motion.div>
         </div>
@@ -356,10 +340,6 @@ export default function Dashboard() {
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionTotal.toLocaleString()}</h3>
             </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span>Earning commission payouts</span>
-            </div>
           </motion.div>
 
           <motion.div
@@ -378,10 +358,6 @@ export default function Dashboard() {
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
                 {myActiveLeads.length} <span className="text-sm font-normal text-slate-400">/ {myAssignedLeads.length} total</span>
               </h3>
-            </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
-              <span>Assigned leads in progress</span>
             </div>
           </motion.div>
 
@@ -402,10 +378,6 @@ export default function Dashboard() {
                 {myPendingTasksCount} <span className="text-sm font-normal text-slate-400">Pending</span>
               </h3>
             </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-              <span>Task assignments needing review</span>
-            </div>
           </motion.div>
 
           <motion.div
@@ -424,14 +396,6 @@ export default function Dashboard() {
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
                 {myAttendance ? (myAttendance.check_out_time ? "Finished" : "Checked In") : "Absent"}
               </h3>
-            </div>
-            <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-slate-50 text-xs text-slate-500">
-              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                myAttendance ? (myAttendance.check_out_time ? "bg-slate-400" : "bg-green-500") : "bg-amber-500"
-              }`} />
-              <span>
-                Today: {myAttendance ? (myAttendance.check_out_time ? "Shift Finished" : "Shift Active") : "Not Checked In"}
-              </span>
             </div>
           </motion.div>
         </div>
