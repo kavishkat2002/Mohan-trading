@@ -99,6 +99,18 @@ export default function Login() {
       {/* Right side — form */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white relative overflow-hidden">
 
+
+
+        {/* Large centered watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <img
+            src="/mohantrader-logo.png"
+            alt=""
+            aria-hidden="true"
+            className="w-[90%] max-w-[600px] object-contain opacity-[0.04] select-none"
+          />
+        </div>
+
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
@@ -114,11 +126,6 @@ export default function Login() {
           </div>
 
           <div className="mb-8">
-            <img
-              src="/mohantrader-logo.png"
-              alt="Mohan Trading"
-              className="h-12 w-auto object-contain mb-6"
-            />
             <h2 className="font-display text-2xl font-semibold text-foreground tracking-tight">
               Welcome back
             </h2>
