@@ -126,7 +126,7 @@ export default function AIInsights() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-display font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-display font-bold text-foreground">
           AI Insights
         </h1>
         <p className="text-muted-foreground mt-1">AI-powered analytics and business intelligence</p>
@@ -278,7 +278,7 @@ export default function AIInsights() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-blue-600 animate-pulse" />
+              <Brain className="h-5 w-5 text-primary" />
               <CardTitle className="font-display">Product Demand Ranking</CardTitle>
             </div>
           </CardHeader>
@@ -296,9 +296,9 @@ export default function AIInsights() {
                         {product.quantity} units sold • Rs. {product.revenue.toFixed(0)} revenue
                       </p>
                     </div>
-                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                        className="h-full bg-primary"
                         style={{ width: `${Math.min(100, (product.quantity / (analytics.topProducts[0]?.quantity || 1)) * 100)}%` }}
                       />
                     </div>
@@ -312,7 +312,7 @@ export default function AIInsights() {
         </Card>
 
         {/* AI Performance Summary */}
-        <Card className="lg:col-span-2 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
+        <Card className="lg:col-span-2 border-border bg-background shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
