@@ -275,9 +275,7 @@ export default function Finance() {
           <p className="text-sm text-muted-foreground mt-1 font-medium">Accounting, Profit Analysis & Inventory tracking.</p>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" size="sm" onClick={fetchData} className="h-10 text-xs gap-2 px-4 border-2">
-             <ArrowUpRight className="h-3.5 w-3.5" /> Force Sync
-           </Button>
+
            {isElevated && (
              <Button
                size="sm"
