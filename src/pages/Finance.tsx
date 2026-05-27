@@ -614,38 +614,38 @@ export default function Finance() {
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:block print:w-full print:px-8">
-              <Card className="border-none shadow-2xl bg-gradient-to-br from-emerald-950 to-emerald-900 text-white min-h-[400px] print:shadow-none print:bg-none print:min-h-0 print:border print:border-emerald-200">
-                <CardHeader className="border-b border-white/10 print:border-black/10">
-                   <CardTitle className="text-emerald-50 print:text-black flex items-center gap-3">
-                     <FileText className="h-6 w-6 text-emerald-400 print:text-black" /> Professional P&L Report
+              <Card className="border-border shadow-sm bg-background min-h-[400px] print:shadow-none print:border print:border-emerald-200">
+                <CardHeader className="border-b print:border-black/10">
+                   <CardTitle className="flex items-center gap-3">
+                     <FileText className="h-6 w-6 text-emerald-600 print:text-black" /> Professional P&L Report
                    </CardTitle>
-                   <CardDescription className="text-white/40 print:text-black/60">Consolidated Statement for Fiscal Period</CardDescription>
+                   <CardDescription>Consolidated Statement for Fiscal Period</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-8">
-                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4">
-                      <span className="text-sm text-white/70 print:text-black/70">Vehicle Sales Gross Revenue</span>
-                      <span className="text-lg font-black font-mono print:text-black">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</span>
+                   <div className="flex justify-between border-b pb-4">
+                      <span className="text-sm text-muted-foreground">Vehicle Sales Gross Revenue</span>
+                      <span className="text-lg font-black font-mono">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4 text-rose-300 print:text-rose-700">
-                      <span className="text-sm opacity-80">Cost of Goods Sold (Inventory Net)</span>
-                      <span className="text-sm font-bold font-mono">Rs. {(sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)).toLocaleString()}</span>
+                   <div className="flex justify-between border-b pb-4">
+                      <span className="text-sm text-muted-foreground">Cost of Goods Sold (Inventory Net)</span>
+                      <span className="text-sm font-bold font-mono text-rose-600 print:text-rose-700">- Rs. {(sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)).toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between border-b border-white/5 print:border-black/5 pb-4 text-rose-300 print:text-rose-700">
-                      <span className="text-sm opacity-80">Operational Expenses & Salaries</span>
-                      <span className="text-sm font-bold font-mono">Rs. {Number(overview?.totalExpenses || 0).toLocaleString()}</span>
+                   <div className="flex justify-between border-b pb-4">
+                      <span className="text-sm text-muted-foreground">Operational Expenses & Salaries</span>
+                      <span className="text-sm font-bold font-mono text-rose-600 print:text-rose-700">- Rs. {Number(overview?.totalExpenses || 0).toLocaleString()}</span>
                    </div>
                    
                    <div className="flex flex-col gap-1 pt-4">
                       <div className="flex justify-between items-end">
-                         <span className="text-lg font-bold text-emerald-300 print:text-emerald-800">NET BUSINESS PROFIT</span>
-                         <span className="text-4xl font-black text-emerald-400 font-display print:text-emerald-900">
+                         <span className="text-lg font-bold text-emerald-800">NET BUSINESS PROFIT</span>
+                         <span className="text-4xl font-black text-emerald-600 font-display">
                            Rs. {((Number(overview?.monthSales || 0)) - (sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)) - (Number(overview?.totalExpenses || 0))).toLocaleString()}
                          </span>
                       </div>
-                      <p className="text-[10px] text-white/30 print:text-black/30 text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
+                      <p className="text-[10px] text-muted-foreground text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
                    </div>
                    
-                   <Button onClick={handleExportAudit} size="lg" className="w-full mt-6 bg-white text-emerald-950 font-black hover:bg-emerald-50 hover:scale-[1.01] transition-all flex gap-3 outline-none print:hidden">
+                   <Button onClick={handleExportAudit} size="lg" className="w-full mt-6 bg-emerald-600 text-white font-black hover:bg-emerald-700 hover:scale-[1.01] transition-all flex gap-3 outline-none print:hidden">
                       <Download className="h-4 w-4" /> Export Professional Audit PDF
                    </Button>
                 </CardContent>
