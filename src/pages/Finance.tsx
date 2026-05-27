@@ -233,7 +233,7 @@ export default function Finance() {
                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Data
              </Button>
            )}
-           <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-200 px-4" onClick={() => setIsAddingSale(true)}>
+           <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4" onClick={() => setIsAddingSale(true)}>
              <Wallet className="mr-2 h-3.5 w-3.5" /> New Sale
            </Button>
            <Button size="sm" variant="secondary" className="h-10 text-xs px-4" onClick={() => setIsAddingExpense(true)}>
