@@ -756,7 +756,7 @@ export default function Leads() {
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Source</TableHead>
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vehicle Interest</TableHead>
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Budget</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Context</TableHead>
+                  {viewMode === "previous" && <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sold Price</TableHead>}
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</TableHead>
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Agent</TableHead>
                   <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right pr-6">Actions</TableHead>
@@ -765,7 +765,7 @@ export default function Leads() {
               <TableBody>
                 {filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-20 bg-white">
+                    <TableCell colSpan={viewMode === "previous" ? 9 : 8} className="text-center py-20 bg-white">
                       <div className="flex flex-col items-center gap-2">
                         <MessageCircle className="h-10 w-10 text-slate-200" />
                         <p className="text-sm font-semibold text-slate-655 text-slate-700">No matching leads found</p>
@@ -813,7 +813,7 @@ export default function Leads() {
                         </TableCell>
 
                         <TableCell>
-                          {lead.budget ? (
+                          {viewMode !== "previous" && lead.budget ? (
                             <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-105 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
                               {lead.budget}
                             </span>
@@ -822,23 +822,17 @@ export default function Leads() {
                           )}
                         </TableCell>
 
-                        <TableCell>
-                          {lead.current_step ? (
-                            <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="text-[9px] w-fit font-bold uppercase py-0.5 px-2 bg-indigo-50/50 text-indigo-700 border-indigo-100">
-                                {lead.current_step.replace('_', ' ')}
-                              </Badge>
-                              {lead.chat_metadata && typeof lead.chat_metadata === 'object' && Object.keys(lead.chat_metadata).length > 0 && (
-                                <div className="text-[9px] text-slate-400 italic leading-tight">
-                                   {lead.chat_metadata.type && `Prefers: ${lead.chat_metadata.type} `}
-                                   {lead.chat_metadata.intent && `| ${lead.chat_metadata.intent}`}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-slate-350 text-[11px]">—</span>
-                          )}
-                        </TableCell>
+                        {viewMode === "previous" && (
+                          <TableCell>
+                            {lead.budget ? (
+                              <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                                {lead.budget}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </TableCell>
+                        )}
 
                         <TableCell>
                           <Badge variant="outline" className={`text-[10px] font-bold rounded-full px-2.5 py-0.5 ${getStatusStyle(lead.status)}`}>
