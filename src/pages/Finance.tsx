@@ -205,20 +205,31 @@ export default function Finance() {
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
+  const [chartTimeframe, setChartTimeframe] = useState<'daily' | 'monthly'>('daily');
 
   // Generate chart data from sales and expenses
   const generateChartData = () => {
     const dataMap: Record<string, { date: string; Income: number; Expenses: number }> = {};
 
+    const getKey = (dateStr: string | null) => {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      if (chartTimeframe === 'monthly') {
+        return d.toISOString().slice(0, 7); // "YYYY-MM"
+      }
+      return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    };
+
     sales.forEach(s => {
-      const d = s.sale_date ? new Date(s.sale_date).toISOString().split('T')[0] : null;
+      const d = getKey(s.sale_date);
       if (!d) return;
       if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
       dataMap[d].Income += Number(s.selling_price) || 0;
     });
 
     expenses.forEach(e => {
-      const d = e.date ? new Date(e.date).toISOString().split('T')[0] : null;
+      const d = getKey(e.date);
       if (!d) return;
       if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
       dataMap[d].Expenses += Number(e.amount) || 0;
@@ -493,9 +504,18 @@ export default function Finance() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                    <CardTitle className="text-lg">Recent Cash Flow Statement</CardTitle>
-                   <CardDescription>Daily ins and outs across all accounts.</CardDescription>
+                   <CardDescription>Visualizing ins and outs across all accounts.</CardDescription>
                 </div>
-
+                <div className="flex bg-muted/50 p-1 rounded-md">
+                   <button 
+                     onClick={() => setChartTimeframe('daily')}
+                     className={`px-3 py-1 text-xs rounded transition-all ${chartTimeframe === 'daily' ? 'bg-background shadow-sm font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                   >Daily</button>
+                   <button 
+                     onClick={() => setChartTimeframe('monthly')}
+                     className={`px-3 py-1 text-xs rounded transition-all ${chartTimeframe === 'monthly' ? 'bg-background shadow-sm font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                   >Monthly</button>
+                </div>
               </CardHeader>
               <CardContent>
                  <div className="h-[250px] mt-2">
@@ -520,13 +540,33 @@ export default function Finance() {
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="date" tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => new Date(val).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{fontSize: 10}} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickFormatter={(val) => {
+                              const date = new Date(val);
+                              if (isNaN(date.getTime())) return val;
+                              if (chartTimeframe === 'monthly') {
+                                return date.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+                              }
+                              return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                            }} 
+                          />
                           <YAxis width={75} tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs. ${(val / 1000000).toFixed(1)}M`} />
                           <Tooltip 
                             contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             labelStyle={{ fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}
                             formatter={(value: number) => [`Rs. ${value.toLocaleString()}`, undefined]}
-                            labelFormatter={(label) => new Date(label).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            labelFormatter={(label) => {
+                              const date = new Date(label);
+                              if (isNaN(date.getTime())) return label;
+                              if (chartTimeframe === 'monthly') {
+                                return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                              }
+                              return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                            }}
                           />
                           <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
                           <Area type="monotone" dataKey="Expenses" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" />
