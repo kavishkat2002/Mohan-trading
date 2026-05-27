@@ -51,8 +51,10 @@ export default function Finance() {
     category: "Fuel", amount: "", description: "", date: new Date().toISOString().split('T')[0], account: "Cash"
   });
 
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
   const [newSale, setNewSale] = useState({
-    vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank"
+    vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank",
+    customer_name: "", customer_phone: "", customer_address: ""
   });
 
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -144,13 +146,21 @@ export default function Finance() {
       if (!newSale.vehicle_id) {
          return toast({ title: "Missing Information", description: "Please select a vehicle to sell.", variant: "destructive" });
       }
-      if (!newSale.lead_id) {
-         return toast({ title: "Missing Information", description: "Please select a linked customer lead.", variant: "destructive" });
+      
+      if (isNewCustomer) {
+        if (!newSale.customer_name || !newSale.customer_phone) {
+           return toast({ title: "Missing Information", description: "Please enter the new customer's name and phone.", variant: "destructive" });
+        }
+      } else {
+        if (!newSale.lead_id) {
+           return toast({ title: "Missing Information", description: "Please select a linked customer lead.", variant: "destructive" });
+        }
       }
 
       const payload = {
         ...newSale,
-        payment_method: newSale.account
+        payment_method: newSale.account,
+        is_new_customer: isNewCustomer
       };
 
       const res = await fetch("http://localhost:5001/api/finance/sales", {
@@ -161,7 +171,11 @@ export default function Finance() {
       if (res.ok) {
         toast({ title: "Sale Recorded", description: "Vehicle marked as sold and cash flow updated." });
         setIsAddingSale(false);
-        setNewSale({ vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank" });
+        setIsNewCustomer(false);
+        setNewSale({ 
+          vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank",
+          customer_name: "", customer_phone: "", customer_address: "" 
+        });
         fetchData();
       } else {
         const errData = await res.json().catch(() => null);
@@ -630,16 +644,40 @@ export default function Finance() {
                     </Select>
                  </div>
 
-                 <div className="space-y-2">
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Link to Customer Lead</Label>
-                    <Select value={newSale.lead_id} onValueChange={v => setNewSale({...newSale, lead_id: v})}>
-                       <SelectTrigger className="h-11 border-2"><SelectValue placeholder="Who bought it?" /></SelectTrigger>
-                       <SelectContent>
-                          {leads.map(l => (
-                             <SelectItem key={l.id} value={l.id.toString()}>{l.name} ({l.phone})</SelectItem>
-                          ))}
-                       </SelectContent>
-                    </Select>
+                 <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                       <Label className="text-xs uppercase font-bold text-muted-foreground">Select Buyer (Lead)</Label>
+                       <div className="flex items-center gap-2">
+                          <input type="checkbox" id="new-customer-toggle" className="rounded" checked={isNewCustomer} onChange={e => setIsNewCustomer(e.target.checked)} />
+                          <label htmlFor="new-customer-toggle" className="text-xs font-semibold text-primary cursor-pointer">Buyer not in leads?</label>
+                       </div>
+                    </div>
+
+                    {!isNewCustomer ? (
+                       <Select value={newSale.lead_id} onValueChange={v => setNewSale({...newSale, lead_id: v})}>
+                          <SelectTrigger className="h-11 border-2"><SelectValue placeholder="Who bought it?" /></SelectTrigger>
+                          <SelectContent>
+                             {leads.map(l => (
+                                <SelectItem key={l.id} value={l.id.toString()}>{l.name} ({l.phone})</SelectItem>
+                             ))}
+                          </SelectContent>
+                       </Select>
+                    ) : (
+                       <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border border-border/50">
+                          <div className="space-y-2">
+                             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Name</Label>
+                             <Input className="h-10 border-2" placeholder="John Doe" value={newSale.customer_name} onChange={e => setNewSale({...newSale, customer_name: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Phone Number</Label>
+                             <Input className="h-10 border-2" placeholder="077..." value={newSale.customer_phone} onChange={e => setNewSale({...newSale, customer_phone: e.target.value})} />
+                          </div>
+                          <div className="space-y-2 col-span-2">
+                             <Label className="text-[10px] uppercase font-bold text-muted-foreground">Address (Optional)</Label>
+                             <Input className="h-10 border-2" placeholder="123 Main St..." value={newSale.customer_address} onChange={e => setNewSale({...newSale, customer_address: e.target.value})} />
+                          </div>
+                       </div>
+                    )}
                  </div>
 
                  <div className="grid grid-cols-2 gap-4">
