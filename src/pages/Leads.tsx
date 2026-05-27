@@ -399,7 +399,7 @@ export default function Leads() {
 
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-white hover:bg-primary/95 text-xs font-bold h-10 px-5 rounded-xl shadow-lg shadow-primary/10">
+              <Button className="bg-primary text-white hover:bg-primary/95 text-xs font-bold h-10 px-5 rounded-xl">
                 <Plus className="mr-2 h-4 w-4" /> Manual Lead
               </Button>
             </DialogTrigger>
@@ -884,7 +884,7 @@ export default function Leads() {
             <div className="space-y-6 pt-6">
               {/* Profile Header */}
               <div className="flex items-center gap-4 pb-5 border-b border-slate-100">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-primary to-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-md shadow-primary/20 shrink-0">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-primary to-indigo-600 flex items-center justify-center text-white text-xl font-black shrink-0">
                   {selectedLead.name.split(" ").map((n: string) => n[0]).slice(0,2).join("").toUpperCase()}
                 </div>
                 <div>
