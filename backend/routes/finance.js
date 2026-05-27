@@ -84,9 +84,10 @@ router.post('/sales', async (req, res) => {
 
     if (is_new_customer) {
       const notes = customer_address ? `Address: ${customer_address}` : null;
+      const budgetStr = `Rs. ${sellingPriceVal.toLocaleString()}`;
       const newLead = await db.query(
-        "INSERT INTO leads (name, phone, status, notes, interested_car) VALUES ($1, $2, 'Closed Deal', $3, $4) RETURNING id",
-        [customer_name || 'Walk-in Customer', customer_phone || 'N/A', notes, vehicleBrand]
+        "INSERT INTO leads (name, phone, status, notes, interested_car, budget) VALUES ($1, $2, 'Closed Deal', $3, $4, $5) RETURNING id",
+        [customer_name || 'Walk-in Customer', customer_phone || 'N/A', notes, vehicleBrand, budgetStr]
       );
       leadIdVal = newLead.rows[0].id;
     }
@@ -110,9 +111,10 @@ router.post('/sales', async (req, res) => {
       const leadRes = await db.query("SELECT name, assigned_to FROM leads WHERE id = $1", [leadIdVal]);
       const lead = leadRes.rows[0];
       if (lead) {
+        const budgetStr = `Rs. ${sellingPriceVal.toLocaleString()}`;
         await db.query(
-          "UPDATE leads SET status = 'Closed Deal', interested_car = COALESCE($2, interested_car), updated_at = CURRENT_TIMESTAMP WHERE id = $1", 
-          [leadIdVal, vehicleBrand]
+          "UPDATE leads SET status = 'Closed Deal', interested_car = COALESCE($2, interested_car), budget = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1", 
+          [leadIdVal, vehicleBrand, budgetStr]
         );
         if (lead.assigned_to) {
           await db.query(
