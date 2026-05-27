@@ -428,7 +428,7 @@ export default function Finance() {
             <Card className="border-border shadow-sm border-dashed flex flex-col h-[400px]">
               <CardHeader className="py-4 border-b bg-muted/20">
                 <CardTitle className="text-base text-primary flex items-center gap-2">
-                   <Sparkles className="h-4 w-4" /> Financial Analyst AI
+                   FinAI
                 </CardTitle>
                 <CardDescription className="text-xs">Ask questions about your live P&L data.</CardDescription>
               </CardHeader>

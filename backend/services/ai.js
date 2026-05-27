@@ -10,9 +10,9 @@ async function generateSmartReply(userMessage, context) {
 
   try {
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'gpt-3.5-turbo',
+        model: 'openai/gpt-3.5-turbo',
         messages: [
           { role: 'system', content: `You are an AI sales assistant for Mohan Trading, a premium car dealership. Be helpful, concise, and professional. The user is currently at this stage: ${context.step}. Their name is ${context.name || 'unknown'}.` },
           { role: 'user', content: userMessage }
@@ -41,9 +41,9 @@ async function generateFinanceAnalysis(userMessage, financeData) {
 
   try {
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'gpt-3.5-turbo',
+        model: 'openai/gpt-3.5-turbo',
         messages: [
           { 
             role: 'system', 
