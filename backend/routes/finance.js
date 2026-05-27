@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { generateFinanceAnalysis } = require('../services/ai');
+
 
 // Get financial overview
 router.get('/overview', async (req, res) => {
@@ -22,6 +24,33 @@ router.get('/overview', async (req, res) => {
       totalExpenses: expenses.rows[0].total || 0,
       balances: balances.rows
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// AI Chat for Finance
+router.post('/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ error: "Message is required" });
+
+    // Gather finance context
+    const todaySales = await db.query("SELECT SUM(selling_price) as total FROM vehicle_sales WHERE sale_date = CURRENT_DATE");
+    const monthSales = await db.query("SELECT SUM(selling_price) as total FROM vehicle_sales WHERE sale_date >= date_trunc('month', CURRENT_DATE)");
+    const expenses = await db.query("SELECT SUM(amount) as total FROM expenses");
+    const balances = await db.query("SELECT account, SUM(CASE WHEN type = 'Income' THEN amount ELSE -amount END) as balance FROM cash_flow GROUP BY account");
+
+    const financeData = {
+      todaySales: todaySales.rows[0].total || 0,
+      monthSales: monthSales.rows[0].total || 0,
+      totalExpenses: expenses.rows[0].total || 0,
+      balances: balances.rows
+    };
+
+    const reply = await generateFinanceAnalysis(message, financeData);
+    res.json({ reply });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

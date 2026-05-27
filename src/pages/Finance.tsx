@@ -5,7 +5,7 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, Users, Loader2, 
   Wallet, Landmark, Receipt, TrendingUp, PieChart, AlertCircle, 
   MoreHorizontal, Pencil, Trash2, FileText, Download, Briefcase,
-  RotateCcw, AlertTriangle,
+  RotateCcw, AlertTriangle, Send, Bot, User, Sparkles
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -59,6 +59,37 @@ export default function Finance() {
     vehicle_id: "", lead_id: "", selling_price: "", sale_date: new Date().toISOString().split('T')[0], account: "Bank",
     customer_name: "", customer_phone: "", customer_address: ""
   });
+
+  // AI Chat state
+  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>([
+    { role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const askAI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isTyping) return;
+    
+    const userMsg = chatInput;
+    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setChatInput('');
+    setIsTyping(true);
+
+    try {
+      const res = await fetch('http://localhost:5001/api/finance/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg })
+      });
+      const data = await res.json();
+      setChatMessages(prev => [...prev, { role: 'ai', content: data.reply || "Error fetching response." }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, { role: 'ai', content: "Sorry, I couldn't connect to the server." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
@@ -393,30 +424,53 @@ export default function Finance() {
               </CardContent>
             </Card>
             
-            <Card className="border-border shadow-sm border-dashed">
-              <CardHeader>
-                <CardTitle className="text-base text-emerald-600 flex items-center gap-2">
-                   <TrendingUp className="h-4 w-4" /> Smart Analysis
+            {/* AI Financial Analyst Chatbot */}
+            <Card className="border-border shadow-sm border-dashed flex flex-col h-[400px]">
+              <CardHeader className="py-4 border-b bg-muted/20">
+                <CardTitle className="text-base text-primary flex items-center gap-2">
+                   <Sparkles className="h-4 w-4" /> Financial Analyst AI
                 </CardTitle>
-                <CardDescription>AI predictions on car categories.</CardDescription>
+                <CardDescription className="text-xs">Ask questions about your live P&L data.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex flex-col gap-1">
-                     <span className="text-[10px] text-emerald-800 uppercase font-black">Best Performer</span>
-                     <span className="text-sm font-bold text-emerald-950">Toyota Aqua 2018</span>
-                     <span className="text-[11px] text-emerald-600">Avg. 14.2% Net Margin</span>
-                  </div>
-                  <div className="space-y-3 pt-2">
-                     <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Est. Pipeline Value</span>
-                        <span className="font-bold">Rs. 84.5M</span>
-                     </div>
-                     <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Projected 30-Day Profit</span>
-                        <span className="font-bold text-emerald-600">Rs. 12.2M</span>
-                     </div>
-                  </div>
+              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+                 {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                       {msg.role === 'ai' && (
+                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                           <Bot className="h-4 w-4 text-primary" />
+                         </div>
+                       )}
+                       <div className={`p-3 rounded-2xl max-w-[85%] ${msg.role === 'ai' ? 'bg-muted/50 rounded-tl-none border border-border/50 text-foreground' : 'bg-primary text-white rounded-tr-none'}`}>
+                          {msg.content}
+                       </div>
+                    </div>
+                 ))}
+                 {isTyping && (
+                    <div className="flex gap-3 text-sm justify-start">
+                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                         <Bot className="h-4 w-4 text-primary" />
+                       </div>
+                       <div className="p-4 rounded-2xl bg-muted/50 rounded-tl-none border border-border/50 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
+                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-100" />
+                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-200" />
+                       </div>
+                    </div>
+                 )}
               </CardContent>
+              <div className="p-3 border-t bg-background mt-auto">
+                 <form onSubmit={askAI} className="flex gap-2">
+                    <Input 
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      placeholder="Ask about your expenses..."
+                      className="bg-muted/30 border-border/50 focus-visible:ring-primary/20"
+                    />
+                    <Button type="submit" disabled={isTyping || !chatInput.trim()} size="icon" className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-sm">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                 </form>
+              </div>
             </Card>
           </div>
         </TabsContent>
