@@ -313,7 +313,7 @@ export default function Leads() {
 
   // Metric Calculation
   const totalPipeline = leads
-    .filter(l => !["closed deal", "closed"].includes(l.status?.toLowerCase()))
+    .filter(l => !["closed deal", "closed", "missed deal"].includes(l.status?.toLowerCase()))
     .reduce((sum, l) => sum + parseBudget(l.budget), 0);
   
   const warmLeads = leads.filter(l => 
