@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
   const product = interested_product || interested_car; // support both field names
   try {
     const { rows } = await db.query(
-      'INSERT INTO leads (name, phone, interested_product, budget, status, source, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      'INSERT INTO leads (name, phone, interested_car, budget, status, source, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [name, phone, product, budget, status || 'New', source || 'manual', notes]
     );
     res.status(201).json(rows[0]);
@@ -78,7 +78,7 @@ router.put('/:id', async (req, res) => {
       `UPDATE leads 
        SET name = COALESCE($1, name),
            phone = COALESCE($2, phone),
-           interested_product = COALESCE($3, interested_product),
+           interested_car = COALESCE($3, interested_car),
            budget = COALESCE($4, budget),
            status = COALESCE($5, status), 
            source = COALESCE($6, source),
