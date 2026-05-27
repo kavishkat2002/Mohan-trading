@@ -33,7 +33,7 @@ router.get('/overview', async (req, res) => {
 // AI Chat for Finance
 router.post('/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history } = req.body;
     if (!message) return res.status(400).json({ error: "Message is required" });
 
     // Gather finance context
@@ -49,7 +49,7 @@ router.post('/chat', async (req, res) => {
       balances: balances.rows
     };
 
-    const reply = await generateFinanceAnalysis(message, financeData);
+    const reply = await generateFinanceAnalysis(message, financeData, history || []);
     res.json({ reply });
   } catch (err) {
     console.error(err);

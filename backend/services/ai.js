@@ -33,21 +33,16 @@ async function generateSmartReply(userMessage, context) {
   }
 }
 
-async function generateFinanceAnalysis(userMessage, financeData) {
+async function generateFinanceAnalysis(userMessage, financeData, history = []) {
   if (!OPENAI_API_KEY) {
     console.log("No OPENAI_API_KEY found, returning fallback for finance.");
     return `Mock AI Analysis: Your total monthly sales are Rs. ${financeData.monthSales?.toLocaleString() || 0} and total expenses are Rs. ${financeData.totalExpenses?.toLocaleString() || 0}. Add an OPENAI_API_KEY to your .env to enable real analysis!`;
   }
 
   try {
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { 
-            role: 'system', 
-            content: `You are an expert Financial Analyst AI for Mohan Traders (a premium car dealership). 
+    const systemPrompt = { 
+      role: 'system', 
+      content: `You are an expert Financial Analyst AI for Mohan Traders (a premium car dealership). 
 Your task is to answer the user's questions strictly based on the provided live financial data. Be concise, professional, and do not make up data.
 Live Financial Data Overview:
 - Today's Sales: Rs. ${financeData.todaySales}
@@ -55,9 +50,28 @@ Live Financial Data Overview:
 - Total Expenses: Rs. ${financeData.totalExpenses}
 - Account Balances: ${JSON.stringify(financeData.balances)}
 ` 
-          },
-          { role: 'user', content: userMessage }
-        ]
+    };
+
+    // Format frontend history to OpenAI format
+    const formattedHistory = history.map(msg => ({
+      role: msg.role === 'ai' ? 'assistant' : 'user',
+      content: msg.content
+    }));
+
+    // If the last message in history is the current userMessage, don't duplicate it.
+    // (The frontend already appended it to the history array)
+    const messages = [systemPrompt, ...formattedHistory];
+    
+    // Fallback if history wasn't sent correctly with the current message
+    if (formattedHistory.length === 0 || formattedHistory[formattedHistory.length - 1].content !== userMessage) {
+        messages.push({ role: 'user', content: userMessage });
+    }
+
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: 'openai/gpt-3.5-turbo',
+        messages: messages
       },
       {
         headers: {

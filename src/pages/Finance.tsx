@@ -61,9 +61,17 @@ export default function Finance() {
   });
 
   // AI Chat state
-  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>([
-    { role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }
-  ]);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>(() => {
+    const saved = localStorage.getItem('finai_chat');
+    if (saved) return JSON.parse(saved);
+    return [{ role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('finai_chat', JSON.stringify(chatMessages));
+  }, [chatMessages]);
+
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
@@ -72,7 +80,8 @@ export default function Finance() {
     if (!chatInput.trim() || isTyping) return;
     
     const userMsg = chatInput;
-    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    const newHistory = [...chatMessages, { role: 'user', content: userMsg }];
+    setChatMessages(newHistory);
     setChatInput('');
     setIsTyping(true);
 
@@ -80,7 +89,10 @@ export default function Finance() {
       const res = await fetch('http://localhost:5001/api/finance/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({ 
+          message: userMsg,
+          history: newHistory.filter(m => m.content !== 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.')
+        })
       });
       const data = await res.json();
       setChatMessages(prev => [...prev, { role: 'ai', content: data.reply || "Error fetching response." }]);
@@ -317,6 +329,9 @@ export default function Finance() {
                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Data
              </Button>
            )}
+           <Button size="sm" variant="outline" className="h-10 text-xs px-4 border-2 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40" onClick={() => setShowChatModal(true)}>
+             <Sparkles className="mr-1.5 h-3.5 w-3.5" /> FinAI
+           </Button>
            <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4" onClick={() => setIsAddingSale(true)}>
              <Wallet className="mr-2 h-3.5 w-3.5" /> New Sale
            </Button>
@@ -422,55 +437,6 @@ export default function Finance() {
                     )}
                  </div>
               </CardContent>
-            </Card>
-            
-            {/* AI Financial Analyst Chatbot */}
-            <Card className="border-border shadow-sm border-dashed flex flex-col h-[400px]">
-              <CardHeader className="py-4 border-b bg-muted/20">
-                <CardTitle className="text-base text-primary flex items-center gap-2">
-                   FinAI
-                </CardTitle>
-                <CardDescription className="text-xs">Ask questions about your live P&L data.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                 {chatMessages.map((msg, i) => (
-                    <div key={i} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                       {msg.role === 'ai' && (
-                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                           <Bot className="h-4 w-4 text-primary" />
-                         </div>
-                       )}
-                       <div className={`p-3 rounded-2xl max-w-[85%] ${msg.role === 'ai' ? 'bg-muted/50 rounded-tl-none border border-border/50 text-foreground' : 'bg-primary text-white rounded-tr-none'}`}>
-                          {msg.content}
-                       </div>
-                    </div>
-                 ))}
-                 {isTyping && (
-                    <div className="flex gap-3 text-sm justify-start">
-                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                         <Bot className="h-4 w-4 text-primary" />
-                       </div>
-                       <div className="p-4 rounded-2xl bg-muted/50 rounded-tl-none border border-border/50 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
-                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-100" />
-                          <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-200" />
-                       </div>
-                    </div>
-                 )}
-              </CardContent>
-              <div className="p-3 border-t bg-background mt-auto">
-                 <form onSubmit={askAI} className="flex gap-2">
-                    <Input 
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      placeholder="Ask about your expenses..."
-                      className="bg-muted/30 border-border/50 focus-visible:ring-primary/20"
-                    />
-                    <Button type="submit" disabled={isTyping || !chatInput.trim()} size="icon" className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-sm">
-                      <Send className="h-4 w-4" />
-                    </Button>
-                 </form>
-              </div>
             </Card>
           </div>
         </TabsContent>
@@ -980,6 +946,57 @@ export default function Finance() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Financial Analyst Chatbot Modal */}
+      <Dialog open={showChatModal} onOpenChange={setShowChatModal}>
+        <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden flex flex-col h-[600px] border-border shadow-lg">
+          <DialogHeader className="py-4 px-6 border-b bg-muted/20">
+            <DialogTitle className="text-lg text-primary flex items-center gap-2">
+               <Sparkles className="h-5 w-5" /> FinAI
+            </DialogTitle>
+            <DialogDescription className="text-xs">Ask questions about your live P&L data.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-background">
+             {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                   {msg.role === 'ai' && (
+                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                       <Bot className="h-4 w-4 text-primary" />
+                     </div>
+                   )}
+                   <div className={`p-3 rounded-2xl max-w-[85%] ${msg.role === 'ai' ? 'bg-muted/50 rounded-tl-none border border-border/50 text-foreground' : 'bg-primary text-white rounded-tr-none'}`}>
+                      {msg.content}
+                   </div>
+                </div>
+             ))}
+             {isTyping && (
+                <div className="flex gap-3 text-sm justify-start">
+                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                     <Bot className="h-4 w-4 text-primary" />
+                   </div>
+                   <div className="p-4 rounded-2xl bg-muted/50 rounded-tl-none border border-border/50 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-100" />
+                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-200" />
+                   </div>
+                </div>
+             )}
+          </div>
+          <div className="p-4 border-t bg-background mt-auto">
+             <form onSubmit={askAI} className="flex gap-2">
+                <Input 
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Ask about your expenses..."
+                  className="bg-muted/30 border-border/50 focus-visible:ring-primary/20"
+                />
+                <Button type="submit" disabled={isTyping || !chatInput.trim()} size="icon" className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-sm">
+                  <Send className="h-4 w-4" />
+                </Button>
+             </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
