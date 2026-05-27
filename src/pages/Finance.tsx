@@ -5,7 +5,8 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, Users, Loader2, 
   Wallet, Landmark, Receipt, TrendingUp, PieChart, AlertCircle, 
   MoreHorizontal, Pencil, Trash2, FileText, Download, Briefcase,
-  RotateCcw, AlertTriangle, Send, Bot, User, Sparkles
+  RotateCcw, AlertTriangle, Send, Bot, User, Sparkles,
+  Plus, MessageSquare, PanelLeftOpen, PanelLeftClose
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -60,17 +61,48 @@ export default function Finance() {
     customer_name: "", customer_phone: "", customer_address: ""
   });
 
-  // AI Chat state
+  type ChatMessage = { role: string; content: string };
+  type ChatSession = { id: string; title: string; messages: ChatMessage[] };
+
   const [showChatModal, setShowChatModal] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>(() => {
-    const saved = localStorage.getItem('finai_chat');
-    if (saved) return JSON.parse(saved);
-    return [{ role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }];
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
+    const savedSessions = localStorage.getItem('finai_sessions');
+    if (savedSessions) return JSON.parse(savedSessions);
+    
+    // Migration from old single chat
+    const oldChat = localStorage.getItem('finai_chat');
+    if (oldChat) {
+      return [{ id: 'migrated', title: 'Previous Chat', messages: JSON.parse(oldChat) }];
+    }
+    return [];
+  });
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    const savedSessions = localStorage.getItem('finai_sessions');
+    if (savedSessions) {
+      const parsed = JSON.parse(savedSessions);
+      if (parsed.length > 0) return parsed[0].id;
+    }
+    // Migration
+    const oldChat = localStorage.getItem('finai_chat');
+    if (oldChat) return 'migrated';
+    return null;
   });
 
   useEffect(() => {
-    localStorage.setItem('finai_chat', JSON.stringify(chatMessages));
-  }, [chatMessages]);
+    localStorage.setItem('finai_sessions', JSON.stringify(sessions));
+  }, [sessions]);
+
+  // Derived state for the active chat window
+  const activeSession = sessions.find(s => s.id === activeSessionId);
+  const chatMessages = activeSession ? activeSession.messages : [{ role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }];
+
+  const createNewChat = () => {
+    const newId = Date.now().toString();
+    setSessions([{ id: newId, title: 'New Chat', messages: [{ role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }] }, ...sessions]);
+    setActiveSessionId(newId);
+    if (window.innerWidth < 640) setShowSidebar(false);
+  };
 
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -80,8 +112,25 @@ export default function Finance() {
     if (!chatInput.trim() || isTyping) return;
     
     const userMsg = chatInput;
-    const newHistory = [...chatMessages, { role: 'user', content: userMsg }];
-    setChatMessages(newHistory);
+    let currentSessionId = activeSessionId;
+    let currentSessions = [...sessions];
+
+    if (!currentSessionId) {
+      currentSessionId = Date.now().toString();
+      currentSessions.unshift({ id: currentSessionId, title: userMsg.slice(0, 30) + (userMsg.length > 30 ? '...' : ''), messages: [{ role: 'ai', content: 'Hello! I am your Financial AI. Ask me about your P&L, expenses, or sales trends.' }] });
+      setActiveSessionId(currentSessionId);
+    } else {
+      const session = currentSessions.find(s => s.id === currentSessionId);
+      if (session && session.messages.length === 1 && session.title === 'New Chat') {
+        session.title = userMsg.slice(0, 30) + (userMsg.length > 30 ? '...' : '');
+      }
+    }
+
+    const sessionIndex = currentSessions.findIndex(s => s.id === currentSessionId);
+    const newHistory = [...currentSessions[sessionIndex].messages, { role: 'user', content: userMsg }];
+    currentSessions[sessionIndex].messages = newHistory;
+    setSessions(currentSessions);
+    
     setChatInput('');
     setIsTyping(true);
 
@@ -95,9 +144,24 @@ export default function Finance() {
         })
       });
       const data = await res.json();
-      setChatMessages(prev => [...prev, { role: 'ai', content: data.reply || "Error fetching response." }]);
+      
+      setSessions(prev => {
+        const updated = [...prev];
+        const idx = updated.findIndex(s => s.id === currentSessionId);
+        if (idx !== -1) {
+          updated[idx].messages = [...updated[idx].messages, { role: 'ai', content: data.reply || "Error fetching response." }];
+        }
+        return updated;
+      });
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'ai', content: "Sorry, I couldn't connect to the server." }]);
+      setSessions(prev => {
+        const updated = [...prev];
+        const idx = updated.findIndex(s => s.id === currentSessionId);
+        if (idx !== -1) {
+          updated[idx].messages = [...updated[idx].messages, { role: 'ai', content: "Sorry, I couldn't connect to the server." }];
+        }
+        return updated;
+      });
     } finally {
       setIsTyping(false);
     }
@@ -951,51 +1015,85 @@ export default function Finance() {
 
       {/* AI Financial Analyst Chatbot Modal */}
       <Dialog open={showChatModal} onOpenChange={setShowChatModal}>
-        <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden flex flex-col h-[600px] border-border shadow-lg">
-          <DialogHeader className="py-4 px-6 border-b bg-muted/20">
-            <DialogTitle className="text-lg text-primary flex items-center gap-2">
-               <Bot className="h-5 w-5" /> FinAI
-            </DialogTitle>
-            <DialogDescription className="text-xs">Ask questions about your live P&L data.</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-background">
-             {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                   {msg.role === 'ai' && (
+        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden flex flex-col sm:flex-row h-[600px] border-border shadow-lg">
+          
+          {/* History Sidebar */}
+          <div className={`sm:w-64 bg-muted/20 border-r flex flex-col transition-all duration-300 ${showSidebar ? 'w-64 border-r' : 'w-0 border-r-0'} overflow-hidden shrink-0 absolute sm:relative h-full z-10 backdrop-blur-md sm:backdrop-blur-none`}>
+            <div className="p-4 border-b flex items-center justify-between min-w-[256px]">
+              <h3 className="font-semibold text-sm">Chat History</h3>
+              <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden" onClick={() => setShowSidebar(false)}>
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 min-w-[256px]">
+              {sessions.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => { setActiveSessionId(s.id); if (window.innerWidth < 640) setShowSidebar(false); }}
+                  className={`w-full text-left p-2 rounded-md text-sm flex items-center gap-2 truncate ${activeSessionId === s.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground'}`}
+                >
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{s.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+            <DialogHeader className="py-3 px-4 border-b bg-muted/10 flex flex-row items-center justify-between shrink-0 h-14">
+              <div className="flex items-center gap-3">
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowSidebar(!showSidebar)}>
+                  {showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                </Button>
+                <DialogTitle className="text-base text-primary flex items-center gap-2 m-0">
+                   <Bot className="h-5 w-5" /> FinAI
+                </DialogTitle>
+                <DialogDescription className="sr-only">Ask questions about your live P&L data.</DialogDescription>
+              </div>
+              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={createNewChat}>
+                <Plus className="h-3.5 w-3.5" /> New Chat
+              </Button>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-background">
+               {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                     {msg.role === 'ai' && (
+                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                         <Bot className="h-4 w-4 text-primary" />
+                       </div>
+                     )}
+                     <div className={`p-3 rounded-2xl max-w-[85%] ${msg.role === 'ai' ? 'bg-muted/50 rounded-tl-none border border-border/50 text-foreground' : 'bg-primary text-white rounded-tr-none'}`}>
+                        {msg.content}
+                     </div>
+                  </div>
+               ))}
+               {isTyping && (
+                  <div className="flex gap-3 text-sm justify-start">
                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                        <Bot className="h-4 w-4 text-primary" />
                      </div>
-                   )}
-                   <div className={`p-3 rounded-2xl max-w-[85%] ${msg.role === 'ai' ? 'bg-muted/50 rounded-tl-none border border-border/50 text-foreground' : 'bg-primary text-white rounded-tr-none'}`}>
-                      {msg.content}
-                   </div>
-                </div>
-             ))}
-             {isTyping && (
-                <div className="flex gap-3 text-sm justify-start">
-                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                     <Bot className="h-4 w-4 text-primary" />
-                   </div>
-                   <div className="p-4 rounded-2xl bg-muted/50 rounded-tl-none border border-border/50 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-100" />
-                      <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-200" />
-                   </div>
-                </div>
-             )}
-          </div>
-          <div className="p-4 border-t bg-background mt-auto">
-             <form onSubmit={askAI} className="flex gap-2">
-                <Input 
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder="Ask about your expenses..."
-                  className="bg-muted/30 border-border/50 focus-visible:ring-primary/20"
-                />
-                <Button type="submit" disabled={isTyping || !chatInput.trim()} size="icon" className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-sm">
-                  <Send className="h-4 w-4" />
-                </Button>
-             </form>
+                     <div className="p-4 rounded-2xl bg-muted/50 rounded-tl-none border border-border/50 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-100" />
+                        <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce delay-200" />
+                     </div>
+                  </div>
+               )}
+            </div>
+            <div className="p-4 border-t bg-background mt-auto shrink-0">
+               <form onSubmit={askAI} className="flex gap-2">
+                  <Input 
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="Ask about your expenses..."
+                    className="bg-muted/30 border-border/50 focus-visible:ring-primary/20 h-10"
+                  />
+                  <Button type="submit" disabled={isTyping || !chatInput.trim()} size="icon" className="shrink-0 bg-primary hover:bg-primary/90 text-white shadow-sm h-10 w-10">
+                    <Send className="h-4 w-4" />
+                  </Button>
+               </form>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
