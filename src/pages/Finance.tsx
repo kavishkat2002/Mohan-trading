@@ -521,7 +521,7 @@ export default function Finance() {
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="date" tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => new Date(val).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} />
-                          <YAxis tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs. ${(val / 1000000).toFixed(1)}M`} />
+                          <YAxis width={75} tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs. ${(val / 1000000).toFixed(1)}M`} />
                           <Tooltip 
                             contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             labelStyle={{ fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}
