@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'owner' || user?.role === 'admin';
 
@@ -70,6 +70,14 @@ export default function Dashboard() {
       const localId = localUserData.id;
       if (!localId) throw new Error("Could not sync local user ID");
       setLocalUserId(localId);
+
+      // If the DB role differs from cached role, correct it immediately (handles accidental role changes)
+      if (localUserData.role && localUserData.role !== user?.role) {
+        updateUser({ role: localUserData.role });
+        // Reload to apply the corrected role to all derived state
+        window.location.reload();
+        return;
+      }
 
       // Fetch latest profile details to get updated custom profile name
       try {
