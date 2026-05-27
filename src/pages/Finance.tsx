@@ -1021,9 +1021,14 @@ export default function Finance() {
           <div className={`sm:w-64 bg-muted/20 border-r flex flex-col transition-all duration-300 ${showSidebar ? 'w-64 border-r' : 'w-0 border-r-0'} overflow-hidden shrink-0 absolute sm:relative h-full z-10 backdrop-blur-md sm:backdrop-blur-none`}>
             <div className="p-4 border-b flex items-center justify-between min-w-[256px]">
               <h3 className="font-semibold text-sm">Chat History</h3>
-              <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden" onClick={() => setShowSidebar(false)}>
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-1">
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={createNewChat} title="New Chat">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden" onClick={() => setShowSidebar(false)}>
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1 min-w-[256px]">
               {sessions.map(s => (
@@ -1041,7 +1046,7 @@ export default function Finance() {
 
           {/* Main Chat Area */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            <DialogHeader className="py-3 px-4 border-b bg-muted/10 flex flex-row items-center justify-between shrink-0 h-14">
+            <DialogHeader className="py-3 px-4 pr-10 border-b bg-muted/10 flex flex-row items-center justify-between shrink-0 h-14">
               <div className="flex items-center gap-3">
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowSidebar(!showSidebar)}>
                   {showSidebar ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
