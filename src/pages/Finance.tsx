@@ -614,7 +614,7 @@ export default function Finance() {
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:block print:w-full print:px-8">
-              <Card className="border-border shadow-sm bg-background min-h-[400px] print:shadow-none print:border print:border-emerald-200">
+              <Card className="border-emerald-200 border-2 shadow-md bg-emerald-50/30 min-h-[400px] print:shadow-none print:border print:border-emerald-200">
                 <CardHeader className="border-b print:border-black/10">
                    <CardTitle className="flex items-center gap-3">
                      <FileText className="h-6 w-6 text-emerald-600 print:text-black" /> Professional P&L Report
