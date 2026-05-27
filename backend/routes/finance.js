@@ -132,9 +132,40 @@ router.post('/sales', async (req, res) => {
 // DELETE /finance/expenses/:id
 router.delete('/expenses/:id', async (req, res) => {
   try {
+    const expense = await db.query('SELECT category, description, amount FROM expenses WHERE id = $1', [req.params.id]);
+    if (expense.rows.length > 0) {
+      const exp = expense.rows[0];
+      const descMatch = `Expense: ${exp.category} - ${exp.description}`;
+      await db.query("DELETE FROM cash_flow WHERE type = 'Expense' AND description = $1 AND amount = $2", [descMatch, exp.amount]);
+    }
     await db.query('DELETE FROM expenses WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// PUT /finance/expenses/:id
+router.put('/expenses/:id', async (req, res) => {
+  try {
+    const { category, amount, description, date } = req.body;
+    const oldExpense = await db.query('SELECT category, description, amount FROM expenses WHERE id = $1', [req.params.id]);
+    
+    if (oldExpense.rows.length > 0) {
+      const exp = oldExpense.rows[0];
+      const descMatch = `Expense: ${exp.category} - ${exp.description}`;
+      const newDesc = `Expense: ${category} - ${description}`;
+      await db.query(
+        "UPDATE cash_flow SET amount = $1, description = $2, date = $3 WHERE type = 'Expense' AND description = $4 AND amount = $5", 
+        [amount, newDesc, date, descMatch, exp.amount]
+      );
+    }
+
+    const { rows } = await db.query(
+      "UPDATE expenses SET category = $1, amount = $2, description = $3, date = $4 WHERE id = $5 RETURNING *",
+      [category, amount, description, date, req.params.id]
+    );
+
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // DELETE /finance/sales/:id

@@ -30,6 +30,7 @@ export default function Finance() {
   const { user } = useAuth();
   const { business } = useBusiness();
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
+  const canEditLedger = user?.role === 'owner' || user?.role === 'accountant' || user?.role === 'admin';
   const [activeTab, setActiveTab] = useState("overview");
 
   // Reset dialog state
@@ -45,6 +46,7 @@ export default function Finance() {
   
   // UI toggles
   const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
   const [isAddingSale, setIsAddingSale] = useState(false);
   
   // Forms
@@ -140,26 +142,57 @@ export default function Finance() {
   };
 
 
-  const handleAddExpense = async (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5001/api/finance/expenses", {
-        method: "POST",
+      const url = editingExpenseId 
+        ? `http://localhost:5001/api/finance/expenses/${editingExpenseId}`
+        : "http://localhost:5001/api/finance/expenses";
+      const method = editingExpenseId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newExpense)
       });
       if (res.ok) {
-        toast({ title: "Expense Added", description: "Ledger updated successfully." });
+        toast({ title: editingExpenseId ? "Expense Updated" : "Expense Added", description: "Ledger updated successfully." });
         setIsAddingExpense(false);
+        setEditingExpenseId(null);
         setNewExpense({ category: "Fuel", amount: "", description: "", date: new Date().toISOString().split('T')[0], account: "Cash" });
         fetchData();
       } else {
         const errData = await res.json().catch(() => null);
-        toast({ title: "Failed to Add Expense", description: errData?.error || "Server error", variant: "destructive" });
+        toast({ title: "Failed to Save Expense", description: errData?.error || "Server error", variant: "destructive" });
       }
     } catch (err: any) { 
         toast({ title: "Error", description: err.message, variant: "destructive" });
     }
+  };
+
+  const handleEditExpenseClick = (exp: any) => {
+    setNewExpense({
+      category: exp.category || "Fuel",
+      amount: exp.amount || "",
+      description: exp.description || "",
+      date: exp.date ? new Date(exp.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      account: "Cash"
+    });
+    setEditingExpenseId(exp.id);
+    setIsAddingExpense(true);
+  };
+
+  const handleDeleteExpense = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this expense? This will also remove the corresponding cash flow entry.")) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/finance/expenses/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast({ title: "Expense deleted" });
+        fetchData();
+      } else {
+        toast({ title: "Failed to delete expense", variant: "destructive" });
+      }
+    } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
   };
 
   const handleAddSale = async (e: React.FormEvent) => {
@@ -523,11 +556,12 @@ export default function Finance() {
                      <TableHead className="text-xs uppercase font-bold py-4">Category</TableHead>
                      <TableHead className="text-xs uppercase font-bold py-4">Description</TableHead>
                      <TableHead className="text-xs uppercase font-bold py-4 text-right pr-6">Amount</TableHead>
+                     {canEditLedger && <TableHead className="text-xs uppercase font-bold py-4 text-right pr-6">Action</TableHead>}
                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {expenses.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="text-center py-20 text-muted-foreground">No operational overhead logged.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={canEditLedger ? 5 : 4} className="text-center py-20 text-muted-foreground">No operational overhead logged.</TableCell></TableRow>
                    ) : (
                      expenses.map(e => (
                        <TableRow key={e.id} className="hover:bg-muted/10 transition-colors">
@@ -543,6 +577,18 @@ export default function Finance() {
                          <TableCell className="text-right pr-6 font-black text-rose-600 font-mono">
                            - Rs. {Number(e.amount).toLocaleString()}
                          </TableCell>
+                         {canEditLedger && (
+                            <TableCell className="text-right pr-6">
+                               <div className="flex justify-end gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => handleEditExpenseClick(e)}>
+                                     <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => handleDeleteExpense(e.id)}>
+                                     <Trash2 className="h-4 w-4" />
+                                  </Button>
+                               </div>
+                            </TableCell>
+                         )}
                        </TableRow>
                      ))
                    )}
@@ -763,11 +809,11 @@ export default function Finance() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 flex justify-center items-center p-4">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 animate-in zoom-in duration-200">
              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black font-display tracking-tight">Record Business Expense</h2>
-                <Button variant="ghost" size="icon" onClick={() => setIsAddingExpense(false)}>&times;</Button>
+                <h2 className="text-2xl font-black font-display tracking-tight">{editingExpenseId ? "Edit Business Expense" : "Record Business Expense"}</h2>
+                <Button variant="ghost" size="icon" onClick={() => { setIsAddingExpense(false); setEditingExpenseId(null); }}>&times;</Button>
              </div>
              
-             <form onSubmit={handleAddExpense} className="space-y-5">
+             <form onSubmit={handleSaveExpense} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
                       <Label className="text-xs uppercase font-bold text-muted-foreground">Category</Label>
@@ -812,8 +858,8 @@ export default function Finance() {
                 </div>
 
                 <div className="pt-6 flex gap-3">
-                   <Button type="submit" className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl">Post to Daily Ledger</Button>
-                   <Button type="button" variant="outline" className="h-12 px-6 rounded-xl" onClick={() => setIsAddingExpense(false)}>Cancel</Button>
+                   <Button type="submit" className="flex-1 h-12 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl">{editingExpenseId ? "Update Expense" : "Post to Daily Ledger"}</Button>
+                   <Button type="button" variant="outline" className="h-12 px-6 rounded-xl" onClick={() => { setIsAddingExpense(false); setEditingExpenseId(null); }}>Cancel</Button>
                 </div>
              </form>
           </div>
