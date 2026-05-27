@@ -330,7 +330,7 @@ export default function Finance() {
              </Button>
            )}
            <Button size="sm" variant="outline" className="h-10 text-xs px-4 border-2 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40" onClick={() => setShowChatModal(true)}>
-             <Sparkles className="mr-1.5 h-3.5 w-3.5" /> FinAI
+             <Bot className="mr-1.5 h-3.5 w-3.5" /> FinAI
            </Button>
            <Button size="sm" className="h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4" onClick={() => setIsAddingSale(true)}>
              <Wallet className="mr-2 h-3.5 w-3.5" /> New Sale
@@ -954,7 +954,7 @@ export default function Finance() {
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden flex flex-col h-[600px] border-border shadow-lg">
           <DialogHeader className="py-4 px-6 border-b bg-muted/20">
             <DialogTitle className="text-lg text-primary flex items-center gap-2">
-               <Sparkles className="h-5 w-5" /> FinAI
+               <Bot className="h-5 w-5" /> FinAI
             </DialogTitle>
             <DialogDescription className="text-xs">Ask questions about your live P&L data.</DialogDescription>
           </DialogHeader>
