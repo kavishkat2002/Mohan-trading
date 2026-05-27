@@ -74,7 +74,6 @@ const KANBAN_COLUMNS = [
   { id: "Contacted", title: "Contacted", color: "bg-amber-500" },
   { id: "Test Drive", title: "Test Drive", color: "bg-sky-500" },
   { id: "Negotiating", title: "Negotiating", color: "bg-violet-500" },
-  { id: "Closed Deal", title: "Closed Deal", color: "bg-emerald-500" },
 ];
 
 export default function Leads() {
@@ -82,7 +81,7 @@ export default function Leads() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "previous">("table");
   
   // Dialog/Modal states
   const [isOpen, setIsOpen] = useState(false);
@@ -320,7 +319,11 @@ export default function Leads() {
       l.phone.includes(search) ||
       (l.interested_car || l.interested_product || "").toLowerCase().includes(search.toLowerCase());
     const matchesSource = sourceFilter === "all" || (l.source || "manual").toLowerCase() === sourceFilter.toLowerCase();
-    return matchesSearch && matchesSource;
+    
+    const isPreviousCustomer = ["closed deal", "closed", "missed deal"].includes((l.status || "").toLowerCase());
+    const matchesViewMode = viewMode === "previous" ? isPreviousCustomer : !isPreviousCustomer;
+
+    return matchesSearch && matchesSource && matchesViewMode;
   });
 
   // Metric Calculation
@@ -345,6 +348,7 @@ export default function Leads() {
       case 'negotiating': return "bg-violet-50 text-violet-700 border-violet-200";
       case 'test drive': return "bg-sky-50 text-sky-700 border-sky-200";
       case 'closed deal': return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case 'missed deal': return "bg-red-50 text-red-700 border-red-200";
       default: return "bg-slate-50 text-slate-600 border-slate-200";
     }
   };
@@ -394,6 +398,17 @@ export default function Leads() {
             >
               <Kanban className="h-3.5 w-3.5" />
               Pipeline Board
+            </button>
+            <button
+              onClick={() => setViewMode("previous")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "previous"
+                  ? "bg-white text-slate-800 shadow-sm border border-slate-200/40"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              Previous Customers
             </button>
           </div>
 
