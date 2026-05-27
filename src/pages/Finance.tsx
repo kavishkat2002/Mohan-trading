@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   DollarSign, ArrowUpRight, ArrowDownRight, Users, Loader2, 
-  Wallet, Landmark, Receipt, TrendingUp, PieChart, AlertCircle, 
+  Wallet, Landmark, Receipt, TrendingUp, TrendingDown, PieChart, AlertCircle, 
   MoreHorizontal, Pencil, Trash2, FileText, Download, Briefcase,
   RotateCcw, AlertTriangle, Send, Bot, User, Sparkles,
   Plus, MessageSquare, PanelLeftOpen, PanelLeftClose
@@ -206,6 +206,27 @@ export default function Finance() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [chartTimeframe, setChartTimeframe] = useState<'daily' | 'monthly'>('daily');
+  const [globalMonthFilter, setGlobalMonthFilter] = useState<string>('all');
+
+  const availableMonths = Array.from(new Set([
+    ...sales.map(s => s.sale_date?.substring(0, 7)).filter(Boolean),
+    ...expenses.map(e => e.date?.substring(0, 7)).filter(Boolean)
+  ])).sort().reverse() as string[];
+
+  const filteredSales = sales.filter(s => {
+    if (globalMonthFilter === 'all') return true;
+    return s.sale_date && s.sale_date.startsWith(globalMonthFilter);
+  });
+
+  const filteredExpenses = expenses.filter(e => {
+    if (globalMonthFilter === 'all') return true;
+    return e.date && e.date.startsWith(globalMonthFilter);
+  });
+
+  const filteredTotalSales = filteredSales.reduce((sum, s) => sum + (Number(s.selling_price) || 0), 0);
+  const filteredTotalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const filteredCostOfGoods = filteredSales.reduce((acc, s) => acc + ((Number(s.purchase_price)||0) + (Number(s.repair_cost)||0) + (Number(s.transport_cost)||0) + (Number(s.registration_fee)||0)), 0);
+  const filteredNetProfit = filteredTotalSales - filteredCostOfGoods - filteredTotalExpenses;
 
   // Generate chart data from sales and expenses
   const generateChartData = () => {
@@ -221,14 +242,14 @@ export default function Finance() {
       return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
     };
 
-    sales.forEach(s => {
+    filteredSales.forEach(s => {
       const d = getKey(s.sale_date);
       if (!d) return;
       if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
       dataMap[d].Income += Number(s.selling_price) || 0;
     });
 
-    expenses.forEach(e => {
+    filteredExpenses.forEach(e => {
       const d = getKey(e.date);
       if (!d) return;
       if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
@@ -429,6 +450,23 @@ export default function Finance() {
           <p className="text-sm text-muted-foreground mt-1 font-medium">Accounting, Profit Analysis & Inventory tracking.</p>
         </div>
         <div className="flex gap-2">
+           <Select value={globalMonthFilter} onValueChange={setGlobalMonthFilter}>
+             <SelectTrigger className="w-[140px] h-10 text-xs font-semibold bg-background border-border">
+               <SelectValue placeholder="All Time" />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Time</SelectItem>
+               {availableMonths.map(m => {
+                 const [year, month] = m.split('-');
+                 const dateObj = new Date(parseInt(year), parseInt(month) - 1);
+                 return (
+                   <SelectItem key={m} value={m}>
+                     {dateObj.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                   </SelectItem>
+                 );
+               })}
+             </SelectContent>
+           </Select>
 
            {isElevated && (
              <Button
@@ -465,17 +503,17 @@ export default function Finance() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-white border-2 border-emerald-50 shadow-sm border-l-4 border-l-emerald-500 overflow-hidden">
               <CardContent className="pt-6 relative">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Monthly Sales Vol</p>
-                <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{globalMonthFilter === 'all' ? 'Total' : 'Monthly'} Sales Vol</p>
+                <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {filteredTotalSales.toLocaleString()}</h3>
                 <TrendingUp className="h-12 w-12 text-emerald-500/10 absolute -right-2 -bottom-2" />
               </CardContent>
             </Card>
 
             <Card className="bg-white border-2 border-rose-50 shadow-sm border-l-4 border-l-rose-500 overflow-hidden">
               <CardContent className="pt-6 relative">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Op. Expenses</p>
-                <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {Number(overview?.totalExpenses || 0).toLocaleString()}</h3>
-                <ArrowDownRight className="h-12 w-12 text-rose-500/10 absolute -right-2 -bottom-2" />
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{globalMonthFilter === 'all' ? 'Total' : 'Monthly'} Expenses</p>
+                <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {filteredTotalExpenses.toLocaleString()}</h3>
+                <TrendingDown className="h-12 w-12 text-rose-500/10 absolute -right-2 -bottom-2" />
               </CardContent>
             </Card>
 
@@ -490,7 +528,7 @@ export default function Finance() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white border-2 border-amber-50 shadow-sm border-l-4 border-l-amber-500 overflow-hidden">
+            <Card className="bg-white border-2 border-amber-50 shadow-sm border-l-4 border-amber-500 overflow-hidden">
               <CardContent className="pt-6 relative">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Bank Holdings</p>
                 <h3 className="text-2xl font-black mt-2 text-foreground">Rs. {Number(bankBalance).toLocaleString()}</h3>
@@ -643,7 +681,7 @@ export default function Finance() {
                    {sales.length === 0 ? (
                       <TableRow><TableCell colSpan={isElevated ? 8 : 7} className="text-center py-20 text-muted-foreground bg-muted/5">No finalized sales in current period.</TableCell></TableRow>
                    ) : (
-                     sales.map(s => {
+                     filteredSales.map(s => {
                        const totalCost = Number(s.purchase_price) + Number(s.transport_cost) + Number(s.repair_cost) + Number(s.registration_fee);
                        const profit = Number(s.selling_price) - totalCost;
                        const margin = ((profit / Number(s.selling_price)) * 100).toFixed(1);
@@ -757,7 +795,7 @@ export default function Finance() {
                    {expenses.length === 0 ? (
                       <TableRow><TableCell colSpan={canEditLedger ? 5 : 4} className="text-center py-20 text-muted-foreground">No operational overhead logged.</TableCell></TableRow>
                    ) : (
-                     expenses.map(e => (
+                     filteredExpenses.map(e => (
                        <TableRow key={e.id} className="hover:bg-muted/10 transition-colors">
                          <TableCell className="text-xs text-muted-foreground pl-6 font-mono">{new Date(e.date).toLocaleDateString('en-GB')}</TableCell>
                          <TableCell>
@@ -816,28 +854,29 @@ export default function Finance() {
                    <CardDescription>Consolidated Statement for Fiscal Period</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-8">
-                   <div className="flex justify-between border-b pb-4">
-                      <span className="text-sm text-muted-foreground">Vehicle Sales Gross Revenue</span>
-                      <span className="text-lg font-black font-mono">Rs. {Number(overview?.monthSales || 0).toLocaleString()}</span>
-                   </div>
-                   <div className="flex justify-between border-b pb-4">
-                      <span className="text-sm text-muted-foreground">Cost of Goods Sold (Inventory Net)</span>
-                      <span className="text-sm font-bold font-mono text-rose-600 print:text-rose-700">- Rs. {(sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)).toLocaleString()}</span>
-                   </div>
-                   <div className="flex justify-between border-b pb-4">
-                      <span className="text-sm text-muted-foreground">Operational Expenses & Salaries</span>
-                      <span className="text-sm font-bold font-mono text-rose-600 print:text-rose-700">- Rs. {Number(overview?.totalExpenses || 0).toLocaleString()}</span>
-                   </div>
-                   
-                   <div className="flex flex-col gap-1 pt-4">
-                      <div className="flex justify-between items-end">
-                         <span className="text-lg font-bold text-emerald-800">NET BUSINESS PROFIT</span>
-                         <span className="text-4xl font-black text-emerald-600 font-display">
-                           Rs. {((Number(overview?.monthSales || 0)) - (sales.reduce((acc, s) => acc + (Number(s.purchase_price) + Number(s.repair_cost) + Number(s.transport_cost) + Number(s.registration_fee)), 0)) - (Number(overview?.totalExpenses || 0))).toLocaleString()}
-                         </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
-                   </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm font-medium text-muted-foreground">Total Income (Gross Sales)</span>
+                    <div className="text-right">
+                      <span className="text-lg font-black font-mono">Rs. {filteredTotalSales.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 text-rose-600/80">
+                    <span className="text-sm font-medium">Cost of Vehicles Sold (COGS)</span>
+                    <span className="text-sm font-bold font-mono">- Rs. {filteredCostOfGoods.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 text-rose-600/80">
+                    <span className="text-sm font-medium">Total Operating Expenses</span>
+                    <span className="text-sm font-bold font-mono text-rose-600 print:text-rose-700">- Rs. {filteredTotalExpenses.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-4 mt-2 border-t-2 border-border/50">
+                    <span className="text-base font-bold text-foreground">Net Operating Profit</span>
+                    <span className={`text-xl font-black font-mono ${filteredNetProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                           Rs. {filteredNetProfit.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-right uppercase tracking-widest mt-2">Calculated in real-time based on validated ledger entries</p>
                    
                    <Button onClick={handleExportAudit} size="lg" className="w-full mt-6 bg-emerald-600 text-white font-black hover:bg-emerald-700 hover:scale-[1.01] transition-all flex gap-3 outline-none print:hidden">
                       <Download className="h-4 w-4" /> Export Professional Audit PDF
