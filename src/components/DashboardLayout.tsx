@@ -228,7 +228,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               className="overflow-hidden"
             >
               <p className="text-[17px] font-semibold text-white leading-tight break-all">
-                {business?.name || "Mohan Trader"}
+                {business?.name || "Mohan Trading"}
               </p>
               <p className="text-[10px] text-white/40 tracking-wide italic leading-tight mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                 {business?.slogan || "Delivering Dreams, Driving Trust"}

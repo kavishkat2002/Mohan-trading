@@ -75,7 +75,7 @@ export default function Login() {
             className="h-24 w-24 mx-auto mb-8 object-contain rounded-2xl bg-white/10 backdrop-blur-sm p-2 border border-white/20"
           />
           <h1 className="text-4xl font-bold text-white tracking-tight leading-tight drop-shadow-lg">
-            Mohan Trader
+            Mohan Trading
           </h1>
           <p className="text-white/80 mt-2 text-lg italic font-display tracking-wide drop-shadow-md">
             Delivering Dreams, Driving Trust
@@ -107,7 +107,7 @@ export default function Login() {
               className="h-12 w-12 rounded-xl object-contain"
             />
             <div>
-              <p className="text-lg font-semibold">Mohan Trader</p>
+              <p className="text-lg font-semibold">Mohan Trading</p>
               <p className="text-[10px] text-muted-foreground italic">Delivering Dreams, Driving Trust</p>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-8 italic">
-            Mohan Trader · Delivering Dreams, Driving Trust
+            Mohan Trading · Delivering Dreams, Driving Trust
           </p>
         </div>
       </div>

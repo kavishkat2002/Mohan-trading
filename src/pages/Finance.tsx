@@ -833,11 +833,12 @@ export default function Finance() {
         <TabsContent value="pnl" className="print:m-0 print:p-0">
            {/* Custom Print Header just for the PDF export */}
            <div className="hidden print:flex w-full items-center gap-6 border-b-4 border-emerald-950 pb-6 mb-8 mt-10 px-8">
-              {business?.logo_url ? (
-                 <img src={`http://localhost:5001${business.logo_url.replace('http://localhost:5001', '')}`} className="w-24 h-24 object-contain rounded-xl shadow-lg border" alt="Logo" />
-              ) : (
-                 <div className="w-24 h-24 bg-emerald-950 rounded-xl flex items-center justify-center shadow-lg"><Briefcase className="h-10 w-10 text-white" /></div>
-              )}
+               <img 
+                 src={business?.logo_url ? `http://localhost:5001${business.logo_url.replace('http://localhost:5001', '')}` : "/mohantrader-logo.png"} 
+                 className="w-24 h-24 object-contain rounded-xl shadow-lg border bg-white" 
+                 alt="Logo" 
+                 onError={(e) => { e.currentTarget.src = "/mohantrader-logo.png"; }} 
+               />
               <div className="flex flex-col">
                  <h1 className="text-5xl font-black font-display text-emerald-950 tracking-tight">{business?.name || "Mohan Trading"}</h1>
                  <p className="text-xl text-emerald-800 font-medium italic mt-2">{business?.slogan || "Delivering Dreams, Driving Trust"}</p>
