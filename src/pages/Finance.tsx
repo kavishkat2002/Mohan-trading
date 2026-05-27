@@ -107,6 +107,42 @@ export default function Finance() {
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
+  const [aiInsights, setAiInsights] = useState<{trend: string, health: string} | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchInsights = async () => {
+      setInsightsLoading(true);
+      try {
+        const res = await fetch('http://localhost:5001/api/finance/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message: 'Provide a quick 1-sentence trend prediction and 1-sentence financial health check based on the data. Reply ONLY with a raw JSON object (no markdown, no backticks) in this exact format: {"trend": "...", "health": "..."}',
+            history: []
+          })
+        });
+        const data = await res.json();
+        try {
+          const cleanJson = data.reply.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          setAiInsights(parsed);
+        } catch (e) {
+           console.error("Failed to parse AI insights:", data.reply);
+           setAiInsights({
+             trend: "Unable to load prediction at this time.",
+             health: "Unable to load health check at this time."
+           });
+        }
+      } catch (err) {
+        console.error("Failed to fetch insights", err);
+      } finally {
+        setInsightsLoading(false);
+      }
+    };
+    fetchInsights();
+  }, []);
+
   const askAI = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isTyping) return;
@@ -508,19 +544,28 @@ export default function Finance() {
               </div>
               <CardHeader className="pb-3 border-b bg-primary/5">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" /> AI Insights
+                  AI Insights
                 </CardTitle>
                 <CardDescription>Automated financial analysis & prediction.</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 p-5 text-sm space-y-4">
-                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <h4 className="font-semibold text-primary mb-1 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Trend Prediction</h4>
-                  <p className="text-muted-foreground leading-relaxed">Based on recent cash flow, sales are projected to grow by <strong className="text-foreground">8%</strong> next month. Expense reduction strategies could yield an additional <strong className="text-foreground">Rs. 250,000</strong> in net profit.</p>
-                </div>
-                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <h4 className="font-semibold text-amber-600 mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Financial Health</h4>
-                  <p className="text-muted-foreground leading-relaxed">Your cash reserves are stable. Watch out for a slight increase in operating expenses observed over the last two weeks.</p>
-                </div>
+                {insightsLoading || !aiInsights ? (
+                  <div className="space-y-4 animate-pulse">
+                    <div className="bg-muted/50 h-24 rounded-lg w-full"></div>
+                    <div className="bg-muted/50 h-24 rounded-lg w-full"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                      <h4 className="font-semibold text-primary mb-1 flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Trend Prediction</h4>
+                      <p className="text-muted-foreground leading-relaxed">{aiInsights.trend}</p>
+                    </div>
+                    <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                      <h4 className="font-semibold text-amber-600 mb-1 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Financial Health</h4>
+                      <p className="text-muted-foreground leading-relaxed">{aiInsights.health}</p>
+                    </div>
+                  </>
+                )}
                 
                 <div className="pt-2">
                   <Button variant="outline" className="w-full text-xs border-primary/20 text-primary hover:bg-primary/5" onClick={() => setShowChatModal(true)}>
