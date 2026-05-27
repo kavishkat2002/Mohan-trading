@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        logo: ['Syncopate', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

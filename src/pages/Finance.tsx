@@ -840,7 +840,7 @@ export default function Finance() {
                  onError={(e) => { e.currentTarget.src = "/mohantrader-logo.png"; }} 
                />
               <div className="flex flex-col">
-                 <h1 className="text-5xl font-black font-display text-emerald-950 tracking-tight">{business?.name || "Mohan Trading"}</h1>
+                 <h1 className="text-4xl font-black font-logo uppercase text-emerald-950 tracking-widest">{business?.name || "Mohan Trading"}</h1>
                  <p className="text-xl text-emerald-800 font-medium italic mt-2">{business?.slogan || "Delivering Dreams, Driving Trust"}</p>
                  <Badge className="w-fit mt-3 bg-emerald-100 text-emerald-900 border-emerald-200">Official Financial Audit Report - {new Date().toLocaleDateString()}</Badge>
               </div>
