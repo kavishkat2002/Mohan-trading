@@ -72,7 +72,11 @@ export default function Finance() {
       setExpenses(await expRes.json());
       setSales(await salesRes.json());
       setVehicles(await vehRes.json());
-      setLeads((await leadRes.json()).filter((l: any) => l.status !== 'Closed'));
+      const allLeads = await leadRes.json();
+      setLeads(allLeads.filter((l: any) => {
+        const s = (l.status || '').toLowerCase();
+        return s !== 'closed' && s !== 'closed deal';
+      }));
     } catch (err) {
       console.error(err);
     }
@@ -165,6 +169,21 @@ export default function Finance() {
       }
     } catch (err: any) { 
         toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSale = async (id: number) => {
+    if (!window.confirm('Delete this sale record? This will restore vehicle stock and revert the lead status.')) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/finance/sales/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast({ title: 'Sale Deleted', description: 'Record removed. Vehicle stock and lead status restored.' });
+        fetchData();
+      } else {
+        toast({ title: 'Failed to delete', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Network error', variant: 'destructive' });
     }
   };
 
@@ -321,12 +340,15 @@ export default function Finance() {
                      <TableHead className="text-xs uppercase font-mono py-4">Total Cost</TableHead>
                      <TableHead className="text-xs uppercase py-4">Sale Price</TableHead>
                      <TableHead className="text-xs uppercase py-4">Profit</TableHead>
-                     <TableHead className="text-xs uppercase text-right py-4 pr-6">Margin %</TableHead>
+                     <TableHead className="text-xs uppercase py-4">Margin %</TableHead>
+                     <TableHead className="text-xs uppercase py-4">Date</TableHead>
+                     <TableHead className="text-xs uppercase py-4">Payment</TableHead>
+                     {isElevated && <TableHead className="text-xs uppercase text-right py-4 pr-6">Action</TableHead>}
                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {sales.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-muted-foreground bg-muted/5">No finalized sales in current period.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={isElevated ? 8 : 7} className="text-center py-20 text-muted-foreground bg-muted/5">No finalized sales in current period.</TableCell></TableRow>
                    ) : (
                      sales.map(s => {
                        const totalCost = Number(s.purchase_price) + Number(s.transport_cost) + Number(s.repair_cost) + Number(s.registration_fee);
@@ -338,11 +360,31 @@ export default function Finance() {
                            <TableCell className="text-sm font-mono text-muted-foreground">Rs. {totalCost.toLocaleString()}</TableCell>
                            <TableCell className="text-sm font-bold text-foreground">Rs. {Number(s.selling_price).toLocaleString()}</TableCell>
                            <TableCell className="text-sm font-bold text-emerald-600">Rs. {profit.toLocaleString()}</TableCell>
-                           <TableCell className="text-right pr-6">
+                           <TableCell>
                              <Badge className="text-[10px] font-black tracking-widest bg-emerald-100 text-emerald-800 border-emerald-200">
                                +{margin}%
                              </Badge>
                            </TableCell>
+                           <TableCell className="text-xs text-muted-foreground font-mono">
+                             {s.sale_date ? new Date(s.sale_date).toLocaleDateString('en-GB') : '—'}
+                           </TableCell>
+                           <TableCell>
+                             <Badge variant="outline" className="text-[9px] font-bold uppercase">
+                               {s.payment_method || 'Bank'}
+                             </Badge>
+                           </TableCell>
+                           {isElevated && (
+                             <TableCell className="text-right pr-6">
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+                                 onClick={() => handleDeleteSale(s.id)}
+                               >
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             </TableCell>
+                           )}
                          </TableRow>
                        )
                      })
@@ -568,7 +610,7 @@ export default function Finance() {
 
       {/* MODAL: LOG SALE */}
       {isAddingSale && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 flex justify-center items-center p-4">
            <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 animate-in zoom-in duration-200">
               <div className="flex justify-between items-center mb-6">
                  <h2 className="text-2xl font-black font-display tracking-tight">Finalize Vehicle Sale</h2>
@@ -628,7 +670,7 @@ export default function Finance() {
 
       {/* MODAL: LOG EXPENSE */}
       {isAddingExpense && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex justify-center items-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 flex justify-center items-center p-4">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 animate-in zoom-in duration-200">
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-black font-display tracking-tight">Record Business Expense</h2>

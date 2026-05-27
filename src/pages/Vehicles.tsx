@@ -57,7 +57,7 @@ export default function Vehicles() {
   const fetchLeads = () => {
     fetch("http://localhost:5001/api/leads")
       .then(res => res.json())
-      .then(data => setLeads((data || []).filter((l: any) => l.status !== 'Closed')))
+      .then(data => setLeads((data || []).filter((l: any) => l.status !== 'Closed' && l.status !== 'Closed Deal')))
       .catch(console.error);
   };
 

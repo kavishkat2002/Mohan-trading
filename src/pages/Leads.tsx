@@ -810,8 +810,7 @@ export default function Leads() {
                         <TableCell>
                           {lead.current_step ? (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="text-[9px] w-fit font-bold uppercase py-0.5 px-2 bg-indigo-50/50 text-indigo-700 border-indigo-100 flex items-center gap-1">
-                                <Sparkles className="h-2.5 w-2.5 text-indigo-400" />
+                              <Badge variant="outline" className="text-[9px] w-fit font-bold uppercase py-0.5 px-2 bg-indigo-50/50 text-indigo-700 border-indigo-100">
                                 {lead.current_step.replace('_', ' ')}
                               </Badge>
                               {lead.chat_metadata && typeof lead.chat_metadata === 'object' && Object.keys(lead.chat_metadata).length > 0 && (
@@ -960,7 +959,6 @@ export default function Leads() {
               {selectedLead.current_step && (
                 <div className="bg-indigo-50/40 border border-indigo-100/60 rounded-2xl p-4 space-y-3.5">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4.5 w-4.5 text-indigo-500 animate-pulse" />
                     <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">AI Intent Context</h4>
                   </div>
                   <div className="space-y-3 text-xs">

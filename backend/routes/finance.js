@@ -60,7 +60,7 @@ router.get('/sales', async (req, res) => {
     const { rows } = await db.query(`
       SELECT vs.*, v.brand, v.purchase_price, v.transport_cost, v.repair_cost, v.registration_fee 
       FROM vehicle_sales vs 
-      JOIN vehicles v ON vs.vehicle_id = v.id 
+      LEFT JOIN vehicles v ON vs.vehicle_id = v.id 
       ORDER BY vs.sale_date DESC
     `);
     res.json(rows);
@@ -69,15 +69,16 @@ router.get('/sales', async (req, res) => {
 
 router.post('/sales', async (req, res) => {
   const { vehicle_id, lead_id, selling_price, sale_date, payment_method, account } = req.body;
-  const vehicleIdVal = vehicle_id === "" || vehicle_id === undefined ? null : vehicle_id;
-  const leadIdVal = lead_id === "" || lead_id === undefined ? null : lead_id;
-  const sellingPriceVal = selling_price === "" || selling_price === undefined ? 0 : selling_price;
+  const vehicleIdVal = vehicle_id === "" || vehicle_id === undefined ? null : parseInt(vehicle_id, 10);
+  const leadIdVal = lead_id === "" || lead_id === undefined ? null : parseInt(lead_id, 10);
+  const sellingPriceVal = selling_price === "" || selling_price === undefined ? 0 : parseFloat(selling_price);
   const saleDateVal = sale_date === "" || sale_date === undefined ? new Date() : sale_date;
+  const paymentMethodVal = payment_method || account || 'Bank';
 
   try {
     const { rows } = await db.query(
       "INSERT INTO vehicle_sales (vehicle_id, lead_id, selling_price, sale_date, payment_method) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [vehicleIdVal, leadIdVal, sellingPriceVal, saleDateVal, payment_method]
+      [vehicleIdVal, leadIdVal, sellingPriceVal, saleDateVal, paymentMethodVal]
     );
     // Mark car as stock = 0
     if (vehicleIdVal) {
@@ -86,8 +87,24 @@ router.post('/sales', async (req, res) => {
     // Record in cash flow
     await db.query(
       "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Income', $1, $2, $3, $4)",
-      [account || 'Bank', sellingPriceVal, `Vehicle Sale ID: ${vehicleIdVal}`, saleDateVal]
+      [account || 'Bank', sellingPriceVal, `Vehicle Sale #${rows[0].id}`, saleDateVal]
     );
+
+    // Sync lead status to 'Closed Deal' and notify the assigned agent
+    if (leadIdVal) {
+      const leadRes = await db.query("SELECT name, assigned_to FROM leads WHERE id = $1", [leadIdVal]);
+      const lead = leadRes.rows[0];
+      if (lead) {
+        await db.query("UPDATE leads SET status = 'Closed Deal', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [leadIdVal]);
+        if (lead.assigned_to) {
+          await db.query(
+            "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+            [lead.assigned_to, `🎉 Deal Closed! Vehicle sale recorded for lead: ${lead.name}.`]
+          );
+        }
+      }
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -103,10 +120,21 @@ router.delete('/expenses/:id', async (req, res) => {
 // DELETE /finance/sales/:id
 router.delete('/sales/:id', async (req, res) => {
   try {
-    // Restore vehicle stock before deleting
-    const sale = await db.query('SELECT vehicle_id FROM vehicle_sales WHERE id = $1', [req.params.id]);
+    // Restore vehicle stock, revert lead status, and remove cash_flow entry
+    const sale = await db.query('SELECT vehicle_id, lead_id, payment_method, selling_price FROM vehicle_sales WHERE id = $1', [req.params.id]);
     if (sale.rows.length > 0) {
-      await db.query('UPDATE vehicles SET stock = stock + 1 WHERE id = $1', [sale.rows[0].vehicle_id]);
+      const { vehicle_id, lead_id, payment_method, selling_price } = sale.rows[0];
+      if (vehicle_id) {
+        await db.query('UPDATE vehicles SET stock = stock + 1 WHERE id = $1', [vehicle_id]);
+      }
+      if (lead_id) {
+        await db.query("UPDATE leads SET status = 'Negotiating', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [lead_id]);
+      }
+      // Remove the matching cash flow income entry
+      await db.query(
+        "DELETE FROM cash_flow WHERE type = 'Income' AND description = $1 AND amount = $2 AND account = $3",
+        [`Vehicle Sale #${req.params.id}`, selling_price, payment_method || 'Bank']
+      );
     }
     await db.query('DELETE FROM vehicle_sales WHERE id = $1', [req.params.id]);
     res.json({ success: true });
