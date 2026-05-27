@@ -8,6 +8,7 @@ import {
   RotateCcw, AlertTriangle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -59,6 +60,27 @@ export default function Finance() {
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
+
+  // Generate chart data from sales and expenses
+  const generateChartData = () => {
+    const dataMap: Record<string, { date: string; Income: number; Expenses: number }> = {};
+
+    sales.forEach(s => {
+      const d = s.sale_date ? new Date(s.sale_date).toISOString().split('T')[0] : null;
+      if (!d) return;
+      if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
+      dataMap[d].Income += Number(s.selling_price) || 0;
+    });
+
+    expenses.forEach(e => {
+      const d = e.date ? new Date(e.date).toISOString().split('T')[0] : null;
+      if (!d) return;
+      if (!dataMap[d]) dataMap[d] = { date: d, Income: 0, Expenses: 0 };
+      dataMap[d].Expenses += Number(e.amount) || 0;
+    });
+
+    return Object.values(dataMap).sort((a, b) => a.date.localeCompare(b.date));
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -301,11 +323,41 @@ export default function Finance() {
                 </Button>
               </CardHeader>
               <CardContent>
-                 <div className="h-[250px] flex items-center justify-center border-t border-dashed mt-2 bg-muted/20 rounded-xl">
-                    <div className="text-center group cursor-pointer">
-                       <PieChart className="h-10 w-10 text-muted-foreground/20 mx-auto group-hover:text-primary/40 transition-colors" />
-                       <p className="text-xs text-muted-foreground mt-2 italic">Cash Flow Visualization Loading...</p>
-                    </div>
+                 <div className="h-[250px] mt-2">
+                    {generateChartData().length === 0 ? (
+                      <div className="h-full flex items-center justify-center border-t border-dashed bg-muted/20 rounded-xl">
+                        <div className="text-center group cursor-pointer">
+                           <PieChart className="h-10 w-10 text-muted-foreground/20 mx-auto group-hover:text-primary/40 transition-colors" />
+                           <p className="text-xs text-muted-foreground mt-2 italic">No cash flow data available.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={generateChartData()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="date" tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => new Date(val).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} />
+                          <YAxis tick={{fontSize: 10}} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs. ${(val / 1000000).toFixed(1)}M`} />
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            labelStyle={{ fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}
+                            formatter={(value: number) => [`Rs. ${value.toLocaleString()}`, undefined]}
+                            labelFormatter={(label) => new Date(label).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          />
+                          <Area type="monotone" dataKey="Income" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                          <Area type="monotone" dataKey="Expenses" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
                  </div>
               </CardContent>
             </Card>
