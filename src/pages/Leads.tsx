@@ -946,40 +946,6 @@ export default function Leads() {
                 </div>
               </div>
 
-              {/* AI Context Insights block */}
-              {selectedLead.current_step && (
-                <div className="bg-indigo-50/40 border border-indigo-100/60 rounded-2xl p-4 space-y-3.5">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">AI Intent Context</h4>
-                  </div>
-                  <div className="space-y-3 text-xs">
-                    <div>
-                      <p className="text-[10px] text-indigo-400 font-bold">Identified Engagement Stage</p>
-                      <Badge variant="outline" className="text-[9px] font-black uppercase mt-1 bg-indigo-100/50 text-indigo-700 border-indigo-200">
-                        {selectedLead.current_step.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    {selectedLead.chat_metadata && typeof selectedLead.chat_metadata === 'object' && (
-                      <div className="text-[11px] text-slate-650 bg-white border border-indigo-50 rounded-xl p-3 space-y-2 leading-relaxed">
-                        {selectedLead.chat_metadata.type && (
-                          <div className="flex justify-between">
-                            <span className="text-slate-400 font-semibold">Preference:</span>
-                            <span className="text-slate-800 font-bold">{selectedLead.chat_metadata.type}</span>
-                          </div>
-                        )}
-                        {selectedLead.chat_metadata.intent && (
-                          <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-50">
-                            <span className="text-slate-400 font-semibold">User Intent:</span>
-                            <span className="text-slate-700 font-medium bg-slate-50 p-2 rounded-lg text-[10px] italic leading-normal border border-slate-100">
-                              "{selectedLead.chat_metadata.intent}"
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Assignee information block */}
               <div className="bg-white border border-slate-205 border-slate-200 rounded-2xl p-4 space-y-3">
