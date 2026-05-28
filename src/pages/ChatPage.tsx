@@ -43,6 +43,7 @@ export default function ChatPage() {
   const [filtered, setFiltered] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [supaLeadId, setSupaLeadId] = useState<number | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -56,26 +57,70 @@ export default function ChatPage() {
   const isElevated = user?.role === "owner" || user?.role === "admin";
 
   const fetchLeads = async () => {
-    const { data, error } = await supabase
-      .from("leads")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (!error && data) {
-      setLeads(data);
-      setFiltered(data);
+    try {
+      // 1. Fetch from Supabase WhatsApp Leads to sync them locally
+      const { data: supaLeads, error: supaErr } = await supabase.from('leads').select('*');
+      if (!supaErr && supaLeads && supaLeads.length > 0) {
+        await fetch("http://localhost:5001/api/leads/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leads: supaLeads })
+        });
+      }
+
+      // 2. Fetch the newly merged data from main CRM
+      const res = await fetch("http://localhost:5001/api/leads");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setLeads(data);
+        setFiltered(data);
+      }
+    } catch (err) {
+      console.error("Fetch leads error:", err);
+    } finally {
+      setLoadingLeads(false);
     }
-    setLoadingLeads(false);
   };
 
-  const fetchMessages = async (leadId: number) => {
+  const fetchMessages = async (lead: any) => {
+    if (!lead) return;
     setLoadingMessages(true);
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("lead_id", leadId)
-      .order("created_at", { ascending: true });
-    if (!error && data) setMessages(data);
-    setLoadingMessages(false);
+    try {
+      // 1. Sync messages from Supabase if the lead has a phone number
+      if (lead.phone) {
+        const { data: supaLead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("phone", lead.phone)
+          .maybeSingle();
+
+        if (supaLead) {
+          const { data: supaMessages } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("lead_id", supaLead.id);
+
+          if (supaMessages && supaMessages.length > 0) {
+            await fetch(`http://localhost:5001/api/messages/sync`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lead_id: lead.id, messages: supaMessages })
+            });
+          }
+        }
+      }
+
+      // 2. Fetch the newly merged messages from local backend
+      const res = await fetch(`http://localhost:5001/api/messages/lead/${lead.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data);
+      }
+    } catch (err) {
+      console.error("Fetch messages error:", err);
+    } finally {
+      setLoadingMessages(false);
+    }
   };
 
   useEffect(() => { fetchLeads(); }, []);
@@ -91,21 +136,29 @@ export default function ChatPage() {
 
   // Real-time messages
   useEffect(() => {
-    if (!selectedLead) return;
+    if (!selectedLead || !supaLeadId) return;
     const channel = supabase
       .channel(`messages-lead-${selectedLead.id}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public", table: "messages",
-        filter: `lead_id=eq.${selectedLead.id}`,
-      }, (payload) => {
+        filter: `lead_id=eq.${supaLeadId}`,
+      }, async (payload) => {
+        // Sync the newly received message to local backend
+        await fetch(`http://localhost:5001/api/messages/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lead_id: selectedLead.id, messages: [payload.new] })
+        });
+
+        // Add to messages state directly
         setMessages((prev) => {
-          if (prev.find((m) => m.id === payload.new.id)) return prev;
+          if (prev.find((m) => m.id === payload.new.id || (m.content === payload.new.content && m.sender === payload.new.sender))) return prev;
           return [...prev, payload.new];
         });
       })
       .subscribe((status) => setIsLive(status === "SUBSCRIBED"));
     return () => { supabase.removeChannel(channel); setIsLive(false); };
-  }, [selectedLead?.id]);
+  }, [selectedLead?.id, supaLeadId]);
 
   // Real-time leads
   useEffect(() => {
@@ -120,9 +173,29 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSelectLead = (lead: any) => {
+  const handleSelectLead = async (lead: any) => {
     setSelectedLead(lead);
-    fetchMessages(lead.id);
+    setSupaLeadId(null);
+    
+    // Fetch and sync messages
+    await fetchMessages(lead);
+
+    // Look up the Supabase Lead ID to establish real-time updates subscription
+    if (lead.phone) {
+      try {
+        const { data: supaLead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("phone", lead.phone)
+          .maybeSingle();
+        if (supaLead) {
+          setSupaLeadId(supaLead.id);
+        }
+      } catch (err) {
+        console.error("Supabase lead ID lookup failed:", err);
+      }
+    }
+
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
@@ -134,7 +207,19 @@ export default function ChatPage() {
     const optimistic = { id: Date.now(), sender: "sales", content, created_at: new Date().toISOString() };
     setMessages((prev) => [...prev, optimistic]);
     try {
-      await supabase.from("messages").insert({ lead_id: selectedLead.id, sender: "sales", content });
+      // 1. Save to local database via Express API
+      await fetch("http://localhost:5001/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: selectedLead.id, sender: "sales", content })
+      });
+
+      // 2. Sync to Supabase using correct Supabase Lead ID
+      if (supaLeadId) {
+        await supabase.from("messages").insert({ lead_id: supaLeadId, sender: "sales", content });
+      }
+
+      // 3. Direct Meta Graph API trigger fallback
       if (WHATSAPP_TOKEN && PHONE_NUMBER_ID && selectedLead.phone) {
         await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
           method: "POST",
@@ -150,6 +235,7 @@ export default function ChatPage() {
     if (!selectedLead || !isElevated) return;
     if (!window.confirm("Delete this entire conversation? This cannot be undone.")) return;
     try {
+      await fetch(`http://localhost:5001/api/leads/${selectedLead.id}`, { method: "DELETE" });
       await supabase.from("messages").delete().eq("lead_id", selectedLead.id);
       await supabase.from("leads").delete().eq("id", selectedLead.id);
       setSelectedLead(null);

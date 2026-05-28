@@ -21,14 +21,16 @@ router.put('/', async (req, res) => {
   const {
     name, contact_email, contact_phone, business_type, description,
     bank_name, bank_account_holder, bank_account_number, bank_branch, bank_swift_code,
-    payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url
+    payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url,
+    whatsapp_token, meta_app_id, meta_config_id
   } = req.body;
   
   try {
     const values = [
       name, contact_email, contact_phone, business_type, description,
       bank_name, bank_account_holder, bank_account_number, bank_branch, bank_swift_code,
-      payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url
+      payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url,
+      whatsapp_token, meta_app_id, meta_config_id
     ].map(v => v === undefined ? null : v);
 
     const { rows } = await db.query(
@@ -47,7 +49,10 @@ router.put('/', async (req, res) => {
            payment_gateway_link = COALESCE($12, payment_gateway_link),
            whatsapp_phone_number_id = COALESCE($13, whatsapp_phone_number_id),
            slogan = COALESCE($14, slogan),
-           logo_url = COALESCE($15, logo_url)
+           logo_url = COALESCE($15, logo_url),
+           whatsapp_token = COALESCE($16, whatsapp_token),
+           meta_app_id = COALESCE($17, meta_app_id),
+           meta_config_id = COALESCE($18, meta_config_id)
        WHERE id = 1 RETURNING *`,
       values
     );

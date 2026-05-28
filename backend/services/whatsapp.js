@@ -14,10 +14,20 @@ async function sendWhatsAppMessage(to, text, leadId = null) {
        await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [leadId, 'bot', text]);
     }
 
+    // 1. Fetch credentials from database settings
+    const settingsRes = await db.query('SELECT whatsapp_token, whatsapp_phone_number_id FROM settings WHERE id = 1');
+    const settings = settingsRes.rows[0] || {};
+    
+    // Fallback to env values
+    const token = settings.whatsapp_token || process.env.WHATSAPP_TOKEN || 'YOUR_META_API_TOKEN';
+    const phoneId = settings.whatsapp_phone_number_id || process.env.PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
+    
+    const waUrl = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+
     await axios.post(
-      WA_API_URL,
+      waUrl,
       { messaging_product: 'whatsapp', to: to, text: { body: text } },
-      { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);

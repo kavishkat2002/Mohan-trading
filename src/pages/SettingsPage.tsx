@@ -238,6 +238,9 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState("");
+  const [whatsappToken, setWhatsappToken] = useState("");
+  const [metaAppId, setMetaAppId] = useState("");
+  const [metaConfigId, setMetaConfigId] = useState("");
 
   useEffect(() => {
     if (business) {
@@ -256,8 +259,56 @@ export default function SettingsPage() {
       if (business.logo_url && !logoUrl) setLogoUrl(business.logo_url);
       if (business.contact_phone && !whatsappPhone) setWhatsappPhone(business.contact_phone);
       if (business.whatsapp_phone_number_id && !whatsappPhoneNumberId) setWhatsappPhoneNumberId(business.whatsapp_phone_number_id);
+      if (business.whatsapp_token && !whatsappToken) setWhatsappToken(business.whatsapp_token);
+      if (business.meta_app_id && !metaAppId) setMetaAppId(business.meta_app_id);
+      if (business.meta_config_id && !metaConfigId) setMetaConfigId(business.meta_config_id);
     }
   }, [business]);
+
+  const handleFbEmbeddedSignup = () => {
+    if (!metaAppId.trim()) {
+      toast({
+        title: "Meta App ID required",
+        description: "Please enter your Meta App ID under the Recommended Connection section.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    localStorage.setItem("meta_app_id", metaAppId.trim());
+    localStorage.setItem("meta_config_id", metaConfigId.trim());
+
+    const redirectUri = encodeURIComponent(window.location.origin + "/dashboard/settings");
+    const state = "whatsapp_signup_state";
+    const configParam = metaConfigId.trim() ? `&config_id=${metaConfigId.trim()}` : "";
+    
+    // Official Meta WhatsApp Embedded Signup scopes & setup extras
+    const scope = "whatsapp_business_management,whatsapp_business_messaging";
+    const extras = encodeURIComponent(JSON.stringify({
+      setup: {
+        transport: "session",
+        packages: ["whatsapp"]
+      }
+    }));
+
+    const url = `https://www.facebook.com/v23.0/dialog/oauth?client_id=${metaAppId.trim()}&redirect_uri=${redirectUri}${configParam}&state=${state}&response_type=code&scope=${scope}&extras=${extras}`;
+    
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    
+    window.open(
+      url,
+      "Facebook Login for Business",
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+    );
+    
+    toast({
+      title: "Meta OAuth Window Launched",
+      description: "Ensure your Meta Developer App is configured in Live mode to authenticate your WhatsApp account.",
+    });
+  };
 
   const updateBusiness = useMutation({
     mutationFn: async () => {
@@ -277,6 +328,9 @@ export default function SettingsPage() {
         logo_url: logoUrl,
         contact_phone: whatsappPhone,
         whatsapp_phone_number_id: whatsappPhoneNumberId,
+        whatsapp_token: whatsappToken,
+        meta_app_id: metaAppId,
+        meta_config_id: metaConfigId,
       };
 
       const res = await fetch("http://localhost:5001/api/settings", {
@@ -484,35 +538,92 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="whatsapp" className="mt-6">
-          <SectionCard title="WhatsApp Configuration" desc="Configure your WhatsApp Business API integration">
-            <p className="text-xs text-muted-foreground">Configure your WhatsApp contact details. The AI Bot will use this context.</p>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">WhatsApp Number (Contact Phone)</Label>
-              <Input placeholder="+1234567890" value={whatsappPhone} onChange={e => setWhatsappPhone(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                WhatsApp Phone Number ID <span className="normal-case text-muted-foreground/60">(From Meta Developer Portal)</span>
-              </Label>
-              <Input placeholder="e.g. 1029384756..." value={whatsappPhoneNumberId} onChange={e => setWhatsappPhoneNumberId(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Webhook URL</Label>
-              <div className="flex gap-2">
-                <Input readOnly value={`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`} className="h-9 text-sm font-mono text-xs" />
-                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
-                  navigator.clipboard.writeText(`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`);
-                  toast({ title: "Webhook URL copied" });
-                }}>Copy</Button>
+          <div className="space-y-6">
+            {/* Automatic Setup Option */}
+            <SectionCard title="WhatsApp Connection" desc="Connect your profile automatically using Facebook Login">
+              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="text-xs font-semibold text-blue-900 uppercase tracking-wide">Automatic & Recommended</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Share your WhatsApp Business account with <strong>Mohan Traders CRM</strong> instantly. Connect your existing number, contacts, and WhatsApp profiles.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Meta App ID</Label>
+                    <Input 
+                      placeholder="e.g. 1029384756102938" 
+                      value={metaAppId} 
+                      onChange={e => setMetaAppId(e.target.value)} 
+                      className="h-9 text-sm bg-white" 
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Meta Config ID (Optional)</Label>
+                    <Input 
+                      placeholder="e.g. 982739827398273" 
+                      value={metaConfigId} 
+                      onChange={e => setMetaConfigId(e.target.value)} 
+                      className="h-9 text-sm bg-white" 
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleFbEmbeddedSignup}
+                  className="w-full bg-[#1877F2] text-white hover:bg-[#166FE5] flex items-center justify-center gap-2.5 font-semibold text-xs h-10 shadow-sm"
+                >
+                  <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Connect WhatsApp Business
+                </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Copy this to your Meta App Configuration. Set Verify Token to: <code className="px-1 py-0.5 bg-primary/5 text-primary rounded text-[10px]">smartbiz_verify_token</code></p>
-            </div>
-            {['owner', 'admin'].includes(user?.role) && (
-              <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
-                Save WhatsApp Settings
-              </Button>
-            )}
-          </SectionCard>
+            </SectionCard>
+
+            {/* Manual Setup Option */}
+            <SectionCard title="Manual / Developer Setup" desc="Manually configure your WhatsApp Cloud API details">
+              <p className="text-xs text-muted-foreground">For custom deployments, enter your WhatsApp Developer account details below.</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">WhatsApp Number (Contact Phone)</Label>
+                <Input placeholder="+1234567890" value={whatsappPhone} onChange={e => setWhatsappPhone(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  WhatsApp Phone Number ID <span className="normal-case text-muted-foreground/60">(From Meta Developer Portal)</span>
+                </Label>
+                <Input placeholder="e.g. 1029384756..." value={whatsappPhoneNumberId} onChange={e => setWhatsappPhoneNumberId(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  WhatsApp Access Token <span className="normal-case text-muted-foreground/60">(System User Token / Permanent Token)</span>
+                </Label>
+                <Input 
+                  type="password"
+                  placeholder="Paste your WhatsApp Access Token (starts with EAA...)" 
+                  value={whatsappToken} 
+                  onChange={e => setWhatsappToken(e.target.value)} 
+                  className="h-9 text-sm font-mono text-xs" 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`} className="h-9 text-sm font-mono text-xs" />
+                  <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
+                    navigator.clipboard.writeText(`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`);
+                    toast({ title: "Webhook URL copied" });
+                  }}>Copy</Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Copy this to your Meta App Configuration. Set Verify Token to: <code className="px-1 py-0.5 bg-primary/5 text-primary rounded text-[10px]">smartbiz_verify_token</code></p>
+              </div>
+              {['owner', 'admin'].includes(user?.role) && (
+                <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
+                  Save WhatsApp Settings
+                </Button>
+              )}
+            </SectionCard>
+          </div>
         </TabsContent>
 
         <TabsContent value="plans" className="mt-6">
