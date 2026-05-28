@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall, Trash2, AlertTriangle, Brain, Sparkles, Send, RefreshCw, Plus, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -242,28 +242,65 @@ export default function SettingsPage() {
   const [metaAppId, setMetaAppId] = useState("");
   const [metaConfigId, setMetaConfigId] = useState("");
 
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiModel, setAiModel] = useState("openai/gpt-3.5-turbo");
+  const [aiSystemPrompt, setAiSystemPrompt] = useState("");
+  const [aiBusinessDescription, setAiBusinessDescription] = useState("");
+  const [aiFaqData, setAiFaqData] = useState<{ q: string; a: string }[]>([]);
+
+  // FAQ input state
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newAnswer, setNewAnswer] = useState("");
+
+  // Simulator state
+  const [simMessages, setSimMessages] = useState<{ sender: 'user' | 'bot'; content: string }[]>([
+    { sender: 'bot', content: "Hi! I am your AI Sales Agent. Try chatting with me to test your current settings!" }
+  ]);
+  const [simInput, setSimInput] = useState("");
+  const [isSimLoading, setIsSimLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
-    if (business) {
-      if (business.name && !name) setName(business.name);
-      if (business.contact_email && !contactEmail) setContactEmail(business.contact_email);
-      if (business.bank_name && !bankName) setBankName(business.bank_name);
-      if (business.bank_account_number && !bankAccountNumber) setBankAccountNumber(business.bank_account_number);
-      if (business.bank_account_holder && !bankAccountHolder) setBankAccountHolder(business.bank_account_holder);
-      if (business.bank_branch && !bankBranch) setBankBranch(business.bank_branch);
-      if (business.bank_swift_code && !bankSwiftCode) setBankSwiftCode(business.bank_swift_code);
-      if (business.payment_gateway_link && !paymentGatewayLink) setPaymentGatewayLink(business.payment_gateway_link);
-      if (business.payment_gateway_name && !paymentGatewayName) setPaymentGatewayName(business.payment_gateway_name);
-      if (business.business_type && !businessType) setBusinessType(business.business_type);
-      if (business.description && !description) setDescription(business.description);
-      if (business.slogan && !slogan) setSlogan(business.slogan);
-      if (business.logo_url && !logoUrl) setLogoUrl(business.logo_url);
-      if (business.contact_phone && !whatsappPhone) setWhatsappPhone(business.contact_phone);
-      if (business.whatsapp_phone_number_id && !whatsappPhoneNumberId) setWhatsappPhoneNumberId(business.whatsapp_phone_number_id);
-      if (business.whatsapp_token && !whatsappToken) setWhatsappToken(business.whatsapp_token);
-      if (business.meta_app_id && !metaAppId) setMetaAppId(business.meta_app_id);
-      if (business.meta_config_id && !metaConfigId) setMetaConfigId(business.meta_config_id);
+    if (business && !isLoaded) {
+      if (business.name) setName(business.name);
+      if (business.contact_email) setContactEmail(business.contact_email);
+      if (business.bank_name) setBankName(business.bank_name);
+      if (business.bank_account_number) setBankAccountNumber(business.bank_account_number);
+      if (business.bank_account_holder) setBankAccountHolder(business.bank_account_holder);
+      if (business.bank_branch) setBankBranch(business.bank_branch);
+      if (business.bank_swift_code) setBankSwiftCode(business.bank_swift_code);
+      if (business.payment_gateway_link) setPaymentGatewayLink(business.payment_gateway_link);
+      if (business.payment_gateway_name) setPaymentGatewayName(business.payment_gateway_name);
+      if (business.business_type) setBusinessType(business.business_type);
+      if (business.description) setDescription(business.description);
+      if (business.slogan) setSlogan(business.slogan);
+      if (business.logo_url) setLogoUrl(business.logo_url);
+      if (business.contact_phone) setWhatsappPhone(business.contact_phone);
+      if (business.whatsapp_phone_number_id) setWhatsappPhoneNumberId(business.whatsapp_phone_number_id);
+      if (business.whatsapp_token) setWhatsappToken(business.whatsapp_token);
+      if (business.meta_app_id) setMetaAppId(business.meta_app_id);
+      if (business.meta_config_id) setMetaConfigId(business.meta_config_id);
+      
+      // Load AI Settings
+      if (business.ai_enabled !== undefined) setAiEnabled(business.ai_enabled);
+      if (business.ai_model) setAiModel(business.ai_model);
+      if (business.ai_system_prompt) setAiSystemPrompt(business.ai_system_prompt);
+      if (business.ai_business_description) setAiBusinessDescription(business.ai_business_description);
+      if (business.ai_faq_data) {
+        try {
+          const parsed = typeof business.ai_faq_data === 'string'
+            ? JSON.parse(business.ai_faq_data)
+            : business.ai_faq_data;
+          if (Array.isArray(parsed)) {
+            setAiFaqData(parsed);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsLoaded(true);
     }
-  }, [business]);
+  }, [business, isLoaded]);
 
   const handleFbEmbeddedSignup = () => {
     if (!metaAppId.trim()) {
@@ -331,6 +368,11 @@ export default function SettingsPage() {
         whatsapp_token: whatsappToken,
         meta_app_id: metaAppId,
         meta_config_id: metaConfigId,
+        ai_enabled: aiEnabled,
+        ai_model: aiModel,
+        ai_system_prompt: aiSystemPrompt,
+        ai_business_description: aiBusinessDescription,
+        ai_faq_data: aiFaqData,
       };
 
       const res = await fetch("http://localhost:5001/api/settings", {
@@ -340,7 +382,7 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to update settings");
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["business"] }); toast({ title: "Settings updated" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["business"] }); toast({ title: "Settings and AI Agent trained successfully" }); },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -396,6 +438,7 @@ export default function SettingsPage() {
         <TabsList className="bg-background border border-border p-0.5 rounded-lg h-auto">
           <TabsTrigger value="business" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Building2 className="h-3.5 w-3.5" />Business</TabsTrigger>
           <TabsTrigger value="whatsapp" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><MessageSquare className="h-3.5 w-3.5" />WhatsApp</TabsTrigger>
+          <TabsTrigger value="ai-agent" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Brain className="h-3.5 w-3.5" />AI Agent</TabsTrigger>
           <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger>
           <TabsTrigger value="plans" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><CreditCard className="h-3.5 w-3.5" />Plans</TabsTrigger>
           <TabsTrigger value="team" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Users className="h-3.5 w-3.5" />Team</TabsTrigger>
@@ -609,9 +652,9 @@ export default function SettingsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Webhook URL</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`} className="h-9 text-sm font-mono text-xs" />
+                  <Input readOnly value={`${import.meta.env.VITE_SUPABASE_URL || 'https://nceyweiskamspdxfxnga.supabase.co'}/functions/v1/whatsapp-webhook`} className="h-9 text-sm font-mono text-xs" />
                   <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
-                    navigator.clipboard.writeText(`https://rskkufaczzltlwtpyect.supabase.co/functions/v1/whatsapp-webhook`);
+                    navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL || 'https://nceyweiskamspdxfxnga.supabase.co'}/functions/v1/whatsapp-webhook`);
                     toast({ title: "Webhook URL copied" });
                   }}>Copy</Button>
                 </div>
@@ -623,6 +666,344 @@ export default function SettingsPage() {
                 </Button>
               )}
             </SectionCard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ai-agent" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT COLUMN: TRAINING AND CONTEXT (7 cols on lg) */}
+            <div className="lg:col-span-7 space-y-6">
+              
+              {/* Activation & Core Settings */}
+              <div className="border border-border rounded-lg bg-white overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-primary/5 via-transparent to-transparent flex items-center justify-between">
+                  <div>
+                    <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-primary" />
+                      Smart AI Sales Representative
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Automate WhatsApp responses with customized brand knowledge</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={aiEnabled} 
+                      onChange={e => setAiEnabled(e.target.checked)} 
+                    />
+                    <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">AI Model Selection</Label>
+                    <Select value={aiModel} onValueChange={setAiModel}>
+                      <SelectTrigger className="h-10 text-sm bg-white">
+                        <SelectValue placeholder="Select LLM model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cost-effective)</SelectItem>
+                        <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Great for Sri Lankan Context / Sinhala)</SelectItem>
+                        <SelectItem value="meta-llama/llama-3-8b-instruct">Llama 3 8B (Open Source & Fast)</SelectItem>
+                        <SelectItem value="anthropic/claude-3-haiku">Claude 3 Haiku (Highly Logical)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground font-medium">Select the brain of your sales representative. We recommend Gemini 2.5 Flash for best Sinhala language response handling.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Persona and Tone Training */}
+              <SectionCard title="Persona & Rules" desc="Train the agent on how to speak and behave during chats">
+                <div className="space-y-4">
+                  {/* Preset buttons */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Instruction Presets</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { 
+                          name: "Sinhala & English Friendly", 
+                          prompt: "You are an AI sales assistant for Mohan Trading showroom. Speak in a friendly, polite, and helpful manner. You are bilingual in Sinhala and English, using typical Sri Lankan chat style (using words like 'Ayubowan', 'sir/madam', 'malli'). Guide customers through buying, selling, or booking test drives. Politely gather their name, interested car type, and budget." 
+                        },
+                        { 
+                          name: "Professional Sales Representative", 
+                          prompt: "You are a professional car leasing and sales expert at Mohan Trading showroom. Your tone is respectful, formal, and sales-focused. Your primary objective is to present vehicle configurations, schedule showroom visits/test drives, and extract lead information (name, target vehicle, budget range) in a structured manner." 
+                        },
+                        { 
+                          name: "Aggressive Deal Closer", 
+                          prompt: "You are an energetic, high-conversion sales closer at Mohan Trading. You are highly proactive and persuasive. Promote current active discounts. Keep answers brief and immediately request their name, phone number, and budget to pass to our human team for immediate closure." 
+                        }
+                      ].map(preset => (
+                        <Button 
+                          key={preset.name}
+                          type="button"
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setAiSystemPrompt(preset.prompt);
+                            toast({ title: "Preset Applied", description: `Prompt set to '${preset.name}'` });
+                          }}
+                          className="text-xs h-7 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 font-medium rounded-md"
+                        >
+                          <Sparkles className="h-3 w-3 mr-1 text-primary" />
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Custom System Prompt / Instructions</Label>
+                    <Textarea 
+                      value={aiSystemPrompt} 
+                      onChange={e => setAiSystemPrompt(e.target.value)} 
+                      placeholder="Enter detailed behavior guidelines for the AI..."
+                      className="min-h-[140px] text-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Write instructions about the AI's role, constraints (e.g. 'never give prices outside the range', 'do not talk about competitors'), and specific fields to capture.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Business Profile & Showroom Context</Label>
+                    <Textarea 
+                      value={aiBusinessDescription} 
+                      onChange={e => setAiBusinessDescription(e.target.value)} 
+                      placeholder="Describe what your dealership offers, showroom location, opening hours..."
+                      className="min-h-[100px] text-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      This information provides the knowledge context for the AI. Include your location, working hours, and stock services.
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+
+              {/* FAQ Knowledge Base Builder */}
+              <SectionCard title="FAQ Knowledge Base" desc="Add specific question-and-answer pairs the AI agent should know">
+                <div className="space-y-4">
+                  
+                  {/* FAQ Add Input Form */}
+                  <div className="p-3 border border-primary/10 bg-primary/[0.02] rounded-lg space-y-2.5">
+                    <p className="text-[10px] uppercase font-bold tracking-wider text-primary/70">Add New Q&A Block</p>
+                    <div className="space-y-1.5">
+                      <Input 
+                        placeholder="Customer Question (e.g., Do you accept trade-ins?)" 
+                        value={newQuestion} 
+                        onChange={e => setNewQuestion(e.target.value)}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Textarea 
+                        placeholder="AI Answer (e.g., Yes, we evaluate and buy your old vehicle...)" 
+                        value={newAnswer} 
+                        onChange={e => setNewAnswer(e.target.value)}
+                        className="min-h-[60px] text-xs bg-white resize-none"
+                      />
+                    </div>
+                    <Button 
+                      type="button" 
+                      onClick={() => {
+                        if (!newQuestion.trim() || !newAnswer.trim()) return;
+                        setAiFaqData([...aiFaqData, { q: newQuestion.trim(), a: newAnswer.trim() }]);
+                        setNewQuestion("");
+                        setNewAnswer("");
+                        toast({ title: "FAQ added to queue" });
+                      }}
+                      disabled={!newQuestion.trim() || !newAnswer.trim()}
+                      className="w-full h-8 text-xs bg-primary text-white flex items-center justify-center gap-1 font-semibold"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add to Knowledge Base
+                    </Button>
+                  </div>
+
+                  {/* FAQ list */}
+                  <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1">
+                    {aiFaqData.map((faq, index) => (
+                      <div key={index} className="group relative p-3 border border-border bg-background/50 rounded-lg hover:border-primary/20 hover:bg-white transition-all">
+                        <p className="text-xs font-semibold text-foreground pr-6 flex items-start gap-1">
+                          <span className="text-primary font-bold">Q:</span> {faq.q}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
+                          <span className="text-emerald-500 font-bold">A:</span> {faq.a}
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const updated = aiFaqData.filter((_, i) => i !== index);
+                            setAiFaqData(updated);
+                            toast({ title: "FAQ removed" });
+                          }}
+                          className="absolute top-2 right-2 h-5 w-5 rounded-full border bg-white hover:bg-rose-50 text-muted-foreground hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {aiFaqData.length === 0 && (
+                      <p className="text-center py-6 text-xs text-muted-foreground">No custom FAQs defined yet. The agent will rely on the general Business Profile.</p>
+                    )}
+                  </div>
+
+                </div>
+              </SectionCard>
+
+              {/* SAVE CHANGES BUTTON */}
+              {['owner', 'admin'].includes(user?.role || "") && (
+                <Button 
+                  onClick={() => updateBusiness.mutate()} 
+                  disabled={updateBusiness.isPending} 
+                  className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
+                >
+                  {updateBusiness.isPending ? "Saving..." : "Save AI Agent Settings & Train Model"}
+                </Button>
+              )}
+            </div>
+
+            {/* RIGHT COLUMN: WHATSAPP SIMULATOR (5 cols on lg) */}
+            <div className="lg:col-span-5 border border-border rounded-lg bg-zinc-100 overflow-hidden shadow-sm sticky top-6">
+              
+              {/* Simulator Header */}
+              <div className="bg-[#075e54] text-white p-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-full bg-teal-800 flex items-center justify-center font-bold text-sm">
+                    MT
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-xs leading-none">Mohan Trading Sales Bot</h4>
+                    <span className="text-[10px] text-teal-100 mt-1 inline-block">Online • Model: {aiModel.split('/').pop()}</span>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setSimMessages([{ sender: 'bot', content: "Hi! I am your AI Sales Agent. Try chatting with me to test your current settings!" }])}
+                  className="h-8 w-8 text-teal-100 hover:text-white hover:bg-teal-800 rounded-full"
+                  title="Reset Chat"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Simulator Messages Box */}
+              <div className="h-[380px] overflow-y-auto p-4 space-y-3.5 bg-[#ece5dd] bg-opacity-95" id="sim-message-box">
+                {simMessages.map((msg, index) => (
+                  <div 
+                    key={index}
+                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`max-w-[85%] rounded-lg p-2.5 text-xs shadow-sm relative leading-relaxed ${
+                        msg.sender === 'user' 
+                          ? 'bg-[#d9fdd3] text-zinc-900 rounded-tr-none' 
+                          : 'bg-white text-zinc-900 rounded-tl-none'
+                      }`}
+                    >
+                      <p className="whitespace-pre-line">{msg.content}</p>
+                      <span className="text-[9px] text-muted-foreground float-right mt-1 ml-2">
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {isSimLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-white rounded-lg p-3 text-xs shadow-sm rounded-tl-none flex items-center gap-1.5 text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Simulator Input Box */}
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!simInput.trim() || isSimLoading) return;
+                  const userText = simInput.trim();
+                  setSimMessages(prev => [...prev, { sender: 'user', content: userText }]);
+                  setSimInput("");
+                  setIsSimLoading(true);
+
+                  try {
+                    // Send messages history along
+                    const formattedHistory = simMessages.slice(1).map(m => ({
+                      sender: m.sender === 'user' ? 'customer' : 'bot',
+                      content: m.content
+                    }));
+
+                    const res = await fetch("http://localhost:5001/api/settings/test-chat", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        userMessage: userText,
+                        ai_system_prompt: aiSystemPrompt,
+                        ai_business_description: aiBusinessDescription,
+                        ai_faq_data: aiFaqData,
+                        ai_model: aiModel,
+                        chatHistory: formattedHistory
+                      })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.reply) {
+                      setSimMessages(prev => [...prev, { sender: 'bot', content: data.reply }]);
+                      
+                      // If there is extracted info, display it in a toast as verification!
+                      if (data.extracted_info) {
+                        const info = data.extracted_info;
+                        const detected = [];
+                        if (info.name) detected.push(`Name: ${info.name}`);
+                        if (info.interested_car) detected.push(`Car: ${info.interested_car}`);
+                        if (info.budget) detected.push(`Budget: ${info.budget}`);
+                        if (info.status) detected.push(`Status: ${info.status}`);
+                        if (detected.length > 0) {
+                          toast({
+                            title: "🔍 Extracted Lead Info",
+                            description: detected.join(" | "),
+                          });
+                        }
+                      }
+                    } else {
+                      setSimMessages(prev => [...prev, { sender: 'bot', content: "Failed to generate reply. Check your connection or API keys." }]);
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    setSimMessages(prev => [...prev, { sender: 'bot', content: "Error communicating with the test endpoint." }]);
+                  } finally {
+                    setIsSimLoading(false);
+                    // Scroll simulator message box to bottom
+                    setTimeout(() => {
+                      const box = document.getElementById("sim-message-box");
+                      if (box) box.scrollTop = box.scrollHeight;
+                    }, 50);
+                  }
+                }}
+                className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-zinc-200"
+              >
+                <Input 
+                  placeholder="Type a test message to agent..."
+                  value={simInput}
+                  onChange={e => setSimInput(e.target.value)}
+                  className="bg-white h-9 text-xs flex-1 rounded-full px-4 border-0 focus-visible:ring-1 focus-visible:ring-primary shadow-none"
+                  disabled={isSimLoading}
+                />
+                <Button 
+                  type="submit" 
+                  size="icon" 
+                  disabled={!simInput.trim() || isSimLoading}
+                  className="h-9 w-9 rounded-full bg-[#00a884] text-white hover:bg-[#008f72] flex items-center justify-center shrink-0"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </form>
+
+            </div>
           </div>
         </TabsContent>
 

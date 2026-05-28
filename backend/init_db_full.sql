@@ -118,3 +118,35 @@ CREATE TABLE IF NOT EXISTS notices (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Settings table
+CREATE TABLE IF NOT EXISTS settings (
+  id INT PRIMARY KEY DEFAULT 1,
+  name VARCHAR(255) DEFAULT 'Mohan Trading',
+  contact_email VARCHAR(255) DEFAULT 'tkavishka101@gmail.com',
+  contact_phone VARCHAR(50) DEFAULT '',
+  business_type VARCHAR(100) DEFAULT 'other',
+  description TEXT DEFAULT '',
+  bank_name VARCHAR(255) DEFAULT '',
+  bank_account_holder VARCHAR(255) DEFAULT '',
+  bank_account_number VARCHAR(100) DEFAULT '',
+  bank_branch VARCHAR(255) DEFAULT '',
+  bank_swift_code VARCHAR(50) DEFAULT '',
+  payment_gateway_name VARCHAR(255) DEFAULT '',
+  payment_gateway_link TEXT DEFAULT '',
+  whatsapp_phone_number_id VARCHAR(100) DEFAULT '1059367357255730',
+  slogan VARCHAR(255) DEFAULT 'Delivering Dreams, Driving Trust',
+  logo_url TEXT DEFAULT '/mohantrader-logo.png',
+  whatsapp_token TEXT DEFAULT '',
+  meta_app_id VARCHAR(100) DEFAULT '',
+  meta_config_id VARCHAR(100) DEFAULT '',
+  ai_enabled BOOLEAN DEFAULT FALSE,
+  ai_model VARCHAR(100) DEFAULT 'openai/gpt-3.5-turbo',
+  ai_system_prompt TEXT DEFAULT 'You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.',
+  ai_business_description TEXT DEFAULT 'Mohan Trading is a premium car dealership located in Colombo, Sri Lanka. We offer high-quality luxury cars, SUVs, and vans with warranty, flexible leasing partners, and a dedicated service station.',
+  ai_faq_data JSONB DEFAULT '[]'::jsonb
+);
+
+-- Seed setting row 1 if not exists
+INSERT INTO settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+

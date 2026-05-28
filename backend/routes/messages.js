@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
     if (sender === 'sales') {
         const leadRes = await db.query('SELECT phone FROM leads WHERE id = $1', [lead_id]);
         if (leadRes.rows.length > 0) {
-            await whatsappService.sendWhatsAppMessage(leadRes.rows[0].phone, content);
+            await whatsappService.sendWhatsAppMessage(leadRes.rows[0].phone, content, null, 'sales');
         }
     }
 

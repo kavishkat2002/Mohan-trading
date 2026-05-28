@@ -1,22 +1,75 @@
 const axios = require('axios');
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
-async function generateSmartReply(userMessage, context) {
+async function generateSmartReply(userMessage, context = {}) {
   if (!OPENAI_API_KEY) {
     console.log("No OPENAI_API_KEY found, returning fallback.");
-    // Fallback if no API key is provided
-    return "Our sales team will get back to you shortly, or you can call us directly.";
+    return {
+      reply: "Our sales team will get back to you shortly, or you can call us directly.",
+      extracted_info: null
+    };
   }
 
   try {
+    const systemPrompt = context.ai_system_prompt || `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.`;
+    const model = context.ai_model || 'openai/gpt-3.5-turbo';
+
+    let systemContent = systemPrompt;
+
+    if (context.ai_business_description) {
+      systemContent += `\n\nAbout our business:\n${context.ai_business_description}`;
+    }
+
+    let faqs = context.ai_faq_data;
+    if (faqs) {
+      try {
+        if (typeof faqs === 'string') {
+          faqs = JSON.parse(faqs);
+        }
+      } catch (e) {
+        console.error("Failed to parse FAQ JSON inside AI service:", e);
+      }
+      if (Array.isArray(faqs) && faqs.length > 0) {
+        systemContent += `\n\nFrequently Asked Questions (FAQs):\n` + faqs.map(faq => `Q: ${faq.q}\nA: ${faq.a}`).join('\n\n');
+      }
+    }
+
+    // Include instructions for structured JSON output
+    systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
+The JSON must have this exact structure:
+{
+  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
+  "extracted_info": {
+    "name": "Customer's name if they shared it or if you just learned it, otherwise null",
+    "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
+    "budget": "Their budget range if they just shared it, otherwise null",
+    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)"
+  }
+}`;
+
+    const messages = [
+      { role: 'system', content: systemContent }
+    ];
+
+    // Format and append chat history
+    if (context.chatHistory && Array.isArray(context.chatHistory)) {
+      context.chatHistory.forEach(msg => {
+        const role = (msg.sender === 'customer' || msg.sender === 'user' || msg.role === 'user') ? 'user' : 'assistant';
+        const content = msg.content || msg.body || '';
+        if (content) {
+          messages.push({ role, content });
+        }
+      });
+    }
+
+    // Append current user message
+    messages.push({ role: 'user', content: userMessage });
+
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: `You are an AI sales assistant for Mohan Trading, a premium car dealership. Be helpful, concise, and professional. The user is currently at this stage: ${context.step}. Their name is ${context.name || 'unknown'}.` },
-          { role: 'user', content: userMessage }
-        ]
+        model: model,
+        messages: messages
       },
       {
         headers: {
@@ -26,10 +79,33 @@ async function generateSmartReply(userMessage, context) {
       }
     );
 
-    return response.data.choices[0].message.content;
+    let text = response.data.choices[0].message.content.trim();
+    
+    // Strip markdown code blocks if the model wrapped it
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.reply === 'string') {
+        return parsed;
+      }
+      throw new Error("Missing 'reply' in parsed response");
+    } catch (e) {
+      console.warn("Failed to parse JSON response from LLM, returning raw text as reply:", text);
+      return {
+        reply: text,
+        extracted_info: null
+      };
+    }
+
   } catch (error) {
-    console.error('Error with OpenAI API:', error.message);
-    return "I'm having a little trouble thinking right now. A human agent will contact you soon!";
+    console.error('Error with OpenRouter API:', error.response ? error.response.data : error.message);
+    return {
+      reply: "I am having a little trouble connecting to my brain right now. A human agent will contact you soon!",
+      extracted_info: null
+    };
   }
 }
 

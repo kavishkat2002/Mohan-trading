@@ -1,18 +1,85 @@
 const axios = require('axios');
 const db = require('../db');
+const { createClient } = require('@supabase/supabase-js');
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || 'YOUR_META_API_TOKEN';
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+}
+
+// Ensure lead exists in Supabase so messages can be attached
+async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
+  if (!supabase) return null;
+  try {
+    let { data: lead, error } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('phone', phone)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!lead) {
+      const { data: newLead, error: insertErr } = await supabase
+        .from('leads')
+        .insert({
+          phone,
+          name: name,
+          status: 'New'
+        })
+        .select()
+        .single();
+      
+      if (insertErr) throw insertErr;
+      return newLead.id;
+    }
+    return lead.id;
+  } catch (err) {
+    console.error('[Supabase Sync] Failed to ensure lead:', err.message);
+    return null;
+  }
+}
+
+// Sync message to Supabase to trigger real-time updates on client
+async function syncMessageToSupabase(phone, sender, content) {
+  if (!supabase) return;
+  try {
+    const supaLeadId = await ensureLeadInSupabase(phone);
+    if (!supaLeadId) return;
+
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        lead_id: supaLeadId,
+        sender,
+        content
+      });
+
+    if (error) throw error;
+    console.log(`[Supabase Sync] Message synced: [${sender}] "${content.substring(0, 15)}..."`);
+  } catch (err) {
+    console.error('[Supabase Sync] Failed to sync message:', err.message);
+  }
+}
+
 const WA_API_URL = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
 
 // Send a plain text message via WhatsApp
-async function sendWhatsAppMessage(to, text, leadId = null) {
+async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot') {
   try {
     // Log outgoing message to DB
     if (leadId) {
-       await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [leadId, 'bot', text]);
+       await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [leadId, sender, text]);
     }
+
+    // Sync outbound message to Supabase
+    await syncMessageToSupabase(to, sender, text);
 
     // 1. Fetch credentials from database settings
     const settingsRes = await db.query('SELECT whatsapp_token, whatsapp_phone_number_id FROM settings WHERE id = 1');
@@ -51,96 +118,177 @@ async function handleIncomingMessage(phone, text) {
   // 2. LOG INCOMING MESSAGE
   await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [lead.id, 'customer', text]);
 
-  let step = lead.current_step || 'START';
-  let metadata = lead.chat_metadata || {};
+  // Sync incoming message to Supabase
+  await syncMessageToSupabase(phone, 'customer', text);
+
+  // Fetch settings to check if AI responder is enabled
+  const settingsRes = await db.query('SELECT * FROM settings WHERE id = 1');
+  const settings = settingsRes.rows[0] || {};
+
   let outMsg = "";
 
-  const inputLower = text.toLowerCase();
-  if (inputLower === 'reset' || inputLower === 'hi' || inputLower === 'hello') {
-    step = 'START';
-    metadata = {};
+  if (settings.ai_enabled) {
+    // ---- SMART AI RESPONDER FLOW ----
+    console.log(`[AI Agent] Processing message for lead ${lead.id} using model ${settings.ai_model}...`);
+    
+    // Fetch last 6 messages for short-term history (which now includes the message just inserted)
+    const historyRes = await db.query(
+      'SELECT sender, content FROM messages WHERE lead_id = $1 ORDER BY created_at DESC LIMIT 6',
+      [lead.id]
+    );
+    // Reverse to chronological order (since we selected DESC)
+    const chatHistory = historyRes.rows.reverse();
+
+    // Call generateSmartReply
+    const { generateSmartReply } = require('./ai');
+    const aiResult = await generateSmartReply(text, {
+      ai_system_prompt: settings.ai_system_prompt,
+      ai_business_description: settings.ai_business_description,
+      ai_faq_data: settings.ai_faq_data,
+      ai_model: settings.ai_model,
+      chatHistory: chatHistory
+    });
+
+    outMsg = aiResult.reply;
+
+    // Process extracted info to update lead details
+    if (aiResult.extracted_info) {
+      const info = aiResult.extracted_info;
+      let updateFields = [];
+      let updateValues = [];
+      let paramCount = 1;
+
+      // Update name if we learned it and current name is generic
+      if (info.name && (lead.name === 'WhatsApp User' || lead.name === '')) {
+        updateFields.push(`name = $${paramCount++}`);
+        updateValues.push(info.name);
+        lead.name = info.name;
+      }
+      // Update interested car
+      if (info.interested_car) {
+        updateFields.push(`interested_car = $${paramCount++}`);
+        updateValues.push(info.interested_car);
+        lead.interested_car = info.interested_car;
+      }
+      // Update budget
+      if (info.budget) {
+        updateFields.push(`budget = $${paramCount++}`);
+        updateValues.push(info.budget);
+        lead.budget = info.budget;
+      }
+      // Update status
+      if (info.status && ['New', 'Warm', 'Hot', 'Cold', 'Completed'].includes(info.status)) {
+        updateFields.push(`status = $${paramCount++}`);
+        updateValues.push(info.status);
+        lead.status = info.status;
+      }
+
+      // Always update current_step and chat_metadata
+      const mergedMetadata = { ...lead.chat_metadata, ...info };
+      updateFields.push(`chat_metadata = $${paramCount++}`);
+      updateValues.push(JSON.stringify(mergedMetadata));
+
+      updateFields.push(`current_step = $${paramCount++}`);
+      updateValues.push('AI_AGENT');
+
+      updateValues.push(lead.id);
+      const queryStr = `UPDATE leads SET ${updateFields.join(', ')} WHERE id = $${paramCount}`;
+      await db.query(queryStr, updateValues);
+      console.log(`[AI Agent] Lead ${lead.id} details updated:`, info);
+    } else {
+      // Just update current_step to AI_AGENT
+      await db.query("UPDATE leads SET current_step = 'AI_AGENT' WHERE id = $1", [lead.id]);
+    }
+  } else {
+    // ---- LEGACY STATE MACHINE FLOW ----
+    let step = lead.current_step || 'START';
+    let metadata = lead.chat_metadata || {};
+
+    const inputLower = text.toLowerCase();
+    if (inputLower === 'reset' || inputLower === 'hi' || inputLower === 'hello') {
+      step = 'START';
+      metadata = {};
+    }
+
+    switch (step) {
+      case 'START':
+        outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can we help you today?\n\n1️⃣ Buy a car\n2️⃣ Sell a car\n3️⃣ View latest Inventory\n\n(Reply with 1, 2, or 3)`;
+        step = 'INTENT_DISCOVERY';
+        break;
+
+      case 'INTENT_DISCOVERY':
+        if (text === '1') {
+          outMsg = "Great! 🚗 What is your name?";
+          step = 'COLLECT_NAME';
+          metadata.intent = 'BUY';
+        } else if (text === '2') {
+          outMsg = "We can help you sell! What is your name?";
+          step = 'COLLECT_NAME';
+          metadata.intent = 'SELL';
+        } else if (text === '3') {
+          outMsg = "Check out our current fleet here: https://mohantrading.com/vehicles \n\nType 'Buy' if you see something you like!";
+          step = 'START';
+        } else {
+          outMsg = "Please reply with 1, 2, or 3 to proceed.";
+        }
+        break;
+
+      case 'COLLECT_NAME':
+        metadata.name = text;
+        await db.query('UPDATE leads SET name = $1 WHERE id = $2', [text, lead.id]);
+        if (metadata.intent === 'BUY') {
+          outMsg = `Nice to meet you, ${text}! What type of vehicle are you looking for? (e.g. SUV, Sedan, Van)`;
+          step = 'COLLECT_VEHICLE_TYPE';
+        } else {
+          outMsg = `Nice to meet you, ${text}! What is the Make and Model of the car you wish to sell?`;
+          step = 'COLLECT_SELL_MODEL';
+        }
+        break;
+
+      case 'COLLECT_VEHICLE_TYPE':
+        metadata.type = text;
+        outMsg = `Got it. And what is your budget range in LKR? (e.g. 10M - 15M)`;
+        step = 'COLLECT_BUDGET';
+        break;
+
+      case 'COLLECT_BUDGET':
+        metadata.budget = text;
+        
+        try {
+            const maxBudget = parseInt(text.replace(/[^0-9]/g, ''), 10) || 999999999;
+            const { rows: matches } = await db.query(
+              'SELECT brand, price, category FROM vehicles WHERE category ILIKE $1 AND price <= $2 LIMIT 3',
+              [`%${metadata.type}%`, maxBudget]
+            );
+
+            if (matches.length > 0) {
+              let carList = matches.map(m => `✅ ${m.brand} - LKR ${m.price}`).join('\n');
+              outMsg = `I found some matches 📊:\n\n${carList}\n\nOur specialists will contact you shortly with full details and photos! 🚗💨`;
+            } else {
+              outMsg = `Thanks! 📊 I'm searching our full network for a ${metadata.type} within your budget. One of our human specialists will follow up with personalized options shortly! 🚗💨`;
+            }
+        } catch (err) {
+            console.error('Inventory search error:', err);
+            outMsg = "Thank you! Our sales team will follow up with you shortly with personalized options. 🚗💨";
+        }
+        
+        step = 'COMPLETED';
+        await db.query('UPDATE leads SET interested_car = $1, budget = $2, status = $3 WHERE id = $4', [metadata.type, metadata.budget, 'Warm', lead.id]);
+        break;
+
+      case 'COMPLETED':
+        outMsg = "We already have your details! Our team is working on your request. (Reply 'reset' to start over)";
+        break;
+
+      default:
+        outMsg = "Thanks for your message! Our team will be with you shortly.";
+    }
+
+    // PERSIST STATE AND SEND
+    await db.query('UPDATE leads SET current_step = $1, chat_metadata = $2 WHERE id = $3', [step, JSON.stringify(metadata), lead.id]);
   }
 
-  // 3. STATE MACHINE (Tier 1 Memory)
-  switch (step) {
-    case 'START':
-      outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can we help you today?\n\n1️⃣ Buy a car\n2️⃣ Sell a car\n3️⃣ View latest Inventory\n\n(Reply with 1, 2, or 3)`;
-      step = 'INTENT_DISCOVERY';
-      break;
-
-    case 'INTENT_DISCOVERY':
-      if (text === '1') {
-        outMsg = "Great! 🚗 What is your name?";
-        step = 'COLLECT_NAME';
-        metadata.intent = 'BUY';
-      } else if (text === '2') {
-        outMsg = "We can help you sell! What is your name?";
-        step = 'COLLECT_NAME';
-        metadata.intent = 'SELL';
-      } else if (text === '3') {
-        outMsg = "Check out our current fleet here: https://mohantrading.com/vehicles \n\nType 'Buy' if you see something you like!";
-        step = 'START';
-      } else {
-        outMsg = "Please reply with 1, 2, or 3 to proceed.";
-      }
-      break;
-
-    case 'COLLECT_NAME':
-      metadata.name = text;
-      await db.query('UPDATE leads SET name = $1 WHERE id = $2', [text, lead.id]);
-      if (metadata.intent === 'BUY') {
-        outMsg = `Nice to meet you, ${text}! What type of vehicle are you looking for? (e.g. SUV, Sedan, Van)`;
-        step = 'COLLECT_VEHICLE_TYPE';
-      } else {
-        outMsg = `Nice to meet you, ${text}! What is the Make and Model of the car you wish to sell?`;
-        step = 'COLLECT_SELL_MODEL';
-      }
-      break;
-
-    case 'COLLECT_VEHICLE_TYPE':
-      metadata.type = text;
-      outMsg = `Got it. And what is your budget range in LKR? (e.g. 10M - 15M)`;
-      step = 'COLLECT_BUDGET';
-      break;
-
-    case 'COLLECT_BUDGET':
-      metadata.budget = text;
-      
-      // AI MEMORY TIER 3: Semantic Inventory Search
-      try {
-          // Parse budget for query (simplistic budget limit extraction)
-          const maxBudget = parseInt(text.replace(/[^0-9]/g, ''), 10) || 999999999;
-          const { rows: matches } = await db.query(
-            'SELECT brand, price, category FROM vehicles WHERE category ILIKE $1 AND price <= $2 LIMIT 3',
-            [`%${metadata.type}%`, maxBudget]
-          );
-
-          if (matches.length > 0) {
-            let carList = matches.map(m => `✅ ${m.brand} - LKR ${m.price}`).join('\n');
-            outMsg = `I found some matches 📊:\n\n${carList}\n\nOur specialists will contact you shortly with full details and photos! 🚗💨`;
-          } else {
-            outMsg = `Thanks! 📊 I'm searching our full network for a ${metadata.type} within your budget. One of our human specialists will follow up with personalized options shortly! 🚗💨`;
-          }
-      } catch (err) {
-          console.error('Inventory search error:', err);
-          outMsg = "Thank you! Our sales team will follow up with you shortly with personalized options. 🚗💨";
-      }
-      
-      step = 'COMPLETED';
-      // Sync detailed lead info
-      await db.query('UPDATE leads SET interested_car = $1, budget = $2, status = $3 WHERE id = $4', [metadata.type, metadata.budget, 'Warm', lead.id]);
-      break;
-
-    case 'COMPLETED':
-      outMsg = "We already have your details! Our team is working on your request. (Reply 'reset' to start over)";
-      break;
-
-    default:
-      outMsg = "Thanks for your message! Our team will be with you shortly.";
-  }
-
-  // 4. PERSIST STATE AND SEND
-  await db.query('UPDATE leads SET current_step = $1, chat_metadata = $2 WHERE id = $3', [step, JSON.stringify(metadata), lead.id]);
+  // 4. SEND OUTGOING MESSAGE
   await sendWhatsAppMessage(phone, outMsg, lead.id);
 }
 
