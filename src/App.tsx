@@ -18,6 +18,7 @@ import Finance from "./pages/Finance";
 import Noticeboard from "./pages/Noticeboard";
 import Tasks from "./pages/Tasks";
 import SuperAdmin from "./pages/SuperAdmin";
+import TestDrives from "./pages/TestDrives";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/dashboard/finance" element={<ProtectedRoute><DashboardLayout><Finance /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/noticeboard" element={<ProtectedRoute><DashboardLayout><Noticeboard /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/tasks" element={<ProtectedRoute><DashboardLayout><Tasks /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/dashboard/test-drives" element={<ProtectedRoute><DashboardLayout><TestDrives /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardLayout><Analytics /></DashboardLayout></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><SettingsPage /></DashboardLayout></ProtectedRoute>} />
             <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />

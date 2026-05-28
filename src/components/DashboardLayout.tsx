@@ -23,6 +23,7 @@ const navItems = [
   { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
   { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
   { label: "Tasks", icon: ClipboardList, path: "/dashboard/tasks" },
+  { label: "Test Drives", icon: CalendarClock, path: "/dashboard/test-drives" },
   { label: "Attendance", icon: CalendarClock, path: "/dashboard/attendance" },
   { label: "Finance", icon: Banknote, path: "/dashboard/finance" },
   { label: "Settings", icon: Settings, path: "/dashboard/settings" },
@@ -46,9 +47,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (item.label === "Noticeboard") return false;
     if (isElevated) return true;
     if (user?.role === 'accountant') {
-      return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Finance"].includes(item.label);
+      return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Finance", "Test Drives"].includes(item.label);
     }
-    return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance"].includes(item.label);
+    return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Test Drives"].includes(item.label);
   });
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
