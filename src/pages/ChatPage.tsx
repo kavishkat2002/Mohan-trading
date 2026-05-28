@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Send, Bot, User, Car, MessageSquare, RefreshCw, Wifi, Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Loader2, Send, User, Car, RefreshCw, Trash2, Search, Phone, MoreVertical, Check, CheckCheck } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,8 +11,37 @@ const supabase = createClient(
 const WHATSAPP_TOKEN = import.meta.env.VITE_WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = import.meta.env.VITE_PHONE_NUMBER_ID;
 
+const STATUS_COLORS: Record<string, string> = {
+  hot:       "bg-red-100 text-red-700",
+  warm:      "bg-amber-100 text-amber-700",
+  new:       "bg-sky-100 text-sky-700",
+  contacted: "bg-violet-100 text-violet-700",
+};
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function getAvatarColor(name: string) {
+  const colors = [
+    "bg-teal-500", "bg-emerald-500", "bg-cyan-600",
+    "bg-indigo-500", "bg-purple-500", "bg-rose-500",
+    "bg-orange-500", "bg-blue-500",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
 export default function ChatPage() {
   const [leads, setLeads] = useState<any[]>([]);
+  const [filtered, setFiltered] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
@@ -24,21 +50,23 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
-  const isElevated = user?.role === 'owner' || user?.role === 'admin';
+  const isElevated = user?.role === "owner" || user?.role === "admin";
 
-  // ── Fetch all leads ──────────────────────────────────────────────
   const fetchLeads = async () => {
     const { data, error } = await supabase
       .from("leads")
       .select("*")
       .order("updated_at", { ascending: false });
-    if (!error && data) setLeads(data);
+    if (!error && data) {
+      setLeads(data);
+      setFiltered(data);
+    }
     setLoadingLeads(false);
   };
 
-  // ── Fetch messages for a lead ───────────────────────────────────
   const fetchMessages = async (leadId: number) => {
     setLoadingMessages(true);
     const { data, error } = await supabase
@@ -50,50 +78,44 @@ export default function ChatPage() {
     setLoadingMessages(false);
   };
 
-  // ── Initial load ─────────────────────────────────────────────────
-  useEffect(() => {
-    fetchLeads();
-  }, []);
+  useEffect(() => { fetchLeads(); }, []);
 
-  // ── Supabase Real-time subscription for messages ─────────────────
+  useEffect(() => {
+    const q = search.toLowerCase();
+    setFiltered(leads.filter((l) =>
+      (l.name || "").toLowerCase().includes(q) ||
+      (l.phone || "").includes(q) ||
+      (l.interested_car || "").toLowerCase().includes(q)
+    ));
+  }, [search, leads]);
+
+  // Real-time messages
   useEffect(() => {
     if (!selectedLead) return;
-
     const channel = supabase
       .channel(`messages-lead-${selectedLead.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `lead_id=eq.${selectedLead.id}` },
-        (payload) => {
-          setMessages((prev) => {
-            // Avoid duplicates
-            if (prev.find((m) => m.id === payload.new.id)) return prev;
-            return [...prev, payload.new];
-          });
-        }
-      )
-      .subscribe((status) => {
-        setIsLive(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-      setIsLive(false);
-    };
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "messages",
+        filter: `lead_id=eq.${selectedLead.id}`,
+      }, (payload) => {
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === payload.new.id)) return prev;
+          return [...prev, payload.new];
+        });
+      })
+      .subscribe((status) => setIsLive(status === "SUBSCRIBED"));
+    return () => { supabase.removeChannel(channel); setIsLive(false); };
   }, [selectedLead?.id]);
 
-  // ── Supabase Real-time for leads list (new WhatsApp leads) ───────
+  // Real-time leads
   useEffect(() => {
     const channel = supabase
       .channel("leads-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
-        fetchLeads();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, fetchLeads)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Auto-scroll to bottom ────────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -101,64 +123,39 @@ export default function ChatPage() {
   const handleSelectLead = (lead: any) => {
     setSelectedLead(lead);
     fetchMessages(lead.id);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  // ── Send message via WhatsApp + save to DB ───────────────────────
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedLead || sending) return;
     setSending(true);
-
     const content = newMessage.trim();
     setNewMessage("");
-
-    // 1. Optimistic UI update
     const optimistic = { id: Date.now(), sender: "sales", content, created_at: new Date().toISOString() };
     setMessages((prev) => [...prev, optimistic]);
-
     try {
-      // 2. Save to Supabase
-      await supabase.from("messages").insert({
-        lead_id: selectedLead.id,
-        sender: "sales",
-        content,
-      });
-
-      // 3. Send via WhatsApp API (if token configured)
+      await supabase.from("messages").insert({ lead_id: selectedLead.id, sender: "sales", content });
       if (WHATSAPP_TOKEN && PHONE_NUMBER_ID && selectedLead.phone) {
         await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: selectedLead.phone,
-            type: "text",
-            text: { body: content },
-          }),
+          headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ messaging_product: "whatsapp", to: selectedLead.phone, type: "text", text: { body: content } }),
         });
       }
-    } catch (err) {
-      console.error("Send error:", err);
-    }
-
+    } catch (err) { console.error("Send error:", err); }
     setSending(false);
   };
 
   const handleDeleteConversation = async () => {
     if (!selectedLead || !isElevated) return;
-    if (!window.confirm("Are you sure you want to delete this entire conversation? This cannot be undone.")) return;
-    
+    if (!window.confirm("Delete this entire conversation? This cannot be undone.")) return;
     try {
       await supabase.from("messages").delete().eq("lead_id", selectedLead.id);
       await supabase.from("leads").delete().eq("id", selectedLead.id);
       setSelectedLead(null);
       setMessages([]);
       fetchLeads();
-    } catch (err) {
-      console.error("Delete conversation error:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleDeleteMessage = async (msgId: number) => {
@@ -167,222 +164,298 @@ export default function ChatPage() {
     try {
       await supabase.from("messages").delete().eq("id", msgId);
       setMessages((prev) => prev.filter((m) => m.id !== msgId));
-    } catch (err) {
-      console.error("Delete message error:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "hot":       return "bg-red-100 text-red-700";
-      case "warm":      return "bg-amber-100 text-amber-700";
-      case "new":       return "bg-blue-100 text-blue-700";
-      case "contacted": return "bg-violet-100 text-violet-700";
-      default:          return "bg-muted text-muted-foreground";
-    }
-  };
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  const getSenderStyle = (sender: string) => {
-    switch (sender) {
-      case "sales": return "bg-primary text-white rounded-br-md";
-      case "bot":   return "bg-primary/80 text-white rounded-br-md";
-      default:      return "bg-white border border-border text-foreground rounded-bl-md shadow-sm";
-    }
+  const formatListDate = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString())
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-4">
-      {/* ── Sidebar: Leads List ────────────────────────────── */}
-      <div className="w-[300px] shrink-0 flex flex-col border border-border rounded-xl bg-white overflow-hidden shadow-sm">
-        <div className="px-4 py-3 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">Conversations</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{leads.length} active leads</p>
+    <div className="flex h-[calc(100vh-112px)] rounded-xl overflow-hidden border border-[#d1d7db] shadow-sm bg-white">
+
+      {/* ── LEFT SIDEBAR ──────────────────────────────── */}
+      <div className="w-[340px] shrink-0 flex flex-col border-r border-[#d1d7db] bg-white">
+
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#f0f2f5]">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-[#00a884] flex items-center justify-center text-white text-sm font-semibold shrink-0">
+              {getInitials(user?.email || "MT")}
             </div>
+            <span className="font-semibold text-[#111b21] text-sm">Mohan Traders</span>
+          </div>
+          <div className="flex items-center gap-1">
             <button
               onClick={fetchLeads}
-              className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-primary/10 transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 transition-colors"
               title="Refresh"
             >
-              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+              <RefreshCw className="h-4 w-4 text-[#54656f]" />
+            </button>
+            <button className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 transition-colors">
+              <MoreVertical className="h-4 w-4 text-[#54656f]" />
             </button>
           </div>
         </div>
 
+        {/* Search */}
+        <div className="px-3 py-2 bg-white">
+          <div className="flex items-center gap-2 bg-[#f0f2f5] rounded-lg px-3 h-9">
+            <Search className="h-4 w-4 text-[#54656f] shrink-0" />
+            <input
+              type="text"
+              placeholder="Search or start new chat"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-sm text-[#111b21] placeholder:text-[#8696a0] outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Lead count badge */}
+        <div className="px-4 py-1.5 border-b border-[#f0f2f5]">
+          <span className="text-[11px] font-medium text-[#8696a0] uppercase tracking-wider">
+            {filtered.length} conversation{filtered.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {loadingLeads ? (
-            <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-          ) : leads.length === 0 ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">No leads yet</div>
+            <div className="flex justify-center p-10">
+              <Loader2 className="h-5 w-5 animate-spin text-[#00a884]" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-sm text-[#8696a0]">No conversations found</div>
           ) : (
-            leads.map((lead) => (
-              <div
-                key={lead.id}
-                onClick={() => handleSelectLead(lead)}
-                className={`px-4 py-3.5 border-b border-border/50 cursor-pointer transition-all duration-150 ${
-                  selectedLead?.id === lead.id ? "bg-primary text-white" : "hover:bg-primary/[0.03]"
-                }`}
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <span className={`font-semibold text-sm truncate ${selectedLead?.id === lead.id ? "text-white" : "text-foreground"}`}>
-                    {lead.name || "WhatsApp User"}
-                  </span>
-                  <span className={`text-[10px] shrink-0 ${selectedLead?.id === lead.id ? "text-white/60" : "text-muted-foreground"}`}>
-                    {new Date(lead.updated_at || lead.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                  </span>
-                </div>
-                <div className={`text-[11px] font-mono mt-0.5 ${selectedLead?.id === lead.id ? "text-white/70" : "text-muted-foreground"}`}>
-                  +{lead.phone}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <div className={`flex items-center gap-1 text-[10px] ${selectedLead?.id === lead.id ? "text-white/70" : "text-muted-foreground"}`}>
-                    <Car className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{lead.interested_car || "Any vehicle"}</span>
+            filtered.map((lead) => {
+              const isActive = selectedLead?.id === lead.id;
+              const initials = getInitials(lead.name || "?");
+              const avatarBg = getAvatarColor(lead.name || "?");
+              return (
+                <div
+                  key={lead.id}
+                  onClick={() => handleSelectLead(lead)}
+                  className={`flex items-center gap-3 px-3 py-3 cursor-pointer border-b border-[#f0f2f5] transition-colors ${
+                    isActive ? "bg-[#f0f2f5]" : "hover:bg-[#f5f6f6]"
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className={`h-12 w-12 rounded-full ${avatarBg} flex items-center justify-center shrink-0 text-white font-semibold text-sm`}>
+                    {initials}
                   </div>
-                  {lead.status && (
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${
-                      selectedLead?.id === lead.id ? "bg-white/20 text-white" : getStatusColor(lead.status)
-                    }`}>
-                      {lead.status}
-                    </span>
-                  )}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                      <span className="font-medium text-[#111b21] text-[14.5px] truncate">{lead.name || "WhatsApp User"}</span>
+                      <span className="text-[11px] text-[#8696a0] shrink-0 ml-1">{formatListDate(lead.updated_at || lead.created_at)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Car className="h-3 w-3 text-[#8696a0] shrink-0" />
+                        <span className="text-[12.5px] text-[#667781] truncate">{lead.interested_car || lead.phone}</span>
+                      </div>
+                      {lead.status && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase shrink-0 ${STATUS_COLORS[lead.status?.toLowerCase()] || "bg-gray-100 text-gray-600"}`}>
+                          {lead.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
 
-      {/* ── Main Chat Area ─────────────────────────────────── */}
-      <div className="flex-1 flex flex-col border border-border rounded-xl bg-white overflow-hidden shadow-sm">
+      {/* ── MAIN CHAT AREA ────────────────────────────── */}
+      <div className="flex-1 flex flex-col" style={{ background: "#efeae2" }}>
         {selectedLead ? (
           <>
-            {/* Chat header */}
-            <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-white">
-              <div>
-                <h3 className="font-semibold text-sm text-foreground">{selectedLead.name}</h3>
-                <p className="text-[11px] text-muted-foreground font-mono">+{selectedLead.phone}</p>
+            {/* Chat Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f0f2f5] border-b border-[#d1d7db]">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-full ${getAvatarColor(selectedLead.name || "?")} flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
+                  {getInitials(selectedLead.name || "?")}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#111b21] text-[14.5px] leading-tight">{selectedLead.name}</h3>
+                  <p className="text-[12px] text-[#667781]">
+                    {isLive ? (
+                      <span className="text-[#00a884]">● online</span>
+                    ) : (
+                      <span className="font-mono">+{selectedLead.phone}</span>
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
 
+              <div className="flex items-center gap-1">
                 {selectedLead.budget && (
-                  <Badge variant="outline" className="text-[10px] font-medium">
+                  <span className="text-[11px] bg-white border border-[#d1d7db] text-[#3b4a54] px-2 py-0.5 rounded-full font-medium mr-1">
                     💰 {selectedLead.budget}
-                  </Badge>
+                  </span>
                 )}
+                <button className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 transition-colors">
+                  <Phone className="h-4 w-4 text-[#54656f]" />
+                </button>
                 {isElevated && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
                     onClick={handleDeleteConversation}
-                    className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 ml-1"
-                    title="Delete Conversation"
+                    className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-red-50 text-[#54656f] hover:text-red-500 transition-colors"
+                    title="Delete conversation"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 )}
+                <button className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 transition-colors">
+                  <MoreVertical className="h-4 w-4 text-[#54656f]" />
+                </button>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-gradient-to-b from-background/30 to-background/10">
+            <div
+              className="flex-1 overflow-y-auto px-8 py-4 space-y-1"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5ddd5'/%3E%3C/svg%3E")`,
+              }}
+            >
               {loadingMessages ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                <div className="flex justify-center p-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#00a884]" />
+                </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-2">
-                  <Bot className="h-8 w-8 opacity-20" />
-                  <p className="text-xs">No messages yet.</p>
+                <div className="flex flex-col items-center justify-center h-full gap-3">
+                  <div className="bg-white/80 rounded-lg px-5 py-3 text-center shadow-sm">
+                    <p className="text-[13px] text-[#667781]">No messages yet</p>
+                    <p className="text-[11px] text-[#8696a0] mt-0.5">Send the first message below</p>
+                  </div>
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.sender === "sales" || msg.sender === "bot" ? "justify-end" : "justify-start"}`}>
-                    {/* Avatar */}
-                    {(msg.sender !== "sales" && msg.sender !== "bot") && (
-                      <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center mr-2 shrink-0 mt-1">
-                        <User className="h-4 w-4 text-emerald-700" />
-                      </div>
-                    )}
-                    <div className="group relative flex items-center w-fit max-w-[72%]">
-                      {isElevated && msg.sender !== "bot" && msg.sender !== "sales" && (
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-opacity cursor-pointer"
-                          title="Delete message"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                messages.map((msg, idx) => {
+                  const isOutgoing = msg.sender === "sales" || msg.sender === "bot";
+                  const prevMsg = messages[idx - 1];
+                  const showDateSep = idx === 0 ||
+                    new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString();
+
+                  return (
+                    <div key={msg.id}>
+                      {/* Date separator */}
+                      {showDateSep && (
+                        <div className="flex justify-center my-3">
+                          <span className="bg-white/80 text-[#667781] text-[11px] font-medium px-3 py-1 rounded-full shadow-sm">
+                            {new Date(msg.created_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+                          </span>
+                        </div>
                       )}
-                      {isElevated && (msg.sender === "bot" || msg.sender === "sales") && (
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="opacity-0 group-hover:opacity-100 absolute -left-8 p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-opacity cursor-pointer"
-                          title="Delete message"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <div className={`rounded-2xl px-4 py-2.5 w-full ${getSenderStyle(msg.sender)}`}>
-                        {msg.sender === "bot" && (
-                          <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold mb-1 flex items-center gap-1">
-                            <Bot className="h-2.5 w-2.5" /> AI Auto-Reply
+
+                      <div className={`flex ${isOutgoing ? "justify-end" : "justify-start"} mb-0.5`}>
+                        <div className={`group relative max-w-[65%]`}>
+                          {/* Bubble */}
+                          <div
+                            className={`relative px-3 pt-1.5 pb-1 rounded-lg shadow-sm ${
+                              isOutgoing
+                                ? "bg-[#d9fdd3] rounded-tr-none"
+                                : "bg-white rounded-tl-none"
+                            }`}
+                          >
+                            {/* Sender label for bot */}
+                            {msg.sender === "bot" && (
+                              <p className="text-[10px] font-semibold text-[#00a884] mb-0.5">Auto-Reply Bot</p>
+                            )}
+                            {msg.sender === "sales" && (
+                              <p className="text-[10px] font-semibold text-[#00a884] mb-0.5">Sales Team</p>
+                            )}
+
+                            <p className="text-[14px] text-[#111b21] leading-relaxed whitespace-pre-wrap pr-10">
+                              {msg.content}
+                            </p>
+
+                            {/* Time + ticks */}
+                            <div className={`flex items-center justify-end gap-0.5 mt-0.5 -mb-0.5`}>
+                              <span className="text-[11px] text-[#667781]">{formatTime(msg.created_at)}</span>
+                              {isOutgoing && (
+                                <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />
+                              )}
+                            </div>
                           </div>
-                        )}
-                        {msg.sender === "sales" && (
-                          <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold mb-1">
-                            Sales Team
-                          </div>
-                        )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                        <span className={`text-[10px] mt-1 block ${
-                          msg.sender === "sales" || msg.sender === "bot" ? "text-white/50 text-right" : "text-muted-foreground"
-                        }`}>
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
+
+                          {/* Delete button on hover */}
+                          {isElevated && (
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className={`opacity-0 group-hover:opacity-100 absolute top-1 ${isOutgoing ? "-left-8" : "-right-8"} p-1.5 text-[#8696a0] hover:text-red-500 hover:bg-white rounded-full transition-all shadow-sm bg-white`}
+                              title="Delete message"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {/* Bot/Sales avatar */}
-                    {(msg.sender === "sales" || msg.sender === "bot") && (
-                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center ml-2 shrink-0 mt-1">
-                        {msg.sender === "bot" ? <Bot className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-primary" />}
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className="px-4 py-3 border-t border-border bg-white">
-              <div className="flex items-center gap-3">
-                <Input
-                  placeholder={`Message ${selectedLead.name} via WhatsApp...`}
+            {/* Input Bar */}
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#f0f2f5] border-t border-[#d1d7db]">
+              <div className="flex-1 flex items-center bg-white rounded-full px-4 h-10 shadow-sm border border-[#d1d7db]/60">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Type a message"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                  className="flex-1 h-10 text-sm bg-background border-border rounded-full px-4"
+                  className="flex-1 bg-transparent text-[14px] text-[#111b21] placeholder:text-[#8696a0] outline-none"
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={sending || !newMessage.trim()}
-                  className="h-10 w-10 p-0 shrink-0 bg-primary text-white hover:bg-primary/90 rounded-full shadow-sm shadow-primary/20 disabled:opacity-50"
-                >
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
               </div>
-
+              <button
+                onClick={handleSendMessage}
+                disabled={sending || !newMessage.trim()}
+                className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] hover:bg-[#017c63] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              >
+                {sending
+                  ? <Loader2 className="h-4 w-4 text-white animate-spin" />
+                  : <Send className="h-4 w-4 text-white" />
+                }
+              </button>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-3">
-            <div className="h-16 w-16 rounded-full bg-primary/5 flex items-center justify-center">
-              <MessageSquare className="h-7 w-7 text-primary/30" />
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="flex flex-col items-center gap-3 bg-white/60 rounded-2xl px-10 py-8 text-center shadow-sm">
+              <div className="h-16 w-16 rounded-full bg-[#00a884]/10 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="h-9 w-9 fill-[#00a884]" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M11.998 2C6.478 2 2 6.478 2 12c0 1.85.504 3.58 1.38 5.065L2 22l5.085-1.33A9.953 9.953 0 0 0 12 22c5.522 0 10-4.478 10-10S17.52 2 11.998 2zm.002 18a7.946 7.946 0 0 1-4.32-1.27l-.31-.184-3.02.79.81-2.96-.2-.32A8 8 0 1 1 12 20z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[15px] font-medium text-[#111b21]">Mohan Traders CRM</p>
+                <p className="text-[13px] text-[#667781] mt-1 max-w-[260px]">
+                  Select a conversation from the left to view Automated WhatsApp messages
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium">Select a conversation</p>
-            <p className="text-xs max-w-[240px] text-center">
-              All WhatsApp messages from leads automatically appear here in real-time
-            </p>
+            <div className="flex items-center gap-1.5 text-[11px] text-[#8696a0]">
+              <Check className="h-3 w-3" />
+              <span>End-to-end encrypted • Real-time sync</span>
+            </div>
           </div>
         )}
       </div>
