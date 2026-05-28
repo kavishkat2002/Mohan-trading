@@ -341,7 +341,6 @@ export default function SettingsPage() {
       <Tabs defaultValue="business">
         <TabsList className="bg-background border border-border p-0.5 rounded-lg h-auto">
           <TabsTrigger value="business" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Building2 className="h-3.5 w-3.5" />Business</TabsTrigger>
-          <TabsTrigger value="bank" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Banknote className="h-3.5 w-3.5" />Bank & Payment</TabsTrigger>
           <TabsTrigger value="whatsapp" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><MessageSquare className="h-3.5 w-3.5" />WhatsApp</TabsTrigger>
           <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger>
           <TabsTrigger value="plans" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><CreditCard className="h-3.5 w-3.5" />Plans</TabsTrigger>
@@ -403,47 +402,6 @@ export default function SettingsPage() {
             {['owner', 'admin'].includes(user?.role) && (
               <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 mt-2 shadow-sm shadow-primary/20">
                 Save Changes
-              </Button>
-            )}
-          </SectionCard>
-        </TabsContent>
-
-        <TabsContent value="bank" className="mt-6 space-y-4">
-          <SectionCard title="Bank Details" desc="Configure your bank account details to share with customers for payments">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bank Name</Label>
-              <Input placeholder="e.g., Bank of America" value={bankName} onChange={e => setBankName(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Account Holder Name</Label>
-              <Input placeholder="e.g., John's Business LLC" value={bankAccountHolder} onChange={e => setBankAccountHolder(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Account Number</Label>
-              <Input placeholder="e.g., 1234567890" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bank Branch (Optional)</Label>
-              <Input placeholder="e.g., Main Street Branch" value={bankBranch} onChange={e => setBankBranch(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">SWIFT/BIC Code (Optional)</Label>
-              <Input placeholder="e.g., BOFAUS3N" value={bankSwiftCode} onChange={e => setBankSwiftCode(e.target.value)} className="h-9 text-sm" />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Payment Gateway" desc="Configure payment gateway links to send to customers">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payment Gateway Name</Label>
-              <Input placeholder="e.g., PayPal, Stripe, Square" value={paymentGatewayName} onChange={e => setPaymentGatewayName(e.target.value)} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Payment Gateway Link</Label>
-              <Input type="url" placeholder="e.g., https://paypal.me/yourbusiness" value={paymentGatewayLink} onChange={e => setPaymentGatewayLink(e.target.value)} className="h-9 text-sm" />
-            </div>
-            {['owner', 'admin'].includes(user?.role) && (
-              <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
-                Save Payment Settings
               </Button>
             )}
           </SectionCard>
