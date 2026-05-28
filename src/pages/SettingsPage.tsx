@@ -295,7 +295,7 @@ export default function SettingsPage() {
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append('avatar', file); // We reuse the avatar/image upload endpoint or similar
-    
+
     try {
       // The backend actually has a generic upload endpoint or we can use the avatar endpoint.
       // Wait, let's use the standard POST to /api/users/${user.id}/avatar for simplicity and get an image URL.
@@ -518,7 +518,7 @@ export default function SettingsPage() {
         <TabsContent value="plans" className="mt-6">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { name: "Starter", price: "$30", features: ["WhatsApp automation", "Basic analytics", "Up to 100 customers"] },
+              { name: "Starter", price: "$45", features: ["WhatsApp automation", "Basic analytics", "Up to 100 customers"] },
               { name: "Growth", price: "$79", features: ["AI recommendations", "Advanced analytics", "Unlimited customers", "Priority support"] },
               { name: "Pro", price: "$199", features: ["Demand prediction", "Voice AI readiness", "Dedicated support", "Custom integrations"] },
             ].map(plan => (
@@ -544,8 +544,8 @@ export default function SettingsPage() {
                       </li>
                     ))}
                   </ul>
-                  <Button 
-                    variant={plan.name === "Starter" ? "default" : "outline"} 
+                  <Button
+                    variant={plan.name === "Starter" ? "default" : "outline"}
                     className={`w-full mt-5 text-sm h-9 ${plan.name === "Starter" ? "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20" : ""}`}
                   >
                     {plan.name === "Starter" ? "Current Plan" : "Upgrade"}
