@@ -150,10 +150,18 @@ export default function ChatPage() {
           body: JSON.stringify({ lead_id: selectedLead.id, messages: [payload.new] })
         });
 
+        // Sanitize the created_at timestamp to append 'Z' if it's missing (ensures proper UTC parsing)
+        const sanitizedMsg = {
+          ...payload.new,
+          created_at: payload.new.created_at && typeof payload.new.created_at === "string" && !payload.new.created_at.endsWith("Z")
+            ? payload.new.created_at + "Z"
+            : payload.new.created_at
+        };
+
         // Add to messages state directly
         setMessages((prev) => {
-          if (prev.find((m) => m.id === payload.new.id || (m.content === payload.new.content && m.sender === payload.new.sender))) return prev;
-          return [...prev, payload.new];
+          if (prev.find((m) => m.id === sanitizedMsg.id || (m.content === sanitizedMsg.content && m.sender === sanitizedMsg.sender))) return prev;
+          return [...prev, sanitizedMsg];
         });
       })
       .subscribe((status) => setIsLive(status === "SUBSCRIBED"));
@@ -236,8 +244,10 @@ export default function ChatPage() {
     if (!window.confirm("Delete this entire conversation? This cannot be undone.")) return;
     try {
       await fetch(`http://localhost:5001/api/leads/${selectedLead.id}`, { method: "DELETE" });
-      await supabase.from("messages").delete().eq("lead_id", selectedLead.id);
-      await supabase.from("leads").delete().eq("id", selectedLead.id);
+      if (supaLeadId) {
+        await supabase.from("messages").delete().eq("lead_id", supaLeadId);
+        await supabase.from("leads").delete().eq("id", supaLeadId);
+      }
       setSelectedLead(null);
       setMessages([]);
       fetchLeads();

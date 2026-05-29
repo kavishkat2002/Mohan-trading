@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+const { createClient } = require('@supabase/supabase-js');
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+}
+
 // Get settings
 router.get('/', async (req, res) => {
   try {
@@ -64,7 +73,51 @@ router.put('/', async (req, res) => {
        WHERE id = 1 RETURNING *`,
       values
     );
-    res.json(rows[0]);
+
+    const updatedSettings = rows[0];
+
+    // Sync settings to Supabase settings lead
+    if (supabase && updatedSettings) {
+      const settingsData = {
+        ai_enabled: updatedSettings.ai_enabled,
+        ai_model: updatedSettings.ai_model,
+        ai_system_prompt: updatedSettings.ai_system_prompt,
+        ai_business_description: updatedSettings.ai_business_description,
+        ai_faq_data: updatedSettings.ai_faq_data
+      };
+
+      try {
+        const { data: lead } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('phone', 'SYSTEM_SETTINGS')
+          .maybeSingle();
+
+        if (lead) {
+          await supabase
+            .from('leads')
+            .update({
+              name: 'SYSTEM_SETTINGS',
+              notes: JSON.stringify(settingsData)
+            })
+            .eq('phone', 'SYSTEM_SETTINGS');
+        } else {
+          await supabase
+            .from('leads')
+            .insert({
+              phone: 'SYSTEM_SETTINGS',
+              name: 'SYSTEM_SETTINGS',
+              status: 'New',
+              notes: JSON.stringify(settingsData)
+            });
+        }
+        console.log('[Supabase Sync] Settings synced successfully.');
+      } catch (err) {
+        console.error('[Supabase Sync] Settings sync failed:', err.message);
+      }
+    }
+
+    res.json(updatedSettings);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

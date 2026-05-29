@@ -34,13 +34,6 @@ router.post('/', async (req, res) => {
 
       if (messageBody) {
         console.log(`Received message from ${phoneNumber}: ${messageBody}`);
-        
-        // Save raw message to CRM history if lead exists (optional step, doing it asynchronously)
-        db.query('SELECT id FROM leads WHERE phone = $1', [phoneNumber]).then(result => {
-           if (result.rows.length > 0) {
-             db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [result.rows[0].id, 'customer', messageBody]);
-           }
-        }).catch(err => console.error(err));
 
         // Process message through WhatsApp service for auto-reply and lead capture
         await whatsappService.handleIncomingMessage(phoneNumber, messageBody);

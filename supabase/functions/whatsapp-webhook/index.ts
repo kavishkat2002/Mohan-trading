@@ -82,99 +82,179 @@ serve(async (req: Request) => {
       content: text
     });
 
-    // ─── AGENTIC CONVERSATION STATE MACHINE ───────────────────────────
-    // State is stored in lead.notes as a simple JSON prefix
-    let state = "GREETING";
-    let metadata: Record<string, string> = {};
+    // 3. Fetch Settings from Supabase 'leads' where phone = 'SYSTEM_SETTINGS'
+    const { data: settingsLead } = await supabase
+      .from('leads')
+      .select('notes')
+      .eq('phone', 'SYSTEM_SETTINGS')
+      .maybeSingle();
 
-    // Parse current state from notes field
-    try {
-      if (lead.notes?.startsWith("STATE:")) {
-        const stateData = JSON.parse(lead.notes.replace("STATE:", ""));
-        state = stateData.step || "GREETING";
-        metadata = stateData.meta || {};
+    let settings = {
+      ai_enabled: false,
+      ai_model: 'openai/gpt-3.5-turbo',
+      ai_system_prompt: 'You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.',
+      ai_business_description: 'Mohan Trading is a premium car dealership located in Colombo, Sri Lanka. We offer high-quality luxury cars, SUVs, and vans with warranty, flexible leasing partners, and a dedicated service station.',
+      ai_faq_data: []
+    };
+
+    if (settingsLead && settingsLead.notes) {
+      try {
+        const parsed = JSON.parse(settingsLead.notes);
+        settings = { ...settings, ...parsed };
+      } catch (e) {
+        console.error("[WEBHOOK] Failed to parse settings JSON:", e);
       }
-    } catch {
-      state = "GREETING";
     }
 
-    const inputLower = text.toLowerCase();
     let outMsg = "";
-    let nextStep = state;
 
-    // Global reset triggers
-    if (["hi", "hello", "reset", "start", "menu"].includes(inputLower)) {
-      nextStep = "GREETING";
-    }
+    if (settings.ai_enabled) {
+      // ─── SMART AI RESPONDER FLOW ────────────────────────────────────
+      console.log(`[WEBHOOK] AI enabled. Processing message for lead ${lead.id} using model ${settings.ai_model}...`);
+      
+      // Fetch last 6 messages for short-term history
+      const { data: historyData } = await supabase
+        .from('messages')
+        .select('sender, content')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false })
+        .limit(6);
 
-    switch (nextStep) {
-      case "GREETING":
-        outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
-        nextStep = "INTENT_DISCOVERY";
-        break;
+      const chatHistory = (historyData || []).reverse();
 
-      case "INTENT_DISCOVERY":
-        if (text === "1") {
-          outMsg = "Exciting! 🚗 To find the perfect match for you, what *type of vehicle* are you looking for?\n\n(e.g., SUV, Sedan, Van, Pickup)";
-          nextStep = "BUYER_VEHICLE_TYPE";
-          metadata.intent = "BUY";
-        } else if (text === "2") {
-          outMsg = "We can help you sell! 💰 What is the *Make and Model* of your vehicle?\n\n(e.g., Toyota Aqua, Honda Vezel)";
-          nextStep = "SELLER_MODEL";
-          metadata.intent = "SELL";
-        } else if (text === "3") {
-          outMsg = "📋 Check out our latest vehicles here:\n🌐 https://mohantrading.lk/vehicles\n\nSee anything you like? Type *Buy* or reply *1* to proceed!";
-          nextStep = "GREETING";
-        } else {
-          outMsg = "Sorry, I didn't get that 😅\n\nPlease reply with *1*, *2*, or *3* to continue.";
+      // Call OpenRouter / OpenAI
+      const aiResult = await generateSmartReply(text, {
+        ai_system_prompt: settings.ai_system_prompt,
+        ai_business_description: settings.ai_business_description,
+        ai_faq_data: settings.ai_faq_data,
+        ai_model: settings.ai_model,
+        chatHistory: chatHistory
+      });
+
+      outMsg = aiResult.reply;
+
+      // Update lead details in Supabase
+      if (aiResult.extracted_info) {
+        const info = aiResult.extracted_info;
+        const updateObj: Record<string, any> = {};
+
+        if (info.name && (lead.name === 'WhatsApp User' || !lead.name)) {
+          updateObj.name = info.name;
         }
-        break;
+        if (info.interested_car) {
+          updateObj.interested_car = info.interested_car;
+        }
+        if (info.budget) {
+          updateObj.budget = info.budget;
+        }
+        if (info.status && ['New', 'Warm', 'Hot', 'Cold', 'Completed'].includes(info.status)) {
+          updateObj.status = info.status;
+        }
 
-      case "BUYER_VEHICLE_TYPE":
-        metadata.vehicle_type = text;
-        outMsg = `Got it — a *${text}*! 🚗\n\nWhat is your *approximate budget*?\n\n(e.g., 10M - 15M LKR)`;
-        nextStep = "BUYER_BUDGET";
-        break;
+        updateObj.notes = `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: info })}`;
 
-      case "BUYER_BUDGET":
-        metadata.budget = text;
-        // Update lead record with collected info
+        await supabase.from('leads').update(updateObj).eq('id', lead.id);
+        console.log(`[WEBHOOK] Lead details updated:`, info);
+      } else {
         await supabase.from('leads').update({
-          interested_car: metadata.vehicle_type || null,
-          budget: text,
-          status: "Hot"
+          notes: `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: {} })}`
         }).eq('id', lead.id);
+      }
 
-        outMsg = `Thank you! 🎉\n\nI'm searching our inventory for the best *${metadata.vehicle_type}* within *${text}*.\n\nOne of our sales specialists will contact you shortly with personalized options! 🚗💨\n\n_Type *menu* anytime to start over._`;
-        nextStep = "COMPLETED";
-        break;
+    } else {
+      // ─── LEGACY CONVERSATION STATE MACHINE ──────────────────────────
+      console.log("[WEBHOOK] AI disabled. Using legacy state machine...");
+      let state = "GREETING";
+      let metadata: Record<string, string> = {};
 
-      case "SELLER_MODEL":
-        metadata.sell_model = text;
-        // Update lead record
-        await supabase.from('leads').update({
-          interested_car: `SELL: ${text}`,
-          status: "Warm"
-        }).eq('id', lead.id);
+      // Parse current state from notes field
+      try {
+        if (lead.notes?.startsWith("STATE:")) {
+          const stateData = JSON.parse(lead.notes.replace("STATE:", ""));
+          state = stateData.step || "GREETING";
+          metadata = stateData.meta || {};
+        }
+      } catch {
+        state = "GREETING";
+      }
 
-        outMsg = `Thanks for sharing! 📝\n\nWe've noted your *${text}* for sale. Our team will evaluate it and reach out to you with a fair offer soon! 💰\n\n_Type *menu* anytime to start over._`;
-        nextStep = "COMPLETED";
-        break;
+      const inputLower = text.toLowerCase();
+      let nextStep = state;
 
-      case "COMPLETED":
-        outMsg = `Our team has already been notified and will contact you soon! 🚗\n\n_Type *menu* or *hi* to restart the conversation._`;
-        break;
+      // Global reset triggers
+      if (["hi", "hello", "reset", "start", "menu"].includes(inputLower)) {
+        nextStep = "GREETING";
+      }
 
-      default:
-        outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
-        nextStep = "INTENT_DISCOVERY";
+      switch (nextStep) {
+        case "GREETING":
+          outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
+          nextStep = "INTENT_DISCOVERY";
+          break;
+
+        case "INTENT_DISCOVERY":
+          if (text === "1") {
+            outMsg = "Exciting! 🚗 To find the perfect match for you, what *type of vehicle* are you looking for?\n\n(e.g., SUV, Sedan, Van, Pickup)";
+            nextStep = "BUYER_VEHICLE_TYPE";
+            metadata.intent = "BUY";
+          } else if (text === "2") {
+            outMsg = "We can help you sell! 💰 What is the *Make and Model* of your vehicle?\n\n(e.g., Toyota Aqua, Honda Vezel)";
+            nextStep = "SELLER_MODEL";
+            metadata.intent = "SELL";
+          } else if (text === "3") {
+            outMsg = "📋 Check out our latest vehicles here:\n🌐 https://mohantrading.lk/vehicles\n\nSee anything you like? Type *Buy* or reply *1* to proceed!";
+            nextStep = "GREETING";
+          } else {
+            outMsg = "Sorry, I didn't get that 😅\n\nPlease reply with *1*, *2*, or *3* to continue.";
+          }
+          break;
+
+        case "BUYER_VEHICLE_TYPE":
+          metadata.vehicle_type = text;
+          outMsg = `Got it — a *${text}*! 🚗\n\nWhat is your *approximate budget*?\n\n(e.g., 10M - 15M LKR)`;
+          nextStep = "BUYER_BUDGET";
+          break;
+
+        case "BUYER_BUDGET":
+          metadata.budget = text;
+          // Update lead record with collected info
+          await supabase.from('leads').update({
+            interested_car: metadata.vehicle_type || null,
+            budget: text,
+            status: "Hot"
+          }).eq('id', lead.id);
+
+          outMsg = `Thank you! 🎉\n\nI'm searching our inventory for the best *${metadata.vehicle_type}* within *${text}*.\n\nOne of our sales specialists will contact you shortly with personalized options! 🚗💨\n\n_Type *menu* anytime to start over._`;
+          nextStep = "COMPLETED";
+          break;
+
+        case "SELLER_MODEL":
+          metadata.sell_model = text;
+          // Update lead record
+          await supabase.from('leads').update({
+            interested_car: `SELL: ${text}`,
+            status: "Warm"
+          }).eq('id', lead.id);
+
+          outMsg = `Thanks for sharing! 📝\n\nWe've noted your *${text}* for sale. Our team will evaluate it and reach out to you with a fair offer soon! 💰\n\n_Type *menu* anytime to start over._`;
+          nextStep = "COMPLETED";
+          break;
+
+        case "COMPLETED":
+          outMsg = `Our team has already been notified and will contact you soon! 🚗\n\n_Type *menu* or *hi* to restart the conversation._`;
+          break;
+
+        default:
+          outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
+          nextStep = "INTENT_DISCOVERY";
+      }
+
+      // Save updated state to lead notes
+      const { error: stateErr } = await supabase.from('leads').update({
+        notes: `STATE:${JSON.stringify({ step: nextStep, meta: metadata })}`
+      }).eq('id', lead.id);
+      if (stateErr) console.error("[WEBHOOK] State save error:", stateErr.message);
     }
-
-    // Save updated state to lead notes
-    const { error: stateErr } = await supabase.from('leads').update({
-      notes: `STATE:${JSON.stringify({ step: nextStep, meta: metadata })}`
-    }).eq('id', lead.id);
-    if (stateErr) console.error("[WEBHOOK] State save error:", stateErr.message);
 
     // Log outbound message
     await supabase.from('messages').insert({
@@ -186,7 +266,7 @@ serve(async (req: Request) => {
     // Send WhatsApp reply
     await sendWhatsApp(phone, outMsg);
 
-    console.log(`[WEBHOOK] Replied to ${phone}, next step: ${nextStep}`);
+    console.log(`[WEBHOOK] Replied to ${phone}`);
     return new Response("OK", { status: 200 });
 
   } catch (err: any) {
@@ -197,6 +277,118 @@ serve(async (req: Request) => {
     });
   }
 });
+
+async function generateSmartReply(userMessage: string, context: any) {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    console.log("No OPENAI_API_KEY found, returning fallback.");
+    return {
+      reply: "Our sales team will get back to you shortly, or you can call us directly.",
+      extracted_info: null
+    };
+  }
+
+  try {
+    const systemPrompt = context.ai_system_prompt || `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.`;
+    const model = context.ai_model || 'openai/gpt-3.5-turbo';
+
+    let systemContent = systemPrompt;
+
+    if (context.ai_business_description) {
+      systemContent += `\n\nAbout our business:\n${context.ai_business_description}`;
+    }
+
+    let faqs = context.ai_faq_data;
+    if (faqs) {
+      try {
+        if (typeof faqs === 'string') {
+          faqs = JSON.parse(faqs);
+        }
+      } catch (e) {
+        console.error("Failed to parse FAQ JSON inside AI service:", e);
+      }
+      if (Array.isArray(faqs) && faqs.length > 0) {
+        systemContent += `\n\nFrequently Asked Questions (FAQs):\n` + faqs.map((faq: any) => `Q: ${faq.q}\nA: ${faq.a}`).join('\n\n');
+      }
+    }
+
+    // Include instructions for structured JSON output
+    systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
+The JSON must have this exact structure:
+{
+  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
+  "extracted_info": {
+    "name": "Customer's name if they shared it or if you just learned it, otherwise null",
+    "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
+    "budget": "Their budget range if they just shared it, otherwise null",
+    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)"
+  }
+}`;
+
+    const messages = [
+      { role: 'system', content: systemContent }
+    ];
+
+    // Format and append chat history
+    if (context.chatHistory && Array.isArray(context.chatHistory)) {
+      context.chatHistory.forEach((msg: any) => {
+        const role = (msg.sender === 'customer' || msg.sender === 'user' || msg.role === 'user') ? 'user' : 'assistant';
+        const content = msg.content || '';
+        if (content) {
+          messages.push({ role, content });
+        }
+      });
+    }
+
+    // Append current user message
+    messages.push({ role: 'user', content: userMessage });
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `HTTP ${response.status}`);
+    }
+
+    let text = data.choices[0].message.content.trim();
+    
+    // Strip markdown code blocks if the model wrapped it
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.reply === 'string') {
+        return parsed;
+      }
+      throw new Error("Missing 'reply' in parsed response");
+    } catch (e) {
+      console.warn("Failed to parse JSON response from LLM, returning raw text as reply:", text);
+      return {
+        reply: text,
+        extracted_info: null
+      };
+    }
+
+  } catch (error: any) {
+    console.error('Error with OpenRouter API in Deno:', error.message || error);
+    return {
+      reply: "I am having a little trouble connecting to my brain right now. A human agent will contact you soon!",
+      extracted_info: null
+    };
+  }
+}
 
 async function sendWhatsApp(to: string, text: string): Promise<void> {
   const token = Deno.env.get("WHATSAPP_TOKEN");

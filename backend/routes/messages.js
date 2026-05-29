@@ -26,13 +26,13 @@ router.post('/', async (req, res) => {
       'INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3) RETURNING *',
       [lead_id, sender, content]
     );
-    
+
     // If sent by sales, trigger real WhatsApp message
     if (sender === 'sales') {
-        const leadRes = await db.query('SELECT phone FROM leads WHERE id = $1', [lead_id]);
-        if (leadRes.rows.length > 0) {
-            await whatsappService.sendWhatsAppMessage(leadRes.rows[0].phone, content, null, 'sales');
-        }
+      const leadRes = await db.query('SELECT phone FROM leads WHERE id = $1', [lead_id]);
+      if (leadRes.rows.length > 0) {
+        await whatsappService.sendWhatsAppMessage(leadRes.rows[0].phone, content, null, 'sales');
+      }
     }
 
     res.status(201).json(rows[0]);
@@ -51,17 +51,37 @@ router.post('/sync', async (req, res) => {
 
   try {
     for (let msg of messages) {
-      // Check if message already exists locally (by content, sender and date to prevent duplicates)
-      const { rows } = await db.query(
-        'SELECT id FROM messages WHERE lead_id = $1 AND sender = $2 AND content = $3',
-        [lead_id, msg.sender, msg.content]
-      );
+      let existingRes;
+      if (msg.id) {
+        existingRes = await db.query(
+          'SELECT id FROM messages WHERE supabase_id = $1',
+          [msg.id]
+        );
+      } else {
+        existingRes = await db.query(
+          'SELECT id FROM messages WHERE lead_id = $1 AND sender = $2 AND content = $3',
+          [lead_id, msg.sender, msg.content]
+        );
+      }
 
-      if (rows.length === 0) {
+      if (existingRes.rows.length === 0) {
+        // Parse the created_at safely to ensure UTC timestamp is converted correctly
+        let createdAt = new Date();
+        if (msg.created_at) {
+          let dateStr = msg.created_at;
+          if (typeof dateStr === 'string') {
+            const hasTimezone = dateStr.endsWith('Z') || /[\+\-]\d{2}(:\d{2})?$/.test(dateStr);
+            if (!hasTimezone) {
+              dateStr = dateStr + 'Z';
+            }
+          }
+          createdAt = new Date(dateStr);
+        }
+
         // Insert message
         await db.query(
-          'INSERT INTO messages (lead_id, sender, content, created_at) VALUES ($1, $2, $3, $4)',
-          [lead_id, msg.sender, msg.content, msg.created_at || new Date()]
+          'INSERT INTO messages (lead_id, sender, content, supabase_id, created_at) VALUES ($1, $2, $3, $4, $5)',
+          [lead_id, msg.sender, msg.content, msg.id || null, createdAt]
         );
       }
     }

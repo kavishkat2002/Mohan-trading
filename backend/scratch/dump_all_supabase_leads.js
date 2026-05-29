@@ -10,16 +10,11 @@ const supabase = createClient(
 );
 
 async function run() {
-  const { data: messages, error } = await supabase
-    .from('messages')
-    .select('*, leads(phone, name)')
-    .order('created_at', { ascending: false })
-    .limit(10);
-
+  const { data: leads, error } = await supabase.from('leads').select('id, name, phone');
   if (error) {
     console.error('Supabase error:', error);
   } else {
-    console.log('Latest messages on Supabase with lead info:', messages);
+    console.log('All Supabase leads:', leads);
   }
   process.exit(0);
 }

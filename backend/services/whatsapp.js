@@ -35,7 +35,7 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
         })
         .select()
         .single();
-      
+
       if (insertErr) throw insertErr;
       return newLead.id;
     }
@@ -48,23 +48,27 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
 
 // Sync message to Supabase to trigger real-time updates on client
 async function syncMessageToSupabase(phone, sender, content) {
-  if (!supabase) return;
+  if (!supabase) return null;
   try {
     const supaLeadId = await ensureLeadInSupabase(phone);
-    if (!supaLeadId) return;
+    if (!supaLeadId) return null;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .insert({
         lead_id: supaLeadId,
         sender,
         content
-      });
+      })
+      .select('id')
+      .single();
 
     if (error) throw error;
     console.log(`[Supabase Sync] Message synced: [${sender}] "${content.substring(0, 15)}..."`);
+    return data ? data.id : null;
   } catch (err) {
     console.error('[Supabase Sync] Failed to sync message:', err.message);
+    return null;
   }
 }
 
@@ -73,22 +77,25 @@ const WA_API_URL = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages
 // Send a plain text message via WhatsApp
 async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot') {
   try {
+    // Sync outbound message to Supabase first
+    const supabaseId = await syncMessageToSupabase(to, sender, text);
+
     // Log outgoing message to DB
     if (leadId) {
-       await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [leadId, sender, text]);
+      await db.query(
+        'INSERT INTO messages (lead_id, sender, content, supabase_id) VALUES ($1, $2, $3, $4)',
+        [leadId, sender, text, supabaseId]
+      );
     }
-
-    // Sync outbound message to Supabase
-    await syncMessageToSupabase(to, sender, text);
 
     // 1. Fetch credentials from database settings
     const settingsRes = await db.query('SELECT whatsapp_token, whatsapp_phone_number_id FROM settings WHERE id = 1');
     const settings = settingsRes.rows[0] || {};
-    
+
     // Fallback to env values
     const token = settings.whatsapp_token || process.env.WHATSAPP_TOKEN || 'YOUR_META_API_TOKEN';
     const phoneId = settings.whatsapp_phone_number_id || process.env.PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
-    
+
     const waUrl = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
 
     await axios.post(
@@ -115,11 +122,14 @@ async function handleIncomingMessage(phone, text) {
     lead = insertRes.rows[0];
   }
 
-  // 2. LOG INCOMING MESSAGE
-  await db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [lead.id, 'customer', text]);
+  // Sync incoming message to Supabase first
+  const supabaseId = await syncMessageToSupabase(phone, 'customer', text);
 
-  // Sync incoming message to Supabase
-  await syncMessageToSupabase(phone, 'customer', text);
+  // 2. LOG INCOMING MESSAGE
+  await db.query(
+    'INSERT INTO messages (lead_id, sender, content, supabase_id) VALUES ($1, $2, $3, $4)',
+    [lead.id, 'customer', text, supabaseId]
+  );
 
   // Fetch settings to check if AI responder is enabled
   const settingsRes = await db.query('SELECT * FROM settings WHERE id = 1');
@@ -130,7 +140,7 @@ async function handleIncomingMessage(phone, text) {
   if (settings.ai_enabled) {
     // ---- SMART AI RESPONDER FLOW ----
     console.log(`[AI Agent] Processing message for lead ${lead.id} using model ${settings.ai_model}...`);
-    
+
     // Fetch last 6 messages for short-term history (which now includes the message just inserted)
     const historyRes = await db.query(
       'SELECT sender, content FROM messages WHERE lead_id = $1 ORDER BY created_at DESC LIMIT 6',
@@ -253,25 +263,25 @@ async function handleIncomingMessage(phone, text) {
 
       case 'COLLECT_BUDGET':
         metadata.budget = text;
-        
-        try {
-            const maxBudget = parseInt(text.replace(/[^0-9]/g, ''), 10) || 999999999;
-            const { rows: matches } = await db.query(
-              'SELECT brand, price, category FROM vehicles WHERE category ILIKE $1 AND price <= $2 LIMIT 3',
-              [`%${metadata.type}%`, maxBudget]
-            );
 
-            if (matches.length > 0) {
-              let carList = matches.map(m => `✅ ${m.brand} - LKR ${m.price}`).join('\n');
-              outMsg = `I found some matches 📊:\n\n${carList}\n\nOur specialists will contact you shortly with full details and photos! 🚗💨`;
-            } else {
-              outMsg = `Thanks! 📊 I'm searching our full network for a ${metadata.type} within your budget. One of our human specialists will follow up with personalized options shortly! 🚗💨`;
-            }
+        try {
+          const maxBudget = parseInt(text.replace(/[^0-9]/g, ''), 10) || 999999999;
+          const { rows: matches } = await db.query(
+            'SELECT brand, price, category FROM vehicles WHERE category ILIKE $1 AND price <= $2 LIMIT 3',
+            [`%${metadata.type}%`, maxBudget]
+          );
+
+          if (matches.length > 0) {
+            let carList = matches.map(m => `✅ ${m.brand} - LKR ${m.price}`).join('\n');
+            outMsg = `I found some matches 📊:\n\n${carList}\n\nOur specialists will contact you shortly with full details and photos! 🚗💨`;
+          } else {
+            outMsg = `Thanks! 📊 I'm searching our full network for a ${metadata.type} within your budget. One of our human specialists will follow up with personalized options shortly! 🚗💨`;
+          }
         } catch (err) {
-            console.error('Inventory search error:', err);
-            outMsg = "Thank you! Our sales team will follow up with you shortly with personalized options. 🚗💨";
+          console.error('Inventory search error:', err);
+          outMsg = "Thank you! Our sales team will follow up with you shortly with personalized options. 🚗💨";
         }
-        
+
         step = 'COMPLETED';
         await db.query('UPDATE leads SET interested_car = $1, budget = $2, status = $3 WHERE id = $4', [metadata.type, metadata.budget, 'Warm', lead.id]);
         break;
