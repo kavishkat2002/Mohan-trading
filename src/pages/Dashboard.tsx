@@ -486,7 +486,7 @@ export default function Dashboard() {
                                   On Site
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 bg-red-50 text-red-500 border border-red-100 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                                <span className="inline-flex items-center gap-1 bg-[#FFF0F3] text-[#FC003F] border border-[#FFCCD5] rounded-full px-2.5 py-0.5 text-[10px] font-bold">
                                   <XCircle className="h-3 w-3" /> Absent
                                 </span>
                               )}
