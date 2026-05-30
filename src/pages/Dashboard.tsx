@@ -705,7 +705,7 @@ export default function Dashboard() {
             <CardHeader className="p-6 pb-4 bg-transparent border-none flex flex-row items-center justify-between shrink-0">
               <div>
                 <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <Bell className="h-5 w-5 text-primary animate-pulse" /> Announcement Feed
+                  <Bell className="h-5 w-5 text-primary" /> Announcement Feed
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500 mt-0.5">Company-wide updates & notices</CardDescription>
               </div>
