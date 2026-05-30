@@ -67,16 +67,14 @@ router.post('/check-out', async (req, res) => {
 // Get Attendance Status (for current user, optionally by date)
 router.get('/status/:userId', async (req, res) => {
   const { userId } = req.params;
-  const { date } = req.query; // e.g. "YYYY-MM-DD"
+  const { date, email } = req.query; // e.g. "YYYY-MM-DD", "user@example.com"
   try {
-    // Resolve userId (could be integer or UUID string)
-    let localId = String(userId);
-    if (!/^\d+$/.test(localId)) {
-      // It's a UUID - can't resolve without email, return null
+    const localId = await resolveLocalUserId(userId, email, db);
+    if (!localId) {
       return res.json(null);
     }
     let query = `SELECT * FROM attendance WHERE user_id = $1`;
-    let params = [localId];
+    let params = [String(localId)];
     if (date) {
       query += ` AND date = $2`;
       params.push(date);
@@ -177,10 +175,13 @@ router.get('/dashboard-summary', async (req, res) => {
 // Get My Attendance
 router.get('/my-attendance/:userId', async (req, res) => {
   const { userId } = req.params;
+  const { email } = req.query;
   try {
+    const localId = await resolveLocalUserId(userId, email, db);
+    const storedId = localId ? String(localId) : String(userId);
     const { rows } = await db.query(
       `SELECT * FROM attendance WHERE user_id = $1 ORDER BY date DESC, check_in_time DESC LIMIT 30`,
-      [userId]
+      [storedId]
     );
     res.json(rows);
   } catch (err) {
@@ -225,10 +226,13 @@ router.get('/leaves', async (req, res) => {
 // Get My Leaves
 router.get('/my-leaves/:userId', async (req, res) => {
   const { userId } = req.params;
+  const { email } = req.query;
   try {
+    const localId = await resolveLocalUserId(userId, email, db);
+    const storedId = localId ? String(localId) : String(userId);
     const { rows } = await db.query(
       `SELECT * FROM leaves WHERE user_id = $1 ORDER BY created_at DESC`,
-      [userId]
+      [storedId]
     );
     res.json(rows);
   } catch (err) {

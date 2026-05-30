@@ -41,7 +41,7 @@ export default function Attendance() {
   const fetchStatus = async (dateStr: string) => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/attendance/status/${user.id}?date=${dateStr}`);
+      const res = await fetch(`http://localhost:5001/api/attendance/status/${user.id}?date=${dateStr}&email=${encodeURIComponent(user.email)}`);
       const data = await res.json();
       setTodayAttendance(data);
     } catch (e) {
@@ -68,8 +68,8 @@ export default function Attendance() {
     if (!user) return;
     try {
       const [attRes, leavesRes] = await Promise.all([
-        fetch(`http://localhost:5001/api/attendance/my-attendance/${user.id}`),
-        fetch(`http://localhost:5001/api/attendance/my-leaves/${user.id}`)
+        fetch(`http://localhost:5001/api/attendance/my-attendance/${user.id}?email=${encodeURIComponent(user.email)}`),
+        fetch(`http://localhost:5001/api/attendance/my-leaves/${user.id}?email=${encodeURIComponent(user.email)}`)
       ]);
       const attData = await attRes.json();
       const leavesData = await leavesRes.json();
