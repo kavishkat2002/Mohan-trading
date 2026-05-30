@@ -483,7 +483,7 @@ export default function Dashboard() {
                                 </span>
                               ) : checkedIn ? (
                                 <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> On Site
+                                  On Site
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 bg-red-50 text-red-500 border border-red-100 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
