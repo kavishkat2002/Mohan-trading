@@ -151,7 +151,7 @@ export default function ChatPage() {
         });
 
         // Sanitize the created_at timestamp to append 'Z' if it's missing (ensures proper UTC parsing)
-        const sanitizedMsg = {
+        const sanitizedMsg: any = {
           ...payload.new,
           created_at: payload.new.created_at && typeof payload.new.created_at === "string" && !payload.new.created_at.endsWith("Z")
             ? payload.new.created_at + "Z"
@@ -159,8 +159,8 @@ export default function ChatPage() {
         };
 
         // Add to messages state directly
-        setMessages((prev) => {
-          if (prev.find((m) => m.id === sanitizedMsg.id || (m.content === sanitizedMsg.content && m.sender === sanitizedMsg.sender))) return prev;
+        setMessages((prev: any[]) => {
+          if (prev.find((m: any) => m.id === sanitizedMsg.id || (m.content === sanitizedMsg.content && m.sender === sanitizedMsg.sender))) return prev;
           return [...prev, sanitizedMsg];
         });
       })
