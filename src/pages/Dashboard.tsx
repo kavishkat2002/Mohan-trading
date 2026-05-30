@@ -632,8 +632,8 @@ export default function Dashboard() {
                           <TableCell className="py-3 text-right px-6">
                             <Badge className={
                               veh.stock > 1 
-                                ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 font-bold px-2 py-0.5 text-[10px]"
-                                : "bg-red-50 text-red-700 hover:bg-red-50 border border-red-100 font-bold px-2 py-0.5 text-[10px]"
+                                ? "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 font-bold px-2 py-0.5 text-[10px]"
+                                : "bg-[#FFF0F3] text-[#FC003F] hover:bg-[#FFF0F3] border border-[#FFCCD5] font-bold px-2 py-0.5 text-[10px]"
                             }>
                               {veh.stock > 1 ? `${veh.stock} units` : `${veh.stock} Unit Left`}
                             </Badge>
