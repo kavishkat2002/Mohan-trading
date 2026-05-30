@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             if (newNotifs.length > 0) {
               newNotifs.forEach(n => {
                 let title = "Notification 🔔";
-                
+
                 if (n.message.includes("Completed")) {
                   title = "Task Completed ✅";
                 } else if (n.message.includes("In Progress")) {
@@ -157,11 +157,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   description: n.message,
                 });
               });
-              
+
               // Store toasted IDs to prevent repeats
               toastedIdsRef.current = [...toastedIdsRef.current, ...newNotifs.map(n => n.id)];
             }
-            
+
             // Set unread notifications
             setNotifications(data);
           }
@@ -208,143 +208,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const sidebarWidth = collapsed ? "w-[72px]" : "w-[260px]";
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo area with MohanTrader branding */}
-      <div className={cn(
-        "flex items-center gap-3 px-5 py-5",
-        collapsed && "justify-center px-3"
-      )}>
-        <img
-          src={business?.logo_url || "/mohantrader-logo.png"}
-          alt={business?.name || "MohanTrader"}
-          className="h-10 w-10 rounded-xl object-contain bg-white/10 p-1 shrink-0"
-        />
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              className="overflow-hidden"
-            >
-              <p className="text-[17px] font-semibold text-white leading-tight break-all">
-                {business?.name || "Mohan Trading"}
-              </p>
-              <p className="text-[10px] text-white/40 tracking-wide italic leading-tight mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                {business?.slogan || "Delivering Dreams, Driving Trust"}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Divider */}
-      <div className="mx-4 border-t border-sidebar-border" />
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {filteredNavItems.map((item) => {
-          const active = location.pathname === item.path ||
-            (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"));
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => isMobile && setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 relative group",
-                active
-                  ? "bg-primary text-white"
-                  : "text-sidebar-accent-foreground hover:text-white hover:bg-sidebar-accent",
-                collapsed && "justify-center px-2"
-              )}
-            >
-              <item.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "opacity-60 group-hover:opacity-100")} />
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Support Chat */}
-      <div className="px-3 pb-1.5">
-        <a
-          href="https://wa.me/94762345336?text=Hi%20CreativeX%20Support,%20I%20need%20help%20with%20Mohan%20Traders%20CRM."
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-sidebar-accent-foreground hover:text-emerald-400 hover:bg-[#00a884]/10 transition-all duration-200 w-full",
-            collapsed && "justify-center px-2"
-          )}
-        >
-          <svg className="h-[18px] w-[18px] shrink-0 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.707 1.456h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-          </svg>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                className="whitespace-nowrap font-medium"
-              >
-                Support Chat
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </a>
-      </div>
-
-      {/* Sign out */}
-      <div className="px-3 pb-4">
-        <div className="border-t border-sidebar-border pt-3">
-          <button
-            onClick={handleSignOut}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-sidebar-accent-foreground hover:text-red-400 hover:bg-sidebar-accent w-full transition-all duration-200",
-              collapsed && "justify-center px-2"
-            )}
-          >
-            <LogOut className="h-[18px] w-[18px] shrink-0 opacity-60" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="whitespace-nowrap"
-                >
-                  Sign Out
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex h-screen bg-background overflow-hidden print:overflow-visible print:h-auto print:block">
-      {/* Desktop sidebar — dark navy */}
       {!isMobile && (
         <aside className={cn(
           "hidden md:flex flex-col bg-sidebar transition-all duration-300 relative z-20 print:hidden",
           sidebarWidth
         )}>
-          <SidebarContent />
+          <SidebarContent
+            collapsed={collapsed}
+            business={business}
+            filteredNavItems={filteredNavItems}
+            isMobile={isMobile}
+            setMobileOpen={setMobileOpen}
+            handleSignOut={handleSignOut}
+          />
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full bg-white border border-border flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
@@ -378,7 +256,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               >
                 <X className="h-4 w-4 text-sidebar-accent-foreground" />
               </button>
-              <SidebarContent />
+              <SidebarContent
+                collapsed={collapsed}
+                business={business}
+                filteredNavItems={filteredNavItems}
+                isMobile={isMobile}
+                setMobileOpen={setMobileOpen}
+                handleSignOut={handleSignOut}
+              />
             </motion.aside>
           </div>
         )}
@@ -414,11 +299,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <AnimatePresence>
                 {notificationsOpen && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-40" 
+                    <div
+                      className="fixed inset-0 z-40"
                       onClick={() => setNotificationsOpen(false)}
                     />
-                    
+
                     <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -429,7 +314,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <span className="text-xs font-semibold text-slate-800">Notifications ({notifications.length})</span>
                         {notifications.length > 0 && (
-                          <button 
+                          <button
                             onClick={handleMarkAllAsRead}
                             className="text-[10px] text-primary hover:underline font-medium"
                           >
@@ -448,16 +333,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                             {notifications.map((n) => {
                               const isCompleted = n.message.includes("Completed");
                               const isInProgress = n.message.includes("In Progress");
-                              
+
                               return (
                                 <div key={n.id} className="p-3 hover:bg-slate-50 transition-colors flex gap-2.5 items-start">
                                   <div className={cn(
                                     "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
                                     isCompleted ? "bg-green-50 text-green-600" :
-                                    isInProgress ? "bg-blue-50 text-blue-600" : "bg-primary/5 text-primary"
+                                      isInProgress ? "bg-blue-50 text-blue-600" : "bg-primary/5 text-primary"
                                   )}>
                                     {isCompleted ? <CheckCircle2 className="h-4 w-4" /> :
-                                     isInProgress ? <Clock className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />}
+                                      isInProgress ? <Clock className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-xs text-slate-700 leading-normal break-words">{n.message}</p>
@@ -754,6 +639,154 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface SidebarContentProps {
+  collapsed: boolean;
+  business: any;
+  filteredNavItems: any[];
+  isMobile: boolean;
+  setMobileOpen: (open: boolean) => void;
+  handleSignOut: () => void;
+}
+
+function SidebarContent({
+  collapsed,
+  business,
+  filteredNavItems,
+  isMobile,
+  setMobileOpen,
+  handleSignOut,
+}: SidebarContentProps) {
+  const location = useLocation();
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Logo area with MohanTrader branding */}
+      <div className={cn(
+        "flex items-center gap-3 px-5 py-5",
+        collapsed && "justify-center px-3"
+      )}>
+        <img
+          src={business?.logo_url || "/mohantrader-logo.png"}
+          alt={business?.name || "MohanTrader"}
+          className="h-10 w-10 rounded-xl object-contain bg-white/10 p-1 shrink-0"
+        />
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              className="overflow-hidden"
+            >
+              <p className="text-[17px] font-semibold text-white leading-tight break-all">
+                {business?.name || "Mohan Trading"}
+              </p>
+              <p className="text-[10px] text-white/40 tracking-wide italic leading-tight mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                {business?.slogan || "Delivering Dreams, Driving Trust"}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Divider */}
+      <div className="mx-4 border-t border-sidebar-border" />
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {filteredNavItems.map((item) => {
+          const active = location.pathname === item.path ||
+            (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"));
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={() => isMobile && setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 relative group",
+                active
+                  ? "bg-primary text-white"
+                  : "text-sidebar-accent-foreground hover:text-white hover:bg-sidebar-accent",
+                collapsed && "justify-center px-2"
+              )}
+            >
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "opacity-60 group-hover:opacity-100")} />
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="whitespace-nowrap"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Support Chat */}
+      <div className="px-3 pb-1.5">
+        <a
+          href="https://wa.me/94762345336?text=Hi%20CreativeX%20Support,%20I%20need%20help%20with%20Mohan%20Traders%20CRM."
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-sidebar-accent-foreground hover:text-emerald-400 hover:bg-[#00a884]/10 transition-all duration-200 w-full",
+            collapsed && "justify-center px-2"
+          )}
+        >
+          <svg className="h-[18px] w-[18px] shrink-0 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.707 1.456h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+          </svg>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                className="whitespace-nowrap font-medium"
+              >
+                Support Chat
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </a>
+      </div>
+
+      {/* Sign out */}
+      <div className="px-3 pb-4">
+        <div className="border-t border-sidebar-border pt-3">
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-sidebar-accent-foreground hover:text-red-400 hover:bg-sidebar-accent w-full transition-all duration-200",
+              collapsed && "justify-center px-2"
+            )}
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0 opacity-60" />
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="whitespace-nowrap"
+                >
+                  Sign Out
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
