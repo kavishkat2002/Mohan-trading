@@ -276,7 +276,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Commissions Paid</span>
-                <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <DollarSign className="h-4 w-4" />
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active CRM Leads</span>
-                <div className="h-9 w-9 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <Users className="h-4 w-4" />
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Staff Today</span>
-                <div className="h-9 w-9 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <UserCheck className="h-4 w-4" />
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Commissions (Month)</span>
-                <div className="h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <Trophy className="h-4 w-4" />
                 </div>
               </div>
@@ -370,7 +370,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Actions & Tasks</span>
-                <div className="h-9 w-9 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <ClipboardList className="h-4 w-4" />
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Work Attendance</span>
-                <div className="h-9 w-9 rounded-full bg-slate-55/40 border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
+                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
               </div>
@@ -472,11 +472,7 @@ export default function Dashboard() {
                               </div>
                             </TableCell>
                             <TableCell className="py-4">
-                              <Badge className={
-                                staffMember.role === 'sales' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
-                                staffMember.role === 'accountant' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-100 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md" :
-                                "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md"
-                              }>
+                              <Badge className="bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md">
                                 {staffMember.role}
                               </Badge>
                             </TableCell>
