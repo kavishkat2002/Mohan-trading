@@ -5,6 +5,64 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const { createClient } = require('@supabase/supabase-js');
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+}
+
+async function syncVehiclesToSupabase() {
+  if (!supabase) return;
+  try {
+    const { rows: localVehicles } = await db.query('SELECT * FROM vehicles');
+    const formatted = localVehicles.map(v => ({
+      id: v.id,
+      brand: v.brand,
+      price: parseFloat(v.price) || 0,
+      category: v.category || '',
+      stock: v.stock || 0,
+      description: v.description || '',
+      image_url: v.image_url || '',
+      created_at: v.created_at || new Date()
+    }));
+
+    const { error } = await supabase
+      .from('vehicles')
+      .upsert(formatted, { onConflict: 'id' });
+
+    if (error) {
+      console.error('[Supabase Sync] Vehicles sync failed:', error.message);
+    } else {
+      console.log('[Supabase Sync] Vehicles synced successfully.');
+    }
+  } catch (err) {
+    console.error('[Supabase Sync] Vehicles sync error:', err.message);
+  }
+}
+
+async function deleteVehicleFromSupabase(id) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('[Supabase Sync] Vehicle delete failed:', error.message);
+    } else {
+      console.log('[Supabase Sync] Vehicle deleted from Supabase.');
+    }
+  } catch (err) {
+    console.error('[Supabase Sync] Vehicle delete error:', err.message);
+  }
+}
+
+// Perform initial sync at startup
+syncVehiclesToSupabase();
+
 // Configure multer for local file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -57,6 +115,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 
     res.status(201).json(rows[0]);
+    syncVehiclesToSupabase();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -104,6 +163,25 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     }
 
     res.json(rows[0]);
+    syncVehiclesToSupabase();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update vehicle AI notes only
+router.put('/:id/ai-notes', async (req, res) => {
+  const { id } = req.params;
+  const { ai_notes } = req.body;
+  try {
+    const { rows } = await db.query(
+      'UPDATE vehicles SET ai_notes = $1 WHERE id = $2 RETURNING *',
+      [ai_notes || '', id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Vehicle not found' });
+    res.json(rows[0]);
+    syncVehiclesToSupabase();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -115,6 +193,7 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   try {
     await db.query('DELETE FROM vehicles WHERE id = $1', [id]);
+    deleteVehicleFromSupabase(id);
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
     console.error(err);

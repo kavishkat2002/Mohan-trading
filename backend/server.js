@@ -48,12 +48,36 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  // Check DB connection
-  db.query('SELECT NOW()', (err, res) => {
-    if (err) {
-      console.error('Database connection error:', err.stack);
-    } else {
-      console.log('Connected to PostgreSQL at:', res.rows[0].now);
-    }
+  // Run DB schema migration and check connection
+  runMigrations().then(() => {
+    db.query('SELECT NOW()', (err, res) => {
+      if (err) {
+        console.error('Database connection error:', err.stack);
+      } else {
+        console.log('Connected to PostgreSQL at:', res.rows[0].now);
+      }
+    });
   });
 });
+
+async function runMigrations() {
+  console.log('[Migration] Checking database schema...');
+  try {
+    await db.query(`
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_bot_name VARCHAR(255) DEFAULT 'Alex';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_dealership_name VARCHAR(255) DEFAULT 'Mohan Trading';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_greeting_message TEXT DEFAULT 'Hi! I''m Alex from AutoDrive Motors 👋 Looking for your dream car? Tell me what you have in mind!';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_tone VARCHAR(255) DEFAULT 'Professional & warm';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_language VARCHAR(255) DEFAULT 'English';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_emoji_usage VARCHAR(255) DEFAULT 'Use emojis — feels friendly';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_ask_name_rule VARCHAR(255) DEFAULT '3rd message';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_ask_budget_rule VARCHAR(255) DEFAULT '3rd message';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_unanswered_limit VARCHAR(255) DEFAULT '1 follow-up then stop';
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_objections JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS ai_notes TEXT DEFAULT '';
+    `);
+    console.log('[Migration] Database schema migrated successfully.');
+  } catch (error) {
+    console.error('[Migration] Database migration error:', error);
+  }
+}

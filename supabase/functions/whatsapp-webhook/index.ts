@@ -120,6 +120,7 @@ serve(async (req: Request) => {
     }
 
     let outMsg = "";
+    let sendImageUrl: string | null = null;
 
     if (settings.ai_enabled) {
       // ─── SMART AI RESPONDER FLOW ────────────────────────────────────
@@ -141,10 +142,22 @@ serve(async (req: Request) => {
         ai_business_description: settings.ai_business_description,
         ai_faq_data: settings.ai_faq_data,
         ai_model: settings.ai_model,
-        chatHistory: chatHistory
+        chatHistory: chatHistory,
+        ai_bot_name: (settings as any).ai_bot_name,
+        ai_dealership_name: (settings as any).ai_dealership_name,
+        ai_greeting_message: (settings as any).ai_greeting_message,
+        ai_tone: (settings as any).ai_tone,
+        ai_language: (settings as any).ai_language,
+        ai_emoji_usage: (settings as any).ai_emoji_usage,
+        ai_ask_name_rule: (settings as any).ai_ask_name_rule,
+        ai_ask_budget_rule: (settings as any).ai_ask_budget_rule,
+        ai_unanswered_limit: (settings as any).ai_unanswered_limit,
+        ai_objections: (settings as any).ai_objections,
+        supabaseClient: supabase
       });
 
       outMsg = aiResult.reply;
+      sendImageUrl = aiResult.send_image_url || null;
 
       // Update lead details in Supabase
       if (aiResult.extracted_info) {
@@ -277,7 +290,7 @@ serve(async (req: Request) => {
     });
 
     // Send WhatsApp reply
-    await sendWhatsApp(phone, outMsg);
+    await sendWhatsApp(phone, outMsg, sendImageUrl);
 
     console.log(`[WEBHOOK] Replied to ${phone}`);
     return new Response("OK", { status: 200 });
@@ -302,13 +315,45 @@ async function generateSmartReply(userMessage: string, context: any) {
   }
 
   try {
-    const systemPrompt = context.ai_system_prompt || `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.`;
     const model = context.ai_model || 'openai/gpt-3.5-turbo';
 
-    let systemContent = systemPrompt;
+    let systemContent = "";
+    if (context.ai_bot_name) {
+      systemContent = `You are ${context.ai_bot_name}, a helpful, polite, and ${context.ai_tone || 'professional'} sales representative at ${context.ai_dealership_name || 'Mohan Trading'}.
+Greeting message (first thing you say to introduce yourself): "${context.ai_greeting_message || 'Hi!'}"
+
+Personality and Style Rules:
+- Primary Tone: ${context.ai_tone || 'Professional & warm'}.
+- Preferred Language: ${context.ai_language || 'Bilingual (Sinhala and English)'}.
+- Emojis style: ${context.ai_emoji_usage || 'Use emojis - feels friendly'}.
+- Rules for asking customer name: ${context.ai_ask_name_rule || '3rd message'}.
+- Rules for asking customer budget: ${context.ai_ask_budget_rule || '3rd message'}.
+- Follow-up behavior rule: ${context.ai_unanswered_limit || '1 follow-up then stop'}.
+- Always be helpful, polite, and professional. Avoid being pushy.`;
+
+      if (context.ai_system_prompt) {
+        systemContent += `\n\nAdditional Instructions:\n${context.ai_system_prompt}`;
+      }
+    } else {
+      systemContent = context.ai_system_prompt || `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.`;
+    }
 
     if (context.ai_business_description) {
-      systemContent += `\n\nAbout our business:\n${context.ai_business_description}`;
+      systemContent += `\n\nAbout our dealership showroom:\n${context.ai_business_description}`;
+    }
+
+    let objections = context.ai_objections;
+    if (objections) {
+      try {
+        if (typeof objections === 'string') {
+          objections = JSON.parse(objections);
+        }
+      } catch (e) {
+        console.error("Failed to parse objections JSON inside AI service in Deno:", e);
+      }
+      if (Array.isArray(objections) && objections.length > 0) {
+        systemContent += `\n\nHow to handle customer objections:\n` + objections.map((obj: any) => `- Objection: "${obj.objection}"\n  Target Response: "${obj.response}"`).join('\n');
+      }
     }
 
     let faqs = context.ai_faq_data;
@@ -318,10 +363,27 @@ async function generateSmartReply(userMessage: string, context: any) {
           faqs = JSON.parse(faqs);
         }
       } catch (e) {
-        console.error("Failed to parse FAQ JSON inside AI service:", e);
+        console.error("Failed to parse FAQ JSON inside AI service Deno:", e);
       }
       if (Array.isArray(faqs) && faqs.length > 0) {
         systemContent += `\n\nFrequently Asked Questions (FAQs):\n` + faqs.map((faq: any) => `Q: ${faq.q}\nA: ${faq.a}`).join('\n\n');
+      }
+    }
+
+    // Query active showroom inventory from Supabase
+    if (context.supabaseClient) {
+      try {
+        const { data: vehicles } = await context.supabaseClient
+          .from('vehicles')
+          .select('brand, price, category, stock, description, image_url')
+          .gt('stock', 0);
+        
+        if (vehicles && vehicles.length > 0) {
+          systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
+            vehicles.map((v: any) => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}`).join('\n');
+        }
+      } catch (dbErr: any) {
+        console.error("Failed to query vehicles in Deno:", dbErr.message || dbErr);
       }
     }
 
@@ -330,6 +392,7 @@ async function generateSmartReply(userMessage: string, context: any) {
 The JSON must have this exact structure:
 {
   "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
+  "send_image_url": "The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg') if the customer explicitly requested photos or images of that vehicle and a photo is available in the inventory, otherwise null",
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
@@ -364,7 +427,8 @@ The JSON must have this exact structure:
       },
       body: JSON.stringify({
         model: model,
-        messages: messages
+        messages: messages,
+        response_format: { type: "json_object" }
       })
     });
 
@@ -403,7 +467,7 @@ The JSON must have this exact structure:
   }
 }
 
-async function sendWhatsApp(to: string, text: string): Promise<void> {
+async function sendWhatsApp(to: string, text: string, imageUrl: string | null = null): Promise<void> {
   const token = Deno.env.get("WHATSAPP_TOKEN");
   const phoneId = Deno.env.get("PHONE_NUMBER_ID");
 
@@ -412,18 +476,45 @@ async function sendWhatsApp(to: string, text: string): Promise<void> {
     return;
   }
 
+  // Helper to construct fully-qualified public URL for media files
+  const getPublicUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    const baseUrl = Deno.env.get("BACKEND_URL") || Deno.env.get("PUBLIC_URL") || "https://mohan-trading.herokuapp.com";
+    return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
+
+  let payload;
+  if (imageUrl) {
+    const publicImgUrl = getPublicUrl(imageUrl);
+    console.log(`[sendWhatsApp] Sending image: ${publicImgUrl}`);
+    payload = {
+      messaging_product: "whatsapp",
+      to: to,
+      type: "image",
+      image: {
+        link: publicImgUrl,
+        caption: text
+      }
+    };
+  } else {
+    payload = {
+      messaging_product: "whatsapp",
+      to: to,
+      type: "text",
+      text: { body: text }
+    };
+  }
+
   const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to,
-      type: "text",
-      text: { body: text }
-    })
+    body: JSON.stringify(payload)
   });
 
   const resJson = await res.json();

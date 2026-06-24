@@ -32,7 +32,9 @@ router.put('/', async (req, res) => {
     bank_name, bank_account_holder, bank_account_number, bank_branch, bank_swift_code,
     payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url,
     whatsapp_token, meta_app_id, meta_config_id,
-    ai_enabled, ai_model, ai_system_prompt, ai_business_description, ai_faq_data
+    ai_enabled, ai_model, ai_system_prompt, ai_business_description, ai_faq_data,
+    ai_bot_name, ai_dealership_name, ai_greeting_message, ai_tone, ai_language, ai_emoji_usage,
+    ai_ask_name_rule, ai_ask_budget_rule, ai_unanswered_limit, ai_objections
   } = req.body;
   
   try {
@@ -42,7 +44,10 @@ router.put('/', async (req, res) => {
       payment_gateway_name, payment_gateway_link, whatsapp_phone_number_id, slogan, logo_url,
       whatsapp_token, meta_app_id, meta_config_id,
       ai_enabled, ai_model, ai_system_prompt, ai_business_description,
-      ai_faq_data !== undefined ? (typeof ai_faq_data === 'string' ? ai_faq_data : JSON.stringify(ai_faq_data)) : undefined
+      ai_faq_data !== undefined ? (typeof ai_faq_data === 'string' ? ai_faq_data : JSON.stringify(ai_faq_data)) : undefined,
+      ai_bot_name, ai_dealership_name, ai_greeting_message, ai_tone, ai_language, ai_emoji_usage,
+      ai_ask_name_rule, ai_ask_budget_rule, ai_unanswered_limit,
+      ai_objections !== undefined ? (typeof ai_objections === 'string' ? ai_objections : JSON.stringify(ai_objections)) : undefined
     ].map(v => v === undefined ? null : v);
 
     const { rows } = await db.query(
@@ -69,7 +74,17 @@ router.put('/', async (req, res) => {
            ai_model = COALESCE($20, ai_model),
            ai_system_prompt = COALESCE($21, ai_system_prompt),
            ai_business_description = COALESCE($22, ai_business_description),
-           ai_faq_data = COALESCE($23, ai_faq_data)
+           ai_faq_data = COALESCE($23, ai_faq_data),
+           ai_bot_name = COALESCE($24, ai_bot_name),
+           ai_dealership_name = COALESCE($25, ai_dealership_name),
+           ai_greeting_message = COALESCE($26, ai_greeting_message),
+           ai_tone = COALESCE($27, ai_tone),
+           ai_language = COALESCE($28, ai_language),
+           ai_emoji_usage = COALESCE($29, ai_emoji_usage),
+           ai_ask_name_rule = COALESCE($30, ai_ask_name_rule),
+           ai_ask_budget_rule = COALESCE($31, ai_ask_budget_rule),
+           ai_unanswered_limit = COALESCE($32, ai_unanswered_limit),
+           ai_objections = COALESCE($33, ai_objections)
        WHERE id = 1 RETURNING *`,
       values
     );
@@ -83,7 +98,17 @@ router.put('/', async (req, res) => {
         ai_model: updatedSettings.ai_model,
         ai_system_prompt: updatedSettings.ai_system_prompt,
         ai_business_description: updatedSettings.ai_business_description,
-        ai_faq_data: updatedSettings.ai_faq_data
+        ai_faq_data: updatedSettings.ai_faq_data,
+        ai_bot_name: updatedSettings.ai_bot_name,
+        ai_dealership_name: updatedSettings.ai_dealership_name,
+        ai_greeting_message: updatedSettings.ai_greeting_message,
+        ai_tone: updatedSettings.ai_tone,
+        ai_language: updatedSettings.ai_language,
+        ai_emoji_usage: updatedSettings.ai_emoji_usage,
+        ai_ask_name_rule: updatedSettings.ai_ask_name_rule,
+        ai_ask_budget_rule: updatedSettings.ai_ask_budget_rule,
+        ai_unanswered_limit: updatedSettings.ai_unanswered_limit,
+        ai_objections: updatedSettings.ai_objections
       };
 
       try {

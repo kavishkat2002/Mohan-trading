@@ -86,8 +86,17 @@ async function syncMessageToSupabase(phone, sender, content) {
 
 const WA_API_URL = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
 
-// Send a plain text message via WhatsApp
-async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot') {
+function getPublicUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5001';
+  return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+// Send a plain text or image message via WhatsApp
+async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot', imageUrl = null) {
   try {
     // Sync outbound message to Supabase first
     const supabaseId = await syncMessageToSupabase(to, sender, text);
@@ -110,9 +119,31 @@ async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot') {
 
     const waUrl = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
 
+    let payload;
+    if (imageUrl) {
+      const publicImgUrl = getPublicUrl(imageUrl);
+      console.log(`[WhatsApp Service] Sending image: ${publicImgUrl}`);
+      payload = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'image',
+        image: {
+          link: publicImgUrl,
+          caption: text
+        }
+      };
+    } else {
+      payload = {
+        messaging_product: 'whatsapp',
+        to: to,
+        type: 'text',
+        text: { body: text }
+      };
+    }
+
     await axios.post(
       waUrl,
-      { messaging_product: 'whatsapp', to: to, text: { body: text } },
+      payload,
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -149,6 +180,7 @@ async function handleIncomingMessage(phone, text) {
   const settings = settingsRes.rows[0] || {};
 
   let outMsg = "";
+  let sendImageUrl = null;
 
   if (settings.ai_enabled) {
     // ---- SMART AI RESPONDER FLOW ----
@@ -169,10 +201,21 @@ async function handleIncomingMessage(phone, text) {
       ai_business_description: settings.ai_business_description,
       ai_faq_data: settings.ai_faq_data,
       ai_model: settings.ai_model,
-      chatHistory: chatHistory
+      chatHistory: chatHistory,
+      ai_bot_name: settings.ai_bot_name,
+      ai_dealership_name: settings.ai_dealership_name,
+      ai_greeting_message: settings.ai_greeting_message,
+      ai_tone: settings.ai_tone,
+      ai_language: settings.ai_language,
+      ai_emoji_usage: settings.ai_emoji_usage,
+      ai_ask_name_rule: settings.ai_ask_name_rule,
+      ai_ask_budget_rule: settings.ai_ask_budget_rule,
+      ai_unanswered_limit: settings.ai_unanswered_limit,
+      ai_objections: settings.ai_objections
     });
 
     outMsg = aiResult.reply;
+    sendImageUrl = aiResult.send_image_url || null;
 
     // Process extracted info to update lead details
     if (aiResult.extracted_info) {
@@ -312,7 +355,7 @@ async function handleIncomingMessage(phone, text) {
   }
 
   // 4. SEND OUTGOING MESSAGE
-  await sendWhatsAppMessage(phone, outMsg, lead.id);
+  await sendWhatsAppMessage(phone, outMsg, lead.id, 'bot', sendImageUrl);
 }
 
 module.exports = {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall, Trash2, AlertTriangle, Brain, Sparkles, Send, RefreshCw, Plus, X } from "lucide-react";
+import { Building2, MessageSquare, CreditCard, Users, Banknote, PhoneCall, Trash2, AlertTriangle, Brain, Sparkles, Send, RefreshCw, Plus, X, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -243,14 +243,41 @@ export default function SettingsPage() {
   const [metaConfigId, setMetaConfigId] = useState("");
 
   const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiModel, setAiModel] = useState("openai/gpt-3.5-turbo");
+  const [aiModel, setAiModel] = useState("google/gemini-2.5-flash");
   const [aiSystemPrompt, setAiSystemPrompt] = useState("");
   const [aiBusinessDescription, setAiBusinessDescription] = useState("");
   const [aiFaqData, setAiFaqData] = useState<{ q: string; a: string }[]>([]);
 
+  // Wizard sub-tab states
+  const [aiBotName, setAiBotName] = useState("Alex");
+  const [aiDealershipName, setAiDealershipName] = useState("Mohan Trading");
+  const [aiGreetingMessage, setAiGreetingMessage] = useState("Hi! I'm Alex from AutoDrive Motors 👋 Looking for your dream car? Tell me what you have in mind!");
+  const [aiTone, setAiTone] = useState("Professional & warm");
+  const [aiLanguage, setAiLanguage] = useState("English");
+  const [aiEmojiUsage, setAiEmojiUsage] = useState("Use emojis — feels friendly");
+  const [aiAskNameRule, setAiAskNameRule] = useState("3rd message");
+  const [aiAskBudgetRule, setAiAskBudgetRule] = useState("3rd message");
+  const [aiUnansweredLimit, setAiUnansweredLimit] = useState("1 follow-up then stop");
+  const [aiObjections, setAiObjections] = useState<{ objection: string; response: string }[]>([]);
+
   // FAQ input state
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
+
+  // Objection input state
+  const [newObjection, setNewObjection] = useState("");
+  const [newObjectionResponse, setNewObjectionResponse] = useState("");
+
+  // n8n visual builder states
+  const [activeNode, setActiveNode] = useState("agent");
+  const [isSimOpen, setIsSimOpen] = useState(false);
+
+  // Vehicles list for training
+  const [aiVehicles, setAiVehicles] = useState<any[]>([]);
+  const [searchCar, setSearchCar] = useState("");
+  const [editingVehicleNotesId, setEditingVehicleNotesId] = useState<number | null>(null);
+  const [vehicleNotesInput, setVehicleNotesInput] = useState("");
+  const [isSavingVehicleNotes, setIsSavingVehicleNotes] = useState(false);
 
   // Simulator state
   const [simMessages, setSimMessages] = useState<{ sender: 'user' | 'bot'; content: string }[]>([
@@ -259,6 +286,43 @@ export default function SettingsPage() {
   const [simInput, setSimInput] = useState("");
   const [isSimLoading, setIsSimLoading] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const fetchAiVehicles = () => {
+    fetch("http://localhost:5001/api/vehicles")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAiVehicles(data);
+      })
+      .catch(console.error);
+  };
+
+  const saveVehicleNotes = async (id: number, notes: string) => {
+    setIsSavingVehicleNotes(true);
+    try {
+      const res = await fetch(`http://localhost:5001/api/vehicles/${id}/ai-notes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai_notes: notes })
+      });
+      if (res.ok) {
+        toast({ title: "Vehicle guidelines updated successfully" });
+        setEditingVehicleNotesId(null);
+        fetchAiVehicles();
+      } else {
+        const data = await res.json();
+        toast({ title: "Failed to update guidelines", description: data.error, variant: "destructive" });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Network error", variant: "destructive" });
+    } finally {
+      setIsSavingVehicleNotes(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAiVehicles();
+  }, []);
 
   useEffect(() => {
     if (business && !isLoaded) {
@@ -293,6 +357,28 @@ export default function SettingsPage() {
             : business.ai_faq_data;
           if (Array.isArray(parsed)) {
             setAiFaqData(parsed);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (business.ai_bot_name) setAiBotName(business.ai_bot_name);
+      if (business.ai_dealership_name) setAiDealershipName(business.ai_dealership_name);
+      if (business.ai_greeting_message) setAiGreetingMessage(business.ai_greeting_message);
+      if (business.ai_tone) setAiTone(business.ai_tone);
+      if (business.ai_language) setAiLanguage(business.ai_language);
+      if (business.ai_emoji_usage) setAiEmojiUsage(business.ai_emoji_usage);
+      if (business.ai_ask_name_rule) setAiAskNameRule(business.ai_ask_name_rule);
+      if (business.ai_ask_budget_rule) setAiAskBudgetRule(business.ai_ask_budget_rule);
+      if (business.ai_unanswered_limit) setAiUnansweredLimit(business.ai_unanswered_limit);
+      if (business.ai_objections) {
+        try {
+          const parsed = typeof business.ai_objections === 'string'
+            ? JSON.parse(business.ai_objections)
+            : business.ai_objections;
+          if (Array.isArray(parsed)) {
+            setAiObjections(parsed);
           }
         } catch (e) {
           console.error(e);
@@ -348,7 +434,7 @@ export default function SettingsPage() {
   };
 
   const updateBusiness = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (overrideFields?: Record<string, any>) => {
       const payload = {
         name,
         contact_email: contactEmail,
@@ -373,6 +459,17 @@ export default function SettingsPage() {
         ai_system_prompt: aiSystemPrompt,
         ai_business_description: aiBusinessDescription,
         ai_faq_data: aiFaqData,
+        ai_bot_name: aiBotName,
+        ai_dealership_name: aiDealershipName,
+        ai_greeting_message: aiGreetingMessage,
+        ai_tone: aiTone,
+        ai_language: aiLanguage,
+        ai_emoji_usage: aiEmojiUsage,
+        ai_ask_name_rule: aiAskNameRule,
+        ai_ask_budget_rule: aiAskBudgetRule,
+        ai_unanswered_limit: aiUnansweredLimit,
+        ai_objections: aiObjections,
+        ...overrideFields
       };
 
       const res = await fetch("http://localhost:5001/api/settings", {
@@ -497,7 +594,7 @@ export default function SettingsPage() {
               <Badge variant="outline" className="text-[11px] rounded-md px-2 py-0.5 font-medium bg-primary/5 text-primary border-primary/20">{userRole || "—"}</Badge>
             </div>
             {['owner', 'admin'].includes(user?.role) && (
-              <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 mt-2 shadow-sm shadow-primary/20">
+              <Button onClick={() => updateBusiness.mutate(undefined)} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 mt-2 shadow-sm shadow-primary/20">
                 Save Changes
               </Button>
             )}
@@ -661,7 +758,7 @@ export default function SettingsPage() {
                 <p className="text-[11px] text-muted-foreground">Copy this to your Meta App Configuration. Set Verify Token to: <code className="px-1 py-0.5 bg-primary/5 text-primary rounded text-[10px]">smartbiz_verify_token</code></p>
               </div>
               {['owner', 'admin'].includes(user?.role) && (
-                <Button onClick={() => updateBusiness.mutate()} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
+                <Button onClick={() => updateBusiness.mutate(undefined)} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 shadow-sm shadow-primary/20">
                   Save WhatsApp Settings
                 </Button>
               )}
@@ -670,342 +767,837 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="ai-agent" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT COLUMN: TRAINING AND CONTEXT (7 cols on lg) */}
-            <div className="lg:col-span-7 space-y-6">
+          <div className="space-y-6">
+            
+            {/* WORKFLOW CANVAS CONTAINER */}
+            <div className="border border-border rounded-xl bg-white overflow-hidden shadow-sm flex flex-col">
               
-              {/* Activation & Core Settings */}
-              <div className="border border-border rounded-lg bg-white overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-border bg-gradient-to-r from-primary/5 via-transparent to-transparent flex items-center justify-between">
-                  <div>
-                    <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
-                      <Brain className="h-5 w-5 text-primary" />
-                      Smart AI Sales Representative
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Automate WhatsApp responses with customized brand knowledge</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={aiEnabled} 
-                      onChange={e => setAiEnabled(e.target.checked)} 
-                    />
-                    <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  </label>
+              {/* Header */}
+              <div className="px-6 py-4.5 border-b border-border bg-gradient-to-r from-primary/[0.03] via-transparent to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-primary" />
+                    AI Chat Flow Builder (n8n Mode)
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Click on a workflow node below to configure its variables and rules</p>
                 </div>
                 
-                <div className="p-6 space-y-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">AI Model Selection</Label>
-                    <Select value={aiModel} onValueChange={setAiModel}>
-                      <SelectTrigger className="h-10 text-sm bg-white">
-                        <SelectValue placeholder="Select LLM model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cost-effective)</SelectItem>
-                        <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (Great for Sri Lankan Context / Sinhala)</SelectItem>
-                        <SelectItem value="meta-llama/llama-3-8b-instruct">Llama 3 8B (Open Source & Fast)</SelectItem>
-                        <SelectItem value="anthropic/claude-3-haiku">Claude 3 Haiku (Highly Logical)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[10px] text-muted-foreground font-medium">Select the brain of your sales representative. We recommend Gemini 2.5 Flash for best Sinhala language response handling.</p>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 border-r border-border pr-4 mr-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">AI Responder Status</Label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={aiEnabled} 
+                        onChange={e => {
+                          const newVal = e.target.checked;
+                          setAiEnabled(newVal);
+                          updateBusiness.mutate({ ai_enabled: newVal });
+                        }} 
+                      />
+                      <div className="w-10 h-5.5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
                   </div>
+                  
+                  <Button 
+                    type="button"
+                    onClick={() => setIsSimOpen(!isSimOpen)}
+                    className="h-8 px-3.5 bg-[#00a884] hover:bg-[#008f72] text-white text-xs font-bold flex items-center gap-1.5 rounded-full shadow-sm"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {isSimOpen ? "Close Simulator" : "Test Chat Flow"}
+                  </Button>
                 </div>
               </div>
 
-              {/* Persona and Tone Training */}
-              <SectionCard title="Persona & Rules" desc="Train the agent on how to speak and behave during chats">
-                <div className="space-y-4">
-                  {/* Preset buttons */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Instruction Presets</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { 
-                          name: "Sinhala & English Friendly", 
-                          prompt: "You are an AI sales assistant for Mohan Trading showroom. Speak in a friendly, polite, and helpful manner. You are bilingual in Sinhala and English, using typical Sri Lankan chat style (using words like 'Ayubowan', 'sir/madam', 'malli'). Guide customers through buying, selling, or booking test drives. Politely gather their name, interested car type, and budget." 
-                        },
-                        { 
-                          name: "Professional Sales Representative", 
-                          prompt: "You are a professional car leasing and sales expert at Mohan Trading showroom. Your tone is respectful, formal, and sales-focused. Your primary objective is to present vehicle configurations, schedule showroom visits/test drives, and extract lead information (name, target vehicle, budget range) in a structured manner." 
-                        },
-                        { 
-                          name: "Aggressive Deal Closer", 
-                          prompt: "You are an energetic, high-conversion sales closer at Mohan Trading. You are highly proactive and persuasive. Promote current active discounts. Keep answers brief and immediately request their name, phone number, and budget to pass to our human team for immediate closure." 
-                        }
-                      ].map(preset => (
-                        <Button 
-                          key={preset.name}
-                          type="button"
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => {
-                            setAiSystemPrompt(preset.prompt);
-                            toast({ title: "Preset Applied", description: `Prompt set to '${preset.name}'` });
-                          }}
-                          className="text-xs h-7 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 font-medium rounded-md"
-                        >
-                          <Sparkles className="h-3 w-3 mr-1 text-primary" />
-                          {preset.name}
-                        </Button>
-                      ))}
-                    </div>
+              {/* Dotted Canvas Area */}
+              <div 
+                className="p-8 overflow-x-auto flex items-center justify-start gap-0 min-h-[160px] select-none relative border-b border-border" 
+                style={{
+                  backgroundImage: 'radial-gradient(#e4e4e7 1.5px, transparent 1.5px)',
+                  backgroundSize: '18px 18px',
+                  backgroundColor: '#fafafa'
+                }}
+              >
+                <style>{`
+                  @keyframes flowDash {
+                    to {
+                      stroke-dashoffset: -16;
+                    }
+                  }
+                `}</style>
+                
+                {/* 1. WHATSAPP TRIGGER NODE */}
+                <div 
+                  onClick={() => setActiveNode("trigger")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "trigger" 
+                      ? "border-emerald-500 ring-4 ring-emerald-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-emerald-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Custom System Prompt / Instructions</Label>
-                    <Textarea 
-                      value={aiSystemPrompt} 
-                      onChange={e => setAiSystemPrompt(e.target.value)} 
-                      placeholder="Enter detailed behavior guidelines for the AI..."
-                      className="min-h-[140px] text-sm"
-                    />
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Write instructions about the AI's role, constraints (e.g. 'never give prices outside the range', 'do not talk about competitors'), and specific fields to capture.
-                    </p>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+                    <MessageSquare className="h-4.5 w-4.5" />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Business Profile & Showroom Context</Label>
-                    <Textarea 
-                      value={aiBusinessDescription} 
-                      onChange={e => setAiBusinessDescription(e.target.value)} 
-                      placeholder="Describe what your dealership offers, showroom location, opening hours..."
-                      className="min-h-[100px] text-sm"
-                    />
-                    <p className="text-[10px] text-muted-foreground">
-                      This information provides the knowledge context for the AI. Include your location, working hours, and stock services.
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">WhatsApp Trigger</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">On Incoming Message</p>
                   </div>
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                 </div>
-              </SectionCard>
 
-              {/* FAQ Knowledge Base Builder */}
-              <SectionCard title="FAQ Knowledge Base" desc="Add specific question-and-answer pairs the AI agent should know">
-                <div className="space-y-4">
-                  
-                  {/* FAQ Add Input Form */}
-                  <div className="p-3 border border-primary/10 bg-primary/[0.02] rounded-lg space-y-2.5">
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-primary/70">Add New Q&A Block</p>
-                    <div className="space-y-1.5">
-                      <Input 
-                        placeholder="Customer Question (e.g., Do you accept trade-ins?)" 
-                        value={newQuestion} 
-                        onChange={e => setNewQuestion(e.target.value)}
-                        className="h-8 text-xs bg-white"
-                      />
+                <ConnectorLine active={activeNode === "trigger" || activeNode === "agent"} />
+
+                {/* 2. AGENT PERSONA NODE */}
+                <div 
+                  onClick={() => setActiveNode("agent")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "agent" 
+                      ? "border-indigo-500 ring-4 ring-indigo-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-indigo-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-indigo-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
+                  </div>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600 border border-indigo-100/50">
+                    <Brain className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">AI Sales Agent</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Name: {aiBotName}</p>
+                  </div>
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white shadow-sm" />
+                </div>
+
+                <ConnectorLine active={activeNode === "agent" || activeNode === "rules"} />
+
+                {/* 3. LEAD CAPTURE RULES NODE */}
+                <div 
+                  onClick={() => setActiveNode("rules")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "rules" 
+                      ? "border-blue-500 ring-4 ring-blue-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-blue-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
+                  </div>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-50 text-blue-600 border border-blue-100/50">
+                    <Users className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">Lead Capture Rules</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Name: {aiAskNameRule}</p>
+                  </div>
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+                </div>
+
+                <ConnectorLine active={activeNode === "rules" || activeNode === "objections"} />
+
+                {/* 4. OBJECTION ROUTER NODE */}
+                <div 
+                  onClick={() => setActiveNode("objections")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "objections" 
+                      ? "border-rose-500 ring-4 ring-rose-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-rose-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-rose-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
+                  </div>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-600 border border-rose-100/50">
+                    <AlertTriangle className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">Objections Handler</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">{aiObjections.length} rules active</p>
+                  </div>
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white shadow-sm" />
+                </div>
+
+                <ConnectorLine active={activeNode === "objections" || activeNode === "knowledge"} />
+
+                {/* 5. KNOWLEDGE BASE NODE */}
+                <div 
+                  onClick={() => setActiveNode("knowledge")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "knowledge" 
+                      ? "border-amber-500 ring-4 ring-amber-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-amber-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
+                  </div>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-600 border border-amber-100/50">
+                    <Building2 className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">Inventory & FAQ</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">{aiFaqData.length} FAQs | {aiVehicles.length} cars</p>
+                  </div>
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
+                </div>
+
+                <ConnectorLine active={activeNode === "knowledge" || activeNode === "respond"} />
+
+                {/* 6. SEND RESPONSE NODE */}
+                <div 
+                  onClick={() => setActiveNode("respond")}
+                  className={`group relative flex items-center gap-3 bg-white border-2 rounded-xl p-3.5 w-52 shrink-0 transition-all cursor-pointer ${
+                    activeNode === "respond" 
+                      ? "border-cyan-500 ring-4 ring-cyan-500/10 shadow-md -translate-y-0.5" 
+                      : "border-zinc-200 hover:border-cyan-400 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-cyan-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <div className="h-1.5 w-1.5 bg-white rounded-full" />
+                  </div>
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-cyan-50 text-cyan-600 border border-cyan-100/50">
+                    <Send className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-zinc-800 leading-tight">Send Response</p>
+                    <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Smart Reply JSON</p>
+                  </div>
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white shadow-sm" />
+                </div>
+
+              </div>
+            </div>
+
+            {/* TWO COLUMN GRID FOR EDITOR + SIMULATOR */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* Properties Editor Panel */}
+              <div className={isSimOpen ? "lg:col-span-7 space-y-6" : "lg:col-span-12 space-y-6"}>
+                
+                {/* 1. TRIGGER CONFIG */}
+                {activeNode === "trigger" && (
+                  <SectionCard title="WhatsApp Trigger Settings" desc="Review configuration parameters for the WhatsApp Incoming Message trigger node">
+                    <div className="space-y-4">
+                      <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs uppercase tracking-wide">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          System Webhook Active
+                        </div>
+                        <p className="text-xs text-emerald-700 leading-normal font-sans">
+                          This node executes automatically whenever an incoming text message is received by your Meta WhatsApp Developer number.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground font-semibold">Your Webhook URL</Label>
+                        <div className="flex gap-2">
+                          <Input readOnly value={`${import.meta.env.VITE_SUPABASE_URL || 'https://nceyweiskamspdxfxnga.supabase.co'}/functions/v1/whatsapp-webhook`} className="h-9 text-xs font-mono bg-zinc-50" />
+                          <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => {
+                            navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL || 'https://nceyweiskamspdxfxnga.supabase.co'}/functions/v1/whatsapp-webhook`);
+                            toast({ title: "Webhook URL copied" });
+                          }}>Copy</Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground font-semibold">Verify Token</Label>
+                        <Input readOnly value="smartbiz_verify_token" className="h-9 text-xs font-mono bg-zinc-50" />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Textarea 
-                        placeholder="AI Answer (e.g., Yes, we evaluate and buy your old vehicle...)" 
-                        value={newAnswer} 
-                        onChange={e => setNewAnswer(e.target.value)}
-                        className="min-h-[60px] text-xs bg-white resize-none"
-                      />
+                  </SectionCard>
+                )}
+
+                {/* 2. AGENT PERSONA CONFIG */}
+                {activeNode === "agent" && (
+                  <div className="space-y-6">
+                    <SectionCard title="AI Agent Persona Settings" desc="Edit the identity, greeting messages, and basic conversation tone guidelines">
+                      <div className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-semibold">Bot Name</Label>
+                            <Input 
+                              placeholder="e.g. Alex" 
+                              value={aiBotName} 
+                              onChange={e => setAiBotName(e.target.value)}
+                              className="h-9 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-semibold">Dealership Name</Label>
+                            <Input 
+                              placeholder="e.g. Mohan Trading" 
+                              value={aiDealershipName} 
+                              onChange={e => setAiDealershipName(e.target.value)}
+                              className="h-9 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-semibold">Greeting message (first thing customers see)</Label>
+                          <Textarea 
+                            placeholder="e.g. Hi! I'm Alex from Mohan Trading showroom..." 
+                            value={aiGreetingMessage} 
+                            onChange={e => setAiGreetingMessage(e.target.value)}
+                            className="min-h-[70px] text-sm"
+                          />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-semibold">Tone</Label>
+                            <Select value={aiTone} onValueChange={setAiTone}>
+                              <SelectTrigger className="h-9 text-xs">
+                                <SelectValue placeholder="Select Tone" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Professional & warm">Professional & warm</SelectItem>
+                                <SelectItem value="Energetic & friendly">Energetic & friendly</SelectItem>
+                                <SelectItem value="Direct & sales-focused">Direct & sales-focused</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-semibold">Language</Label>
+                            <Select value={aiLanguage} onValueChange={setAiLanguage}>
+                              <SelectTrigger className="h-9 text-xs">
+                                <SelectValue placeholder="Select Language" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="English">English</SelectItem>
+                                <SelectItem value="Sinhala">Sinhala</SelectItem>
+                                <SelectItem value="Bilingual (Sinhala & English)">Bilingual (Sinhala & English)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-semibold">Emoji Usage</Label>
+                            <Select value={aiEmojiUsage} onValueChange={setAiEmojiUsage}>
+                              <SelectTrigger className="h-9 text-xs">
+                                <SelectValue placeholder="Select Emoji Usage" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Use emojis — feels friendly">Use emojis — feels friendly</SelectItem>
+                                <SelectItem value="No emojis — keep it professional">No emojis — keep it professional</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-semibold">Custom System Prompt / Instructions (Optional)</Label>
+                          <Textarea 
+                            placeholder="Add secondary prompt instructions here..." 
+                            value={aiSystemPrompt} 
+                            onChange={e => setAiSystemPrompt(e.target.value)}
+                            className="min-h-[90px] text-sm"
+                          />
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    {/* Preview box */}
+                    <div className="border border-border rounded-xl p-5 bg-background/30 space-y-3">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Compiled Prompt Summary Preview</h4>
+                      <div className="p-3 bg-zinc-800 text-zinc-300 rounded-lg text-xs font-mono leading-relaxed border border-zinc-700">
+                        You are {aiBotName}, a {aiTone.toLowerCase()} sales representative at {aiDealershipName}. Language style: {aiLanguage}. Emoji usage style: {aiEmojiUsage}. Greeting: "{aiGreetingMessage}".
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => updateBusiness.mutate(undefined)} 
+                      disabled={updateBusiness.isPending} 
+                      className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
+                    >
+                      {updateBusiness.isPending ? "Saving..." : "Save Agent Settings"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* 3. LEAD CAPTURE RULES CONFIG */}
+                {activeNode === "rules" && (
+                  <div className="space-y-6">
+                    <SectionCard title="Lead Capture Rules Settings" desc="Configure rules for automatically asking customer contact names and budget criteria">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-semibold">Always ask for customer name by message</Label>
+                          <Select value={aiAskNameRule} onValueChange={setAiAskNameRule}>
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue placeholder="Select rule" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1st message">1st message</SelectItem>
+                              <SelectItem value="2nd message">2nd message</SelectItem>
+                              <SelectItem value="3rd message">3rd message</SelectItem>
+                              <SelectItem value="Never">Never</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-semibold">Always ask for budget by message</Label>
+                          <Select value={aiAskBudgetRule} onValueChange={setAiAskBudgetRule}>
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue placeholder="Select rule" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="2nd message">2nd message</SelectItem>
+                              <SelectItem value="3rd message">3rd message</SelectItem>
+                              <SelectItem value="4th message">4th message</SelectItem>
+                              <SelectItem value="Never">Never</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-semibold">After how many unanswered messages, stop following up?</Label>
+                          <Select value={aiUnansweredLimit} onValueChange={setAiUnansweredLimit}>
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue placeholder="Select limit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1 follow-up then stop">1 follow-up then stop</SelectItem>
+                              <SelectItem value="2 follow-ups then stop">2 follow-ups then stop</SelectItem>
+                              <SelectItem value="3 follow-ups then stop">3 follow-ups then stop</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <Button 
+                      onClick={() => updateBusiness.mutate(undefined)} 
+                      disabled={updateBusiness.isPending} 
+                      className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
+                    >
+                      {updateBusiness.isPending ? "Saving..." : "Save Sales Rules"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* 4. OBJECTIONS CONFIG */}
+                {activeNode === "objections" && (
+                  <div className="space-y-6">
+                    <SectionCard title="Objections Response Guidelines" desc="Train the AI agent on how to counter client price complaints, discount requests, or leasing details">
+                      <div className="space-y-4">
+                        <div className="p-4 border border-zinc-200 bg-zinc-50 rounded-xl space-y-3.5">
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-primary">Add Objection Mapping Rule</p>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">If customer objects / asks about:</Label>
+                            <Input 
+                              placeholder="e.g. Price is too high, discount request, leasing options..." 
+                              value={newObjection} 
+                              onChange={e => setNewObjection(e.target.value)}
+                              className="h-8.5 text-xs bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">The AI should answer with:</Label>
+                            <Textarea 
+                              placeholder="e.g. Explain that we provide premium vehicle inspection certificates, flexible bank partnerships, and 12-month leasing options." 
+                              value={newObjectionResponse} 
+                              onChange={e => setNewObjectionResponse(e.target.value)}
+                              className="min-h-[60px] text-xs bg-white resize-none"
+                            />
+                          </div>
+                          <Button 
+                            type="button"
+                            onClick={() => {
+                              if (!newObjection.trim() || !newObjectionResponse.trim()) return;
+                              setAiObjections([...aiObjections, { objection: newObjection.trim(), response: newObjectionResponse.trim() }]);
+                              setNewObjection("");
+                              setNewObjectionResponse("");
+                              toast({ title: "Objection guide queued. Click Save below to apply changes." });
+                            }}
+                            disabled={!newObjection.trim() || !newObjectionResponse.trim()}
+                            className="h-8 text-xs bg-primary text-white flex items-center gap-1 font-semibold"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Rule
+                          </Button>
+                        </div>
+
+                        {/* List */}
+                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                          {aiObjections.map((obj, index) => (
+                            <div key={index} className="group relative p-3 border border-border bg-background/50 rounded-xl hover:border-primary/20 hover:bg-white transition-all">
+                              <p className="text-xs font-semibold text-foreground pr-6 flex items-start gap-1">
+                                <span className="text-rose-500 font-bold shrink-0">Objection:</span> "{obj.objection}"
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1 font-sans">
+                                <span className="text-primary font-bold shrink-0">Target Response:</span> "{obj.response}"
+                              </p>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const updated = aiObjections.filter((_, i) => i !== index);
+                                  setAiObjections(updated);
+                                  toast({ title: "Objection rule removed" });
+                                }}
+                                className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full border bg-white hover:bg-rose-50 text-muted-foreground hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          {aiObjections.length === 0 && (
+                            <p className="text-center py-6 text-xs text-muted-foreground italic">No custom objection guides defined yet.</p>
+                          )}
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <Button 
+                      onClick={() => updateBusiness.mutate(undefined)} 
+                      disabled={updateBusiness.isPending} 
+                      className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
+                    >
+                      {updateBusiness.isPending ? "Saving..." : "Save Objection Rules"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* 5. KNOWLEDGE BASE CONFIG */}
+                {activeNode === "knowledge" && (
+                  <div className="space-y-6">
+                    <SectionCard title="Dealer Inventory Training Notes" desc="Configure specific highlights or leasing options for cars in stock">
+                      <div className="space-y-4">
+                        <div className="flex gap-2 items-center justify-between pb-2 border-b">
+                          <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Showroom stock list ({aiVehicles.length} vehicles)</span>
+                          <div className="relative w-48">
+                            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input 
+                              placeholder="Search stock..." 
+                              value={searchCar} 
+                              onChange={e => setSearchCar(e.target.value)} 
+                              className="pl-8 h-7 text-[10px]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {aiVehicles.filter(v => v.brand.toLowerCase().includes(searchCar.toLowerCase())).map(car => (
+                            <div key={car.id} className="border border-border rounded-xl p-3 bg-zinc-50 hover:bg-white transition-all flex flex-col justify-between space-y-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-semibold text-xs text-foreground leading-normal">{car.brand}</h4>
+                                  <span className="text-[9px] text-muted-foreground bg-zinc-100 px-1.5 py-0.5 rounded inline-block mt-1 font-sans">{car.category || 'Vehicle'}</span>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-bold text-primary font-sans">LKR {parseFloat(car.price).toLocaleString()}</p>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-zinc-200">
+                                {editingVehicleNotesId === car.id ? (
+                                  <div className="space-y-1.5">
+                                    <Textarea 
+                                      placeholder="AI instructions for this model..." 
+                                      value={vehicleNotesInput} 
+                                      onChange={e => setVehicleNotesInput(e.target.value)} 
+                                      className="min-h-[50px] text-[10px] bg-white resize-none"
+                                    />
+                                    <div className="flex gap-1.5">
+                                      <Button 
+                                        size="sm" 
+                                        onClick={() => saveVehicleNotes(car.id, vehicleNotesInput)} 
+                                        disabled={isSavingVehicleNotes}
+                                        className="h-6 text-[10px] bg-primary text-white"
+                                      >
+                                        {isSavingVehicleNotes ? "Saving..." : "Save"}
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        disabled={isSavingVehicleNotes}
+                                        onClick={() => setEditingVehicleNotesId(null)} 
+                                        className="h-6 text-[10px]"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[9px] uppercase font-bold text-muted-foreground">AI Instructions</span>
+                                      <button onClick={() => { setEditingVehicleNotesId(car.id); setVehicleNotesInput(car.ai_notes || ""); }} className="text-[9px] text-primary hover:underline font-bold">Edit</button>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-700 leading-normal min-h-[20px] font-sans">
+                                      {car.ai_notes ? car.ai_notes : <span className="italic text-muted-foreground/60">No guidelines. AI uses default details.</span>}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <SectionCard title="FAQ Knowledge Base Settings" desc="Add general brand question and target answer pairs to train the AI memory">
+                      <div className="space-y-4">
+                        <div className="p-4 border border-zinc-200 bg-zinc-50 rounded-xl space-y-3">
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-primary">Add New FAQ Pair</p>
+                          <div className="space-y-1">
+                            <Input 
+                              placeholder="Question (e.g. Do you offer car insurance?)" 
+                              value={newQuestion} 
+                              onChange={e => setNewQuestion(e.target.value)}
+                              className="h-8.5 text-xs bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Textarea 
+                              placeholder="Target Answer..." 
+                              value={newAnswer} 
+                              onChange={e => setNewAnswer(e.target.value)}
+                              className="min-h-[50px] text-xs bg-white resize-none"
+                            />
+                          </div>
+                          <Button 
+                            type="button"
+                            onClick={() => {
+                              if (!newQuestion.trim() || !newAnswer.trim()) return;
+                              setAiFaqData([...aiFaqData, { q: newQuestion.trim(), a: newAnswer.trim() }]);
+                              setNewQuestion("");
+                              setNewAnswer("");
+                              toast({ title: "FAQ added to queue. Click Save below to apply." });
+                            }}
+                            disabled={!newQuestion.trim() || !newAnswer.trim()}
+                            className="h-8 text-xs bg-primary text-white flex items-center gap-1 font-semibold"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add FAQ Block
+                          </Button>
+                        </div>
+
+                        {/* List */}
+                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                          {aiFaqData.map((faq, index) => (
+                            <div key={index} className="group relative p-3 border border-border bg-background/50 rounded-xl hover:border-primary/20 hover:bg-white transition-all">
+                              <p className="text-xs font-semibold text-foreground pr-6 flex items-start gap-1">
+                                <span className="text-primary font-bold">Q:</span> {faq.q}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1 font-sans">
+                                <span className="text-emerald-600 font-bold">A:</span> {faq.a}
+                              </p>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const updated = aiFaqData.filter((_, i) => i !== index);
+                                  setAiFaqData(updated);
+                                  toast({ title: "FAQ block removed" });
+                                }}
+                                className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full border bg-white hover:bg-rose-50 text-muted-foreground hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                          {aiFaqData.length === 0 && (
+                            <p className="text-center py-6 text-xs text-muted-foreground italic">No custom FAQ blocks configured yet.</p>
+                          )}
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <Button 
+                      onClick={() => updateBusiness.mutate(undefined)} 
+                      disabled={updateBusiness.isPending} 
+                      className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
+                    >
+                      {updateBusiness.isPending ? "Saving..." : "Save Showroom & FAQ Data"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* 6. RESPONSE SCHEMA CONFIG */}
+                {activeNode === "respond" && (
+                  <SectionCard title="Send Response Node Settings" desc="Inspect the JSON structure template for the final output action response payload">
+                    <div className="space-y-4">
+                      <p className="text-xs text-muted-foreground font-sans">
+                        The AI generates a response conforming strictly to the following JSON structure schema, enabling automated lead capture and real-time CRM updates.
+                      </p>
+                      <pre className="p-4 bg-zinc-800 text-zinc-300 rounded-xl text-[11px] font-mono leading-relaxed border border-zinc-700 overflow-x-auto">
+{`{
+  "reply": "Your conversational response here...",
+  "extracted_info": {
+    "name": "Customer's name (or null)",
+    "interested_car": "Model / Category (or null)",
+    "budget": "LKR budget range (or null)",
+    "status": "New | Warm | Hot | Cold"
+  }
+}`}
+                      </pre>
+                    </div>
+                  </SectionCard>
+                )}
+
+              </div>
+
+              {/* Chat Simulator Right Split Panel */}
+              {isSimOpen && (
+                <div className="lg:col-span-5 border border-border rounded-xl bg-zinc-100 overflow-hidden shadow-sm sticky top-6">
+                  {/* WhatsApp Header */}
+                  <div className="bg-[#075e54] text-white p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-full bg-teal-800 flex items-center justify-center font-bold text-sm select-none">
+                        {aiBotName.substring(0,2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-xs leading-none">{aiBotName}</h4>
+                        <span className="text-[9px] text-teal-100/90 mt-1 inline-block">Online • Active model: {aiModel.split('/').pop()}</span>
+                      </div>
                     </div>
                     <Button 
-                      type="button" 
-                      onClick={() => {
-                        if (!newQuestion.trim() || !newAnswer.trim()) return;
-                        setAiFaqData([...aiFaqData, { q: newQuestion.trim(), a: newAnswer.trim() }]);
-                        setNewQuestion("");
-                        setNewAnswer("");
-                        toast({ title: "FAQ added to queue" });
-                      }}
-                      disabled={!newQuestion.trim() || !newAnswer.trim()}
-                      className="w-full h-8 text-xs bg-primary text-white flex items-center justify-center gap-1 font-semibold"
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setSimMessages([{ sender: 'bot', content: `Hi! I'm ${aiBotName} from ${aiDealershipName} 👋 Looking for your dream car? Tell me what you have in mind!` }])}
+                      className="h-8 w-8 text-teal-100 hover:text-white hover:bg-teal-800 rounded-full"
+                      title="Reset Chat"
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      Add to Knowledge Base
+                      <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  {/* FAQ list */}
-                  <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-1">
-                    {aiFaqData.map((faq, index) => (
-                      <div key={index} className="group relative p-3 border border-border bg-background/50 rounded-lg hover:border-primary/20 hover:bg-white transition-all">
-                        <p className="text-xs font-semibold text-foreground pr-6 flex items-start gap-1">
-                          <span className="text-primary font-bold">Q:</span> {faq.q}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
-                          <span className="text-emerald-500 font-bold">A:</span> {faq.a}
-                        </p>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            const updated = aiFaqData.filter((_, i) => i !== index);
-                            setAiFaqData(updated);
-                            toast({ title: "FAQ removed" });
-                          }}
-                          className="absolute top-2 right-2 h-5 w-5 rounded-full border bg-white hover:bg-rose-50 text-muted-foreground hover:text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  {/* WhatsApp Messages Box */}
+                  <div className="h-[360px] overflow-y-auto p-4 space-y-3 bg-[#ece5dd] bg-opacity-95" id="sim-message-box">
+                    {simMessages.map((msg, index) => (
+                      <div 
+                        key={index}
+                        className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div 
+                          className={`max-w-[85%] rounded-lg p-2.5 text-xs shadow-sm relative leading-relaxed ${
+                            msg.sender === 'user' 
+                              ? 'bg-[#d9fdd3] text-zinc-955 rounded-tr-none' 
+                              : 'bg-white text-zinc-955 rounded-tl-none'
+                          }`}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <p className="whitespace-pre-line font-sans">{msg.content}</p>
+                          <span className="text-[8px] text-muted-foreground float-right mt-1 ml-2 select-none">
+                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
                     ))}
-                    {aiFaqData.length === 0 && (
-                      <p className="text-center py-6 text-xs text-muted-foreground">No custom FAQs defined yet. The agent will rely on the general Business Profile.</p>
+                    {isSimLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-white rounded-lg p-3 text-xs shadow-sm rounded-tl-none flex items-center gap-1.5 text-muted-foreground select-none">
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                        </div>
+                      </div>
                     )}
                   </div>
 
-                </div>
-              </SectionCard>
+                  {/* WhatsApp Input Form */}
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!simInput.trim() || isSimLoading) return;
+                      const userText = simInput.trim();
+                      setSimMessages(prev => [...prev, { sender: 'user', content: userText }]);
+                      setSimInput("");
+                      setIsSimLoading(true);
 
-              {/* SAVE CHANGES BUTTON */}
-              {['owner', 'admin'].includes(user?.role || "") && (
-                <Button 
-                  onClick={() => updateBusiness.mutate()} 
-                  disabled={updateBusiness.isPending} 
-                  className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-10 shadow-md shadow-primary/20 flex items-center justify-center gap-2 font-semibold"
-                >
-                  {updateBusiness.isPending ? "Saving..." : "Save AI Agent Settings & Train Model"}
-                </Button>
-              )}
-            </div>
+                      try {
+                        const formattedHistory = simMessages.slice(1).map(m => ({
+                          sender: m.sender === 'user' ? 'customer' : 'bot',
+                          content: m.content
+                        }));
 
-            {/* RIGHT COLUMN: WHATSAPP SIMULATOR (5 cols on lg) */}
-            <div className="lg:col-span-5 border border-border rounded-lg bg-zinc-100 overflow-hidden shadow-sm sticky top-6">
-              
-              {/* Simulator Header */}
-              <div className="bg-[#075e54] text-white p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-teal-800 flex items-center justify-center font-bold text-sm">
-                    MT
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-xs leading-none">Mohan Trading Sales Bot</h4>
-                    <span className="text-[10px] text-teal-100 mt-1 inline-block">Online • Model: {aiModel.split('/').pop()}</span>
-                  </div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setSimMessages([{ sender: 'bot', content: "Hi! I am your AI Sales Agent. Try chatting with me to test your current settings!" }])}
-                  className="h-8 w-8 text-teal-100 hover:text-white hover:bg-teal-800 rounded-full"
-                  title="Reset Chat"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Simulator Messages Box */}
-              <div className="h-[380px] overflow-y-auto p-4 space-y-3.5 bg-[#ece5dd] bg-opacity-95" id="sim-message-box">
-                {simMessages.map((msg, index) => (
-                  <div 
-                    key={index}
-                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div 
-                      className={`max-w-[85%] rounded-lg p-2.5 text-xs shadow-sm relative leading-relaxed ${
-                        msg.sender === 'user' 
-                          ? 'bg-[#d9fdd3] text-zinc-900 rounded-tr-none' 
-                          : 'bg-white text-zinc-900 rounded-tl-none'
-                      }`}
-                    >
-                      <p className="whitespace-pre-line">{msg.content}</p>
-                      <span className="text-[9px] text-muted-foreground float-right mt-1 ml-2">
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {isSimLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white rounded-lg p-3 text-xs shadow-sm rounded-tl-none flex items-center gap-1.5 text-muted-foreground">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Simulator Input Box */}
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!simInput.trim() || isSimLoading) return;
-                  const userText = simInput.trim();
-                  setSimMessages(prev => [...prev, { sender: 'user', content: userText }]);
-                  setSimInput("");
-                  setIsSimLoading(true);
-
-                  try {
-                    // Send messages history along
-                    const formattedHistory = simMessages.slice(1).map(m => ({
-                      sender: m.sender === 'user' ? 'customer' : 'bot',
-                      content: m.content
-                    }));
-
-                    const res = await fetch("http://localhost:5001/api/settings/test-chat", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        userMessage: userText,
-                        ai_system_prompt: aiSystemPrompt,
-                        ai_business_description: aiBusinessDescription,
-                        ai_faq_data: aiFaqData,
-                        ai_model: aiModel,
-                        chatHistory: formattedHistory
-                      })
-                    });
-                    const data = await res.json();
-                    if (res.ok && data.reply) {
-                      setSimMessages(prev => [...prev, { sender: 'bot', content: data.reply }]);
-                      
-                      // If there is extracted info, display it in a toast as verification!
-                      if (data.extracted_info) {
-                        const info = data.extracted_info;
-                        const detected = [];
-                        if (info.name) detected.push(`Name: ${info.name}`);
-                        if (info.interested_car) detected.push(`Car: ${info.interested_car}`);
-                        if (info.budget) detected.push(`Budget: ${info.budget}`);
-                        if (info.status) detected.push(`Status: ${info.status}`);
-                        if (detected.length > 0) {
-                          toast({
-                            title: "🔍 Extracted Lead Info",
-                            description: detected.join(" | "),
-                          });
+                        const res = await fetch("http://localhost:5001/api/settings/test-chat", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            userMessage: userText,
+                            ai_system_prompt: aiSystemPrompt,
+                            ai_business_description: aiBusinessDescription,
+                            ai_faq_data: aiFaqData,
+                            ai_model: aiModel,
+                            chatHistory: formattedHistory,
+                            ai_bot_name: aiBotName,
+                            ai_dealership_name: aiDealershipName,
+                            ai_greeting_message: aiGreetingMessage,
+                            ai_tone: aiTone,
+                            ai_language: aiLanguage,
+                            ai_emoji_usage: aiEmojiUsage,
+                            ai_ask_name_rule: aiAskNameRule,
+                            ai_ask_budget_rule: aiAskBudgetRule,
+                            ai_unanswered_limit: aiUnansweredLimit,
+                            ai_objections: aiObjections
+                          })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.reply) {
+                          setSimMessages(prev => [...prev, { sender: 'bot', content: data.reply }]);
+                          
+                          if (data.extracted_info) {
+                            const info = data.extracted_info;
+                            const detected = [];
+                            if (info.name) detected.push(`Name: ${info.name}`);
+                            if (info.interested_car) detected.push(`Car: ${info.interested_car}`);
+                            if (info.budget) detected.push(`Budget: ${info.budget}`);
+                            if (info.status) detected.push(`Status: ${info.status}`);
+                            if (detected.length > 0) {
+                              toast({
+                                title: "🔍 Extracted Lead Info",
+                                description: detected.join(" | "),
+                              });
+                            }
+                          }
+                        } else {
+                          setSimMessages(prev => [...prev, { sender: 'bot', content: "Failed to generate reply. Check your connection or API keys." }]);
                         }
+                      } catch (err) {
+                        console.error(err);
+                        setSimMessages(prev => [...prev, { sender: 'bot', content: "Error communicating with the test endpoint." }]);
+                      } finally {
+                        setIsSimLoading(false);
+                        setTimeout(() => {
+                          const box = document.getElementById("sim-message-box");
+                          if (box) box.scrollTop = box.scrollHeight;
+                        }, 50);
                       }
-                    } else {
-                      setSimMessages(prev => [...prev, { sender: 'bot', content: "Failed to generate reply. Check your connection or API keys." }]);
-                    }
-                  } catch (err) {
-                    console.error(err);
-                    setSimMessages(prev => [...prev, { sender: 'bot', content: "Error communicating with the test endpoint." }]);
-                  } finally {
-                    setIsSimLoading(false);
-                    // Scroll simulator message box to bottom
-                    setTimeout(() => {
-                      const box = document.getElementById("sim-message-box");
-                      if (box) box.scrollTop = box.scrollHeight;
-                    }, 50);
-                  }
-                }}
-                className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-zinc-200"
-              >
-                <Input 
-                  placeholder="Type a test message to agent..."
-                  value={simInput}
-                  onChange={e => setSimInput(e.target.value)}
-                  className="bg-white h-9 text-xs flex-1 rounded-full px-4 border-0 focus-visible:ring-1 focus-visible:ring-primary shadow-none"
-                  disabled={isSimLoading}
-                />
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  disabled={!simInput.trim() || isSimLoading}
-                  className="h-9 w-9 rounded-full bg-[#00a884] text-white hover:bg-[#008f72] flex items-center justify-center shrink-0"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-              </form>
+                    }}
+                    className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-zinc-200"
+                  >
+                    <Input 
+                      placeholder="Type a test message to agent..."
+                      value={simInput}
+                      onChange={e => setSimInput(e.target.value)}
+                      className="bg-white h-9.5 text-xs flex-1 rounded-full px-4 border-0 focus-visible:ring-1 focus-visible:ring-primary shadow-none"
+                      disabled={isSimLoading}
+                    />
+                    <Button 
+                      type="submit" 
+                      size="icon" 
+                      disabled={!simInput.trim() || isSimLoading}
+                      className="h-9.5 w-9.5 rounded-full bg-[#00a884] text-white hover:bg-[#008f72] flex items-center justify-center shrink-0"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
+                </div>
+              )}
 
-            </div>
           </div>
-        </TabsContent>
+        </div>
+      </TabsContent>
 
         <TabsContent value="plans" className="mt-6">
           <div className="grid gap-4 md:grid-cols-3">
@@ -1071,3 +1663,28 @@ function SectionCard({ title, desc, children }: { title: string; desc?: string; 
     </div>
   );
 }
+
+const ConnectorLine = ({ active }: { active?: boolean }) => (
+  <div className="shrink-0 flex items-center justify-center -mx-1.5 z-0 select-none">
+    <svg width="36" height="24" viewBox="0 0 36 24" className="overflow-visible">
+      {/* Background track */}
+      <path 
+        d="M 0 12 Q 18 12, 36 12" 
+        fill="none" 
+        stroke={active ? "rgba(99, 102, 241, 0.15)" : "#e4e4e7"} 
+        strokeWidth="3.5" 
+        strokeLinecap="round"
+      />
+      {/* Animated flow track */}
+      <path 
+        d="M 0 12 Q 18 12, 36 12" 
+        fill="none" 
+        stroke={active ? "var(--primary)" : "#a1a1aa"} 
+        strokeWidth="2" 
+        strokeLinecap="round"
+        strokeDasharray={active ? "6 10" : "none"}
+        className={active ? "animate-[flowDash_1s_linear_infinite]" : ""}
+      />
+    </svg>
+  </div>
+);
