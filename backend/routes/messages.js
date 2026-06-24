@@ -3,6 +3,21 @@ const router = express.Router();
 const db = require('../db');
 const whatsappService = require('../services/whatsapp');
 
+// Get message statistics for dashboard
+router.get('/stats', async (req, res) => {
+  try {
+    const totalMessagesRes = await db.query('SELECT COUNT(*) FROM messages');
+    const chatSessionsRes = await db.query('SELECT COUNT(DISTINCT lead_id) FROM messages');
+    res.json({
+      totalMessages: parseInt(totalMessagesRes.rows[0].count, 10) || 0,
+      chatSessions: parseInt(chatSessionsRes.rows[0].count, 10) || 0
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get messages for a lead
 router.get('/lead/:leadId', async (req, res) => {
   const { leadId } = req.params;

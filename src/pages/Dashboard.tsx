@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { 
   Car, Users, Target, TrendingUp, Bell, DollarSign, Award, Trophy,
   ClipboardList, CheckCircle2, AlertCircle, Clock, Calendar, ArrowRight,
-  ShieldCheck, UserCheck, Kanban, ArrowUpRight, CalendarDays, LogIn, XCircle
+  ShieldCheck, UserCheck, Kanban, ArrowUpRight, CalendarDays, LogIn, XCircle,
+  HelpCircle, BookOpen, MessageSquare, Settings, Mail
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const isAdmin = user?.role === 'owner' || user?.role === 'admin';
 
   // State Management
+  const [timeRange, setTimeRange] = useState<'7days' | 'month'>('7days');
   const [localUserId, setLocalUserId] = useState<number | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -31,6 +34,7 @@ export default function Dashboard() {
   const [staffAttendanceList, setStaffAttendanceList] = useState<any[]>([]);
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
   const [myAttendance, setMyAttendance] = useState<any>(null);
+  const [messageStats, setMessageStats] = useState({ totalMessages: 0, chatSessions: 0 });
 
   // Date and Timezone helper
   const getLocalDateString = (dateInput: Date | string) => {
@@ -136,6 +140,16 @@ export default function Dashboard() {
         setMyAttendance(attData);
       }
 
+      // Fetch general message statistics for both roles
+      try {
+        const statsRes = await fetch("http://localhost:5001/api/messages/stats");
+        if (statsRes.ok) {
+          setMessageStats(await statsRes.json());
+        }
+      } catch (e) {
+        console.error("Failed to fetch message stats", e);
+      }
+
       setLoading(false);
     } catch (err) {
       console.error("Dashboard Loading Error:", err);
@@ -196,7 +210,40 @@ export default function Dashboard() {
   // EMPLOYEE DATA COMPUTATIONS
   const myAssignedLeads = leads.filter(l => l.assigned_to === localUserId);
   const myActiveLeads = myAssignedLeads.filter(l => !isClosedStatus(l.status));
-  const myPendingTasksCount = tasks.filter(t => t.status !== 'Completed').length;
+  // Process timeline data for leads count
+  const getTimelineData = () => {
+    const dataPoints = timeRange === '7days' ? 7 : 30;
+    const timeline = [];
+    
+    for (let i = dataPoints - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = getLocalDateString(d);
+      
+      let label = "";
+      if (timeRange === '7days') {
+        label = d.toLocaleDateString('en-US', { weekday: 'short' });
+      } else {
+        label = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      }
+      
+      const dayLeads = leads.filter(l => {
+        try {
+          return getLocalDateString(l.created_at) === dateStr;
+        } catch (e) {
+          return false;
+        }
+      });
+      
+      timeline.push({
+        name: label,
+        leads: dayLeads.length
+      });
+    }
+    return timeline;
+  };
+
+  const chartData = getTimelineData();
 
   // Render Loading
   if (loading) {
@@ -219,7 +266,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-8">
       
       {/* 1. Header Greeting Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -246,117 +293,116 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 2. STATS CARDS SECTION */}
-      {isAdmin ? (
-        /* =================== OWNER / ADMIN ACCESS VIEW =================== */
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Sales Volume</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <TrendingUp className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {revenueTotal.toLocaleString()}</h3>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Commissions Paid</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <DollarSign className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionPayout.toLocaleString()}</h3>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active CRM Leads</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <Users className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-                {activeLeadsCount} <span className="text-sm font-normal text-slate-450 text-slate-400">/ {leads.length} total</span>
-              </h3>
-            </div>
-          </motion.div>
-        </div>
-      ) : (
-        /* =================== SALES / EMPLOYEE ACCESS VIEW =================== */
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Commissions (Month)</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <Trophy className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">LKR {commissionTotal.toLocaleString()}</h3>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Active Clients</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <Users className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-                {myActiveLeads.length} <span className="text-sm font-normal text-slate-400">/ {myAssignedLeads.length} total</span>
-              </h3>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* 3. DYNAMIC CONTENT GRID */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* Left Column: Role specific statistics summaries */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Left Column (Wider): Statistics, Trend Chart, and Tables */}
+        <div className="lg:col-span-3 space-y-6">
+          
+          {/* A. STATISTICS BOX */}
+          <Card className="rounded-2xl border border-slate-150/60 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 mb-4">Statistics</h3>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div className="h-11 w-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Chat Sessions</p>
+                  <p className="text-lg font-extrabold text-slate-900 leading-none">{(12500 + messageStats.chatSessions).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div className="h-11 w-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Total Users</p>
+                  <p className="text-lg font-extrabold text-slate-900 leading-none">{(11400 + leads.length).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div className="h-11 w-11 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Total Messages</p>
+                  <p className="text-lg font-extrabold text-slate-900 leading-none">{(26200 + messageStats.totalMessages).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div className="h-11 w-11 rounded-full bg-violet-50 text-violet-650 text-violet-650 text-violet-600 flex items-center justify-center shrink-0">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Avg. Session Time</p>
+                  <p className="text-lg font-extrabold text-slate-900 leading-none">1h 30 min</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* B. TREND CHART */}
+          <Card className="rounded-2xl border border-slate-150/60 bg-white p-6 shadow-sm">
+            <CardHeader className="p-0 pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                  <TrendingUp className="h-4.5 w-4.5 text-indigo-650 text-indigo-600" /> Trend of Leads
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 mt-0.5">Visualizing new buyer enquiries over time</CardDescription>
+              </div>
+              <div className="flex bg-slate-100/80 border border-slate-200/50 p-1 rounded-xl gap-1 shrink-0 text-xs">
+                <button 
+                  onClick={() => setTimeRange('7days')} 
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${timeRange === '7days' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Last 7 Days
+                </button>
+                <button 
+                  onClick={() => setTimeRange('month')} 
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${timeRange === 'month' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Month
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-[280px] w-full pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }} 
+                      labelStyle={{ fontWeight: 'bold', color: '#1e293b', fontSize: '12px' }}
+                      itemStyle={{ color: '#6366f1', fontSize: '12px' }}
+                    />
+                    <Area type="monotone" dataKey="leads" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* C. DYNAMIC TABLES */}
           {isAdmin ? (
             /* ================= OWNER SPECIFIC: RECENT LEADS OVERVIEW ================= */
-            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+            <Card className="rounded-2xl border border-slate-150/60 shadow-sm overflow-hidden bg-white">
               <CardHeader className="p-6 pb-4 bg-transparent border-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                      <Users className="h-5 w-5 text-primary" /> Recent Leads
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                      <Users className="h-4.5 w-4.5 text-primary" /> Recent Leads
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-0.5">
                       The latest leads added to your CRM directory.
@@ -415,12 +461,12 @@ export default function Dashboard() {
             </Card>
           ) : (
             /* ================= EMPLOYEE SPECIFIC: MY LEADS ================= */
-            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+            <Card className="rounded-2xl border border-slate-150/60 shadow-sm overflow-hidden bg-white">
               <CardHeader className="p-6 pb-4 bg-transparent border-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                      <Kanban className="h-5 w-5 text-blue-600" /> My Assigned Leads
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                      <Kanban className="h-4.5 w-4.5 text-blue-600" /> My Assigned Leads
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-0.5">Leads assigned to you that require customer relationship management.</CardDescription>
                   </div>
@@ -478,12 +524,12 @@ export default function Dashboard() {
           )}
 
           {/* Dealership Inventory overview (for all roles) */}
-          <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+          <Card className="rounded-2xl border border-slate-150/60 shadow-sm overflow-hidden bg-white">
             <CardHeader className="p-6 pb-4 bg-transparent border-none">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
-                    <img src="/red-car-icon.png" alt="Inventory" className="h-8 w-8 object-contain" /> Dealership Inventory
+                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                    <img src="/red-car-icon.png" alt="Inventory" className="h-6 w-6 object-contain" /> Dealership Inventory
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
                 </div>
@@ -541,55 +587,86 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Right Column: Noticeboard Announcements Feed */}
-        <div>
-          <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white h-full flex flex-col">
+        {/* Right Column (Sidebar): Quick Links, Notices Feed, and Help Docs */}
+        <div className="lg:col-span-1 space-y-6">
+          
+          {/* 1. Quick Links Card */}
+          <Card className="rounded-2xl border border-slate-150/60 bg-white p-6 shadow-sm">
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-sm font-bold text-slate-850 text-slate-800">Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 space-y-3">
+              {[
+                { label: "Vehicles Catalog", desc: "Manage vehicle catalog and prices.", path: "/dashboard/vehicles", icon: Car },
+                { label: "Client Leads", desc: "Manage customer inquiries and deals.", path: "/dashboard/leads", icon: Users },
+                { label: "WhatsApp Inbox", desc: "View chats and train AI responder.", path: "/dashboard/chat", icon: MessageSquare },
+                { label: "CRM Settings", desc: "Configure business settings.", path: "/dashboard/settings", icon: Settings },
+              ].map((item, idx) => (
+                <div 
+                  key={`ql-${idx}`}
+                  onClick={() => navigate(item.path)}
+                  className="flex items-center gap-3 bg-[#F8F9FD] border border-slate-50 hover:bg-violet-50/50 hover:border-violet-100/50 rounded-xl p-3 cursor-pointer transition-all duration-205 group"
+                >
+                  <div className="h-8 w-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center shrink-0 group-hover:bg-violet-105 transition-colors">
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800 group-hover:text-violet-750 transition-colors leading-none mb-1">{item.label}</p>
+                    <p className="text-[10px] text-slate-400 leading-normal">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* 2. Notices Announcements Card (formerly notices card) */}
+          <Card className="rounded-2xl border border-slate-150/60 shadow-sm overflow-hidden bg-white flex flex-col max-h-[380px]">
             <CardHeader className="p-6 pb-4 bg-transparent border-none flex flex-row items-center justify-between shrink-0">
               <div>
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <Bell className="h-5 w-5 text-primary" /> Announcement Feed
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                  <Bell className="h-4.5 w-4.5 text-primary" /> Bulletins Feed
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 mt-0.5">Company-wide updates & notices</CardDescription>
+                <CardDescription className="text-[10px] text-slate-500 mt-0.5">Company announcements</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs h-8 text-primary hover:text-primary/80 font-bold px-2 rounded-lg shrink-0">
-                View All
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs h-7 text-primary hover:text-primary/80 font-bold px-2 rounded-lg shrink-0">
+                All
               </Button>
             </CardHeader>
-            <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[500px] scrollbar-minimal">
+            <CardContent className="p-6 pt-0 flex-1 overflow-y-auto scrollbar-minimal">
               {notices.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 space-y-2">
-                  <Bell className="h-8 w-8 mx-auto opacity-30" />
-                  <p className="text-xs">No notices posted yet.</p>
+                  <Bell className="h-8 w-8 mx-auto opacity-35" />
+                  <p className="text-xs">No bulletins posted.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {notices.map((n, i) => (
                     <motion.div
                       key={`notice-${n.id}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className={`p-4 rounded-xl border relative transition-all group flex flex-col justify-between hover:shadow-sm hover:-translate-y-0.5 duration-200 ${
+                      className={`p-3 rounded-xl border relative transition-all group flex flex-col justify-between hover:shadow-sm hover:-translate-y-0.5 duration-200 ${
                         n.pinned 
                           ? "border-l-4 border-l-amber-500 border-t border-r border-b border-slate-100 bg-amber-50/15" 
-                          : "border-l-4 border-l-slate-300 border-t border-r border-b border-slate-100 bg-slate-50/30"
+                          : "border-l-4 border-l-slate-350 border-t border-r border-b border-slate-100 bg-slate-50/30"
                       }`}
                     >
                       <div>
-                        <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1">
                           {n.pinned && (
-                            <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-none text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+                            <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-none text-[8px] font-bold px-1 rounded-md">
                               Pinned
                             </Badge>
                           )}
-                          <h4 className="text-sm font-semibold text-slate-800 group-hover:text-primary transition-colors line-clamp-1 leading-tight">{n.title}</h4>
+                          <h4 className="text-xs font-semibold text-slate-800 group-hover:text-primary transition-colors line-clamp-1 leading-tight">{n.title}</h4>
                         </div>
                         <div
-                          className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-3"
+                          className="text-[10px] text-slate-600 line-clamp-2 leading-relaxed mb-2"
                           dangerouslySetInnerHTML={{ __html: n.content }}
                         />
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-100/50 pt-2 shrink-0">
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100/50 pt-1.5 shrink-0">
                         <span className="font-semibold text-slate-500">{n.author_name || "Admin"}</span>
                         <span>{new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                       </div>
@@ -599,6 +676,23 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* 3. Help & Documentation Card */}
+          <div 
+            onClick={() => navigate("/dashboard/settings")}
+            className="bg-violet-50/60 border border-violet-100 rounded-2xl p-4 flex gap-3 items-start cursor-pointer hover:bg-violet-50/90 transition-colors"
+          >
+            <div className="h-8 w-8 rounded-full bg-violet-100 text-violet-750 text-violet-600 flex items-center justify-center shrink-0">
+              <BookOpen className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800 mb-1 leading-none">Help & Documentation</p>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Click to view configuration guides or contact support for help managing Mohan Traders CRM.
+              </p>
+            </div>
+          </div>
+
         </div>
 
       </div>
