@@ -419,16 +419,27 @@ The JSON must have this exact structure:
     // Append current user message
     messages.push({ role: 'user', content: userMessage });
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    let finalApiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    let finalModel = model;
+
+    if (apiKey.startsWith('gsk_')) {
+      finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+      if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
+        finalModel = 'llama-3.3-70b-versatile';
+      }
+    }
+
+    const response = await fetch(finalApiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model,
+        model: finalModel,
         messages: messages,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        max_tokens: 800
       })
     });
 
