@@ -249,7 +249,7 @@ export default function Dashboard() {
       {/* 2. STATS CARDS SECTION */}
       {isAdmin ? (
         /* =================== OWNER / ADMIN ACCESS VIEW =================== */
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -302,29 +302,10 @@ export default function Dashboard() {
               </h3>
             </div>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Staff Today</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <UserCheck className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-                {todayCheckedInCount} <span className="text-sm font-normal text-slate-400">on site</span>
-              </h3>
-            </div>
-          </motion.div>
         </div>
       ) : (
         /* =================== SALES / EMPLOYEE ACCESS VIEW =================== */
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -379,25 +360,6 @@ export default function Dashboard() {
               </h3>
             </div>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Work Attendance</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-                {myAttendance ? (myAttendance.check_out_time ? "Finished" : "Checked In") : "Absent"}
-              </h3>
-            </div>
-          </motion.div>
         </div>
       )}
 
@@ -407,25 +369,20 @@ export default function Dashboard() {
         {/* Left Column: Role specific statistics summaries */}
         <div className="lg:col-span-2 space-y-6">
           {isAdmin ? (
-            /* ================= OWNER SPECIFIC: ATTENDANCE & LEAVE TABLE ================= */
+            /* ================= OWNER SPECIFIC: RECENT LEADS OVERVIEW ================= */
             <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
               <CardHeader className="p-6 pb-4 bg-transparent border-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                      <CalendarDays className="h-5 w-5 text-primary" /> Attendance & Leave Requests
+                      <Users className="h-5 w-5 text-primary" /> Recent Leads
                     </CardTitle>
                     <CardDescription className="text-xs text-slate-500 mt-0.5">
-                      Today's staff check-in status and pending leave requests.
-                      {pendingLeavesTotal > 0 && (
-                        <span className="ml-2 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0 text-[10px] font-bold">
-                          <Clock className="h-2.5 w-2.5" /> {pendingLeavesTotal} pending
-                        </span>
-                      )}
+                      The latest leads added to your CRM directory.
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/attendance")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
-                    Attendance Page <ArrowRight className="h-3 w-3" />
+                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/leads")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                    All Leads <ArrowRight className="h-3 w-3" />
                   </Button>
                 </div>
               </CardHeader>
@@ -433,85 +390,43 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Employee</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Role</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Today's Status</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-center">Check-In Time</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Leave Requests</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Customer Name</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Interested Vehicle</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Target Budget</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">Lead Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-slate-100/50">
-                    {staffAttendanceList.length === 0 ? (
+                    {leads.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-xs">
-                          No staff registered in the system.
+                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs">
+                          No leads in the system.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      staffAttendanceList.map((staffMember) => {
-                        const name = staffMember.name || staffMember.email.split('@')[0];
-                        const initials = name.slice(0, 2).toUpperCase();
-                        const rec = staffMember.todayRecord;
-                        const checkedIn = !!rec?.check_in_time;
-                        const checkedOut = !!rec?.check_out_time;
-                        const checkInTime = rec?.check_in_time 
-                          ? new Date(rec.check_in_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-                          : null;
-
-                        return (
-                          <TableRow key={`att-${staffMember.id}`} className="hover:bg-slate-50/20 transition-colors border-none cursor-pointer" onClick={() => navigate("/dashboard/attendance")}>
-                            <TableCell className="py-4 px-6">
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
-                                  {initials}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-sm text-slate-800 leading-tight truncate">{name}</div>
-                                  <div className="text-xs text-slate-400 font-mono mt-0.5 truncate">{staffMember.email}</div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-4">
-                              <Badge className="bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 uppercase text-[9px] tracking-wider font-bold px-2 py-0.5 rounded-md">
-                                {staffMember.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-4 text-center">
-                              {checkedOut ? (
-                                <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  <CheckCircle2 className="h-3 w-3" /> Shift Done
-                                </span>
-                              ) : checkedIn ? (
-                                <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  On Site
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 bg-[#FFF0F3] text-[#FC003F] border border-[#FFCCD5] rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  <XCircle className="h-3 w-3" /> Absent
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-4 text-center">
-                              {checkInTime ? (
-                                <span className="flex items-center justify-center gap-1 text-xs font-mono font-semibold text-slate-700">
-                                  <LogIn className="h-3 w-3 text-slate-400" />{checkInTime}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-300 font-mono">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-4 text-right px-6">
-                              {staffMember.pendingLeavesCount > 0 ? (
-                                <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
-                                  <Clock className="h-3 w-3" /> {staffMember.pendingLeavesCount} Pending
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-300 font-mono">None</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
+                      leads.slice(0, 5).map((l) => (
+                        <TableRow key={`lead-${l.id}`} className="hover:bg-slate-50/20 transition-colors cursor-pointer border-none" onClick={() => navigate("/dashboard/leads")}>
+                          <TableCell className="py-4 px-6">
+                            <div className="font-semibold text-sm text-slate-800 leading-tight">{l.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{l.phone}</div>
+                          </TableCell>
+                          <TableCell className="py-4 text-xs font-semibold text-slate-600">
+                            {l.interested_product || l.interested_car || "General Enquiry"}
+                          </TableCell>
+                          <TableCell className="py-4 font-mono text-xs font-semibold text-slate-700">
+                            {l.budget || "N/A"}
+                          </TableCell>
+                          <TableCell className="py-4 text-right px-6">
+                            <Badge className={
+                              isClosedStatus(l.status) ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100/60 font-bold px-2 py-0.5 text-[10px]" : 
+                              l.status === 'New' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100/60 font-bold px-2 py-0.5 text-[10px]" : 
+                              "bg-orange-50 text-orange-700 hover:bg-orange-50 border border-orange-100/60 font-bold px-2 py-0.5 text-[10px]"
+                            }>
+                              {l.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
                   </TableBody>
                 </Table>

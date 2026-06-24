@@ -45,11 +45,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const isElevated = user?.role === 'owner' || user?.role === 'admin';
   const filteredNavItems = navItems.filter(item => {
     if (item.label === "Noticeboard") return false;
+    if (item.label === "Attendance" || item.label === "Finance" || item.label === "Tasks") return false;
     if (isElevated) return true;
     if (user?.role === 'accountant') {
-      return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Finance", "Test Drives"].includes(item.label);
+      return ["Dashboard", "Vehicles", "Leads", "Test Drives"].includes(item.label);
     }
-    return ["Dashboard", "Vehicles", "Leads", "Tasks", "Attendance", "Test Drives"].includes(item.label);
+    return ["Dashboard", "Vehicles", "Leads", "Test Drives"].includes(item.label);
   });
 
   const [commissionTotal, setCommissionTotal] = useState<number>(0);
