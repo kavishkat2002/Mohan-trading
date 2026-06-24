@@ -38,6 +38,16 @@ function getAvatarColor(name: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
+const normalizePhone = (phone: string): string => {
+  if (!phone) return "";
+  if (phone === "SYSTEM_SETTINGS") return "SYSTEM_SETTINGS";
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 10 && cleaned.startsWith("0")) {
+    return "94" + cleaned.substring(1);
+  }
+  return cleaned;
+};
+
 export default function ChatPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
@@ -91,7 +101,7 @@ export default function ChatPage() {
         const { data: supaLead } = await supabase
           .from("leads")
           .select("id")
-          .eq("phone", lead.phone)
+          .eq("phone", normalizePhone(lead.phone))
           .maybeSingle();
 
         if (supaLead) {
@@ -194,7 +204,7 @@ export default function ChatPage() {
         const { data: supaLead } = await supabase
           .from("leads")
           .select("id")
-          .eq("phone", lead.phone)
+          .eq("phone", normalizePhone(lead.phone))
           .maybeSingle();
         if (supaLead) {
           setSupaLeadId(supaLead.id);

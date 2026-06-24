@@ -37,7 +37,20 @@ serve(async (req: Request) => {
     }
 
     const message = messages[0];
-    const phone = message.from;
+    const rawPhone = message.from;
+    
+    // Normalization helper
+    const normalizePhone = (p: string) => {
+      if (!p) return "";
+      if (p === "SYSTEM_SETTINGS") return "SYSTEM_SETTINGS";
+      let cleaned = p.replace(/\D/g, "");
+      if (cleaned.length === 10 && cleaned.startsWith("0")) {
+        return "94" + cleaned.substring(1);
+      }
+      return cleaned;
+    };
+    
+    const phone = normalizePhone(rawPhone);
     const text = (message.text?.body || "").trim();
 
     console.log(`[WEBHOOK] Incoming from ${phone}: "${text}"`);

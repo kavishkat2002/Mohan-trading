@@ -15,6 +15,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+function normalizePhone(phone) {
+  if (!phone) return '';
+  if (phone === 'SYSTEM_SETTINGS') return 'SYSTEM_SETTINGS';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10 && cleaned.startsWith('0')) {
+    return '94' + cleaned.substring(1);
+  }
+  return cleaned;
+}
+
 // Sync leads from external source (WhatsApp Supabase)
 router.post('/sync', async (req, res) => {
   const { leads } = req.body;
@@ -22,15 +32,16 @@ router.post('/sync', async (req, res) => {
   
   try {
     for (let lead of leads) {
+      const normPhone = normalizePhone(lead.phone);
       // Check if lead with this phone already exists
-      const { rows } = await db.query('SELECT id FROM leads WHERE phone = $1', [lead.phone]);
+      const { rows } = await db.query('SELECT id FROM leads WHERE phone = $1', [normPhone]);
       
       if (rows.length === 0) {
         // Insert new lead
         await db.query(
           `INSERT INTO leads (name, phone, interested_car, budget, status, source, notes)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [lead.name || 'WhatsApp User', lead.phone, lead.interested_car, lead.budget, lead.status || 'New', 'whatsapp', lead.notes || null]
+          [lead.name || 'WhatsApp User', normPhone, lead.interested_car, lead.budget, lead.status || 'New', 'whatsapp', lead.notes || null]
         );
       } else {
         // Update existing lead if there's new car interest data
@@ -40,7 +51,7 @@ router.post('/sync', async (req, res) => {
              SET interested_car = COALESCE($1, interested_car), 
                  budget = COALESCE($2, budget) 
              WHERE phone = $3`,
-            [lead.interested_car, lead.budget, lead.phone]
+            [lead.interested_car, lead.budget, normPhone]
           );
         }
       }
@@ -56,10 +67,11 @@ router.post('/sync', async (req, res) => {
 router.post('/', async (req, res) => {
   const { name, phone, interested_car, interested_product, budget, status, source, notes } = req.body;
   const product = interested_product || interested_car; // support both field names
+  const normPhone = normalizePhone(phone);
   try {
     const { rows } = await db.query(
       'INSERT INTO leads (name, phone, interested_car, budget, status, source, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [name, phone, product, budget, status || 'New', source || 'manual', notes]
+      [name, normPhone, product, budget, status || 'New', source || 'manual', notes]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -73,6 +85,7 @@ router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { name, phone, interested_car, interested_product, budget, status, source, notes } = req.body;
   const product = interested_product || interested_car; // support both field names
+  const normPhone = phone ? normalizePhone(phone) : null;
   try {
     const { rows } = await db.query(
       `UPDATE leads 
@@ -85,7 +98,7 @@ router.put('/:id', async (req, res) => {
            notes = COALESCE($7, notes),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $8 RETURNING *`,
-      [name, phone, product, budget, status, source, notes, id]
+      [name, normPhone, product, budget, status, source, notes, id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Lead not found' });
     res.json(rows[0]);

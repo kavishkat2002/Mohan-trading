@@ -13,14 +13,25 @@ if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 }
 
+function normalizePhone(phone) {
+  if (!phone) return '';
+  if (phone === 'SYSTEM_SETTINGS') return 'SYSTEM_SETTINGS';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10 && cleaned.startsWith('0')) {
+    return '94' + cleaned.substring(1);
+  }
+  return cleaned;
+}
+
 // Ensure lead exists in Supabase so messages can be attached
 async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
   if (!supabase) return null;
+  const normPhone = normalizePhone(phone);
   try {
     let { data: lead, error } = await supabase
       .from('leads')
       .select('id')
-      .eq('phone', phone)
+      .eq('phone', normPhone)
       .maybeSingle();
 
     if (error) throw error;
@@ -29,7 +40,7 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
       const { data: newLead, error: insertErr } = await supabase
         .from('leads')
         .insert({
-          phone,
+          phone: normPhone,
           name: name,
           status: 'New'
         })
@@ -49,8 +60,9 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
 // Sync message to Supabase to trigger real-time updates on client
 async function syncMessageToSupabase(phone, sender, content) {
   if (!supabase) return null;
+  const normPhone = normalizePhone(phone);
   try {
-    const supaLeadId = await ensureLeadInSupabase(phone);
+    const supaLeadId = await ensureLeadInSupabase(normPhone);
     if (!supaLeadId) return null;
 
     const { data, error } = await supabase
@@ -110,20 +122,21 @@ async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot') {
 
 // Main logic for AI Sales Assistant (WhatsApp Flow)
 async function handleIncomingMessage(phone, text) {
+  const normPhone = normalizePhone(phone);
   // 1. RECOVER OR CREATE LEAD (Tier 2 Memory)
-  let leadResult = await db.query('SELECT * FROM leads WHERE phone = $1', [phone]);
+  let leadResult = await db.query('SELECT * FROM leads WHERE phone = $1', [normPhone]);
   let lead = leadResult.rows[0];
 
   if (!lead) {
     const insertRes = await db.query(
       'INSERT INTO leads (phone, name, status, current_step, chat_metadata) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [phone, 'WhatsApp User', 'New', 'START', '{}']
+      [normPhone, 'WhatsApp User', 'New', 'START', '{}']
     );
     lead = insertRes.rows[0];
   }
 
   // Sync incoming message to Supabase first
-  const supabaseId = await syncMessageToSupabase(phone, 'customer', text);
+  const supabaseId = await syncMessageToSupabase(normPhone, 'customer', text);
 
   // 2. LOG INCOMING MESSAGE
   await db.query(
