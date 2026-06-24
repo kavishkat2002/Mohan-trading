@@ -305,7 +305,7 @@ export default function Dashboard() {
         </div>
       ) : (
         /* =================== SALES / EMPLOYEE ACCESS VIEW =================== */
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -338,25 +338,6 @@ export default function Dashboard() {
               </div>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
                 {myActiveLeads.length} <span className="text-sm font-normal text-slate-400">/ {myAssignedLeads.length} total</span>
-              </h3>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">My Actions & Tasks</span>
-                <div className="h-9 w-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <ClipboardList className="h-4 w-4" />
-                </div>
-              </div>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-                {myPendingTasksCount} <span className="text-sm font-normal text-slate-400">Pending</span>
               </h3>
             </div>
           </motion.div>
@@ -496,118 +477,68 @@ export default function Dashboard() {
             </Card>
           )}
 
-          {/* Additional details for Owner or Employee: Mini Inventory list or my Tasks list */}
-          {isAdmin ? (
-            /* Mini Inventory overview for Owner */
-            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
-              <CardHeader className="p-6 pb-4 bg-transparent border-none">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
-                      <img src="/red-car-icon.png" alt="Inventory" className="h-8 w-8 object-contain" /> Dealership Inventory
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/vehicles")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
-                    Inventory Page <ArrowRight className="h-3 w-3" />
-                  </Button>
+          {/* Dealership Inventory overview (for all roles) */}
+          <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="p-6 pb-4 bg-transparent border-none">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                    <img src="/red-car-icon.png" alt="Inventory" className="h-8 w-8 object-contain" /> Dealership Inventory
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Brand & Model</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Selling Price</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Category</TableHead>
-                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">In Stock</TableHead>
+                <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/vehicles")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
+                  Inventory Page <ArrowRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-slate-100 bg-slate-50/50">
+                    <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 px-6">Brand & Model</TableHead>
+                    <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Selling Price</TableHead>
+                    <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3">Category</TableHead>
+                    <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider py-3 text-right px-6">In Stock</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100/50">
+                  {vehicles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-xs">
+                        No vehicle records in database.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody className="divide-y divide-slate-100/50">
-                    {vehicles.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-xs">
-                          No vehicle records in database.
+                  ) : (
+                    vehicles.slice(0, 4).map((veh) => (
+                      <TableRow key={`veh-${veh.id}`} className="hover:bg-slate-50/20 transition-colors border-none">
+                        <TableCell className="py-3 px-6 font-bold text-sm text-slate-850 text-slate-800">
+                          {veh.brand}
+                        </TableCell>
+                        <TableCell className="py-3 font-mono text-xs font-semibold text-slate-700">
+                          LKR {parseFloat(veh.price).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <span className="text-xs text-slate-500 bg-slate-50 border border-slate-200/50 rounded-md px-2 py-0.5 font-medium">
+                            {veh.category || 'Standard'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3 text-right px-6">
+                          <Badge className={
+                            veh.stock > 1 
+                              ? "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 font-bold px-2 py-0.5 text-[10px]"
+                              : "bg-[#FFF0F3] text-[#FC003F] hover:bg-[#FFF0F3] border border-[#FFCCD5] font-bold px-2 py-0.5 text-[10px]"
+                          }>
+                            {veh.stock > 1 ? `${veh.stock} units` : `${veh.stock} Unit Left`}
+                          </Badge>
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      vehicles.slice(0, 4).map((veh) => (
-                        <TableRow key={`veh-${veh.id}`} className="hover:bg-slate-50/20 transition-colors border-none">
-                          <TableCell className="py-3 px-6 font-bold text-sm text-slate-850 text-slate-800">
-                            {veh.brand}
-                          </TableCell>
-                          <TableCell className="py-3 font-mono text-xs font-semibold text-slate-700">
-                            LKR {parseFloat(veh.price).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="py-3">
-                            <span className="text-xs text-slate-500 bg-slate-50 border border-slate-200/50 rounded-md px-2 py-0.5 font-medium">
-                              {veh.category || 'Standard'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-right px-6">
-                            <Badge className={
-                              veh.stock > 1 
-                                ? "bg-slate-50 text-slate-700 hover:bg-slate-50 border border-slate-200 font-bold px-2 py-0.5 text-[10px]"
-                                : "bg-[#FFF0F3] text-[#FC003F] hover:bg-[#FFF0F3] border border-[#FFCCD5] font-bold px-2 py-0.5 text-[10px]"
-                            }>
-                              {veh.stock > 1 ? `${veh.stock} units` : `${veh.stock} Unit Left`}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : (
-            /* Tasks Feed for Employee */
-            <Card className="rounded-2xl border-slate-200/80 shadow-sm overflow-hidden bg-white">
-              <CardHeader className="p-6 pb-4 bg-transparent border-none">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
-                      <ClipboardList className="h-4.5 w-4.5 text-amber-500" /> My Assigned Tasks
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 mt-0.5">Operations assigned to your user account.</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/tasks")} className="text-xs h-8 border-slate-200 hover:border-slate-350 text-slate-600 font-semibold gap-1 rounded-lg shrink-0">
-                    Tasks Page <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {tasks.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 space-y-2 text-xs">
-                    <CheckCircle2 className="h-6 w-6 mx-auto opacity-30 text-green-500" />
-                    <p>All clean! No tasks currently assigned.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100/50">
-                    {tasks.slice(0, 4).map((task) => (
-                      <div key={`task-${task.id}`} className="p-4 flex items-center justify-between hover:bg-slate-50/20 transition-colors">
-                        <div className="space-y-1 min-w-0 flex-1 pr-4">
-                          <p className="text-sm font-semibold text-slate-800 truncate">{task.title}</p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-slate-400" /> Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</span>
-                            <span className="hidden sm:inline text-slate-300">•</span>
-                            <span className="font-semibold text-slate-500">Priority: {task.priority}</span>
-                          </div>
-                        </div>
-                        <Badge className={
-                          task.status === 'Completed' ? "bg-green-50 text-green-700 hover:bg-green-50 border border-green-100 font-bold text-[10px] px-2 py-0.5 rounded-md" :
-                          task.status === 'In Progress' ? "bg-blue-50 text-blue-700 hover:bg-blue-50 border border-blue-100 font-bold text-[10px] px-2 py-0.5 rounded-md" : 
-                          "bg-slate-50 text-slate-600 hover:bg-slate-50 border border-slate-200 font-bold text-[10px] px-2 py-0.5 rounded-md"
-                        }>
-                          {task.status === 'Completed' ? 'Done' : task.status === 'In Progress' ? 'Doing' : 'Pending'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right Column: Noticeboard Announcements Feed */}
