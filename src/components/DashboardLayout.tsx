@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Users, MessageSquare, ListTodo,
+  LayoutDashboard, Users, MessagesSquare, ListTodo,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList,
   AlertTriangle, CreditCard, Phone, CheckCircle2, Clock
 } from "lucide-react";
@@ -21,7 +21,7 @@ const navItems = [
   { label: "Vehicles", icon: Car, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
-  { label: "Chat Box", icon: MessageSquare, path: "/dashboard/chat" },
+  { label: "Chat Box", icon: MessagesSquare, path: "/dashboard/chat" },
   { label: "Tasks", icon: ClipboardList, path: "/dashboard/tasks" },
   { label: "Test Drives", icon: CalendarClock, path: "/dashboard/test-drives" },
   { label: "Attendance", icon: CalendarClock, path: "/dashboard/attendance" },

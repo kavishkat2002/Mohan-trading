@@ -3,7 +3,7 @@ import {
   Car, Users, Target, TrendingUp, Bell, DollarSign, Award, Trophy,
   ClipboardList, CheckCircle2, AlertCircle, Clock, Calendar, ArrowRight,
   ShieldCheck, UserCheck, Kanban, ArrowUpRight, CalendarDays, LogIn, XCircle,
-  HelpCircle, BookOpen, MessageSquare, Settings, Mail
+  HelpCircle, BookOpen, MessagesSquare, Settings, MailOpen
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
@@ -304,41 +304,41 @@ export default function Dashboard() {
             <h3 className="text-sm font-bold text-slate-800 mb-4">Statistics</h3>
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
               <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="h-11 w-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <MessageSquare className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
+                  <MessagesSquare className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Chat Sessions</p>
+                  <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1.5">Chat Sessions</p>
                   <p className="text-lg font-extrabold text-slate-900 leading-none">{(12500 + messageStats.chatSessions).toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="h-11 w-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Users className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                  <Users className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Total Users</p>
+                  <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1.5">Total Users</p>
                   <p className="text-lg font-extrabold text-slate-900 leading-none">{(11400 + leads.length).toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="h-11 w-11 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <Mail className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-sm">
+                  <MailOpen className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Total Messages</p>
+                  <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1.5">Total Messages</p>
                   <p className="text-lg font-extrabold text-slate-900 leading-none">{(26200 + messageStats.totalMessages).toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 bg-[#F8F9FD] border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="h-11 w-11 rounded-full bg-violet-50 text-violet-650 text-violet-650 text-violet-600 flex items-center justify-center shrink-0">
-                  <Clock className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-violet-50 border border-violet-100 text-violet-600 flex items-center justify-center shrink-0 shadow-sm">
+                  <Clock className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-405 text-slate-400 leading-none mb-1.5">Avg. Session Time</p>
+                  <p className="text-[10px] font-semibold text-slate-400 leading-none mb-1.5">Avg. Session Time</p>
                   <p className="text-lg font-extrabold text-slate-900 leading-none">1h 30 min</p>
                 </div>
               </div>
@@ -529,7 +529,10 @@ export default function Dashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
-                    <img src="/red-car-icon.png" alt="Inventory" className="h-6 w-6 object-contain" /> Dealership Inventory
+                    <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100/50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+                      <Car className="h-4 w-4" />
+                    </div>
+                    Dealership Inventory
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 mt-0.5">Quick review of vehicles stock counts.</CardDescription>
                 </div>
@@ -599,19 +602,19 @@ export default function Dashboard() {
               {[
                 { label: "Vehicles Catalog", desc: "Manage vehicle catalog and prices.", path: "/dashboard/vehicles", icon: Car },
                 { label: "Client Leads", desc: "Manage customer inquiries and deals.", path: "/dashboard/leads", icon: Users },
-                { label: "WhatsApp Inbox", desc: "View chats and train AI responder.", path: "/dashboard/chat", icon: MessageSquare },
+                {label: "WhatsApp Inbox", desc: "View chats and train AI responder.", path: "/dashboard/chat", icon: MessagesSquare},
                 { label: "CRM Settings", desc: "Configure business settings.", path: "/dashboard/settings", icon: Settings },
               ].map((item, idx) => (
                 <div 
                   key={`ql-${idx}`}
                   onClick={() => navigate(item.path)}
-                  className="flex items-center gap-3 bg-[#F8F9FD] border border-slate-50 hover:bg-violet-50/50 hover:border-violet-100/50 rounded-xl p-3 cursor-pointer transition-all duration-205 group"
+                  className="flex items-center gap-3 bg-[#F8F9FD] border border-slate-100/50 hover:bg-violet-50/50 hover:border-violet-100/50 rounded-xl p-3 cursor-pointer transition-all duration-200 group shadow-sm hover:shadow"
                 >
-                  <div className="h-8 w-8 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center shrink-0 group-hover:bg-violet-105 transition-colors">
+                  <div className="h-8 w-8 rounded-lg bg-violet-50 border border-violet-100/50 text-violet-600 flex items-center justify-center shrink-0 group-hover:bg-violet-100/80 transition-colors">
                     <item.icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-800 group-hover:text-violet-750 transition-colors leading-none mb-1">{item.label}</p>
+                    <p className="text-xs font-semibold text-slate-800 group-hover:text-violet-700 transition-colors leading-none mb-1">{item.label}</p>
                     <p className="text-[10px] text-slate-400 leading-normal">{item.desc}</p>
                   </div>
                 </div>
@@ -624,9 +627,9 @@ export default function Dashboard() {
           {/* 3. Help & Documentation Card */}
           <div 
             onClick={() => navigate("/dashboard/settings")}
-            className="bg-violet-50/60 border border-violet-100 rounded-2xl p-4 flex gap-3 items-start cursor-pointer hover:bg-violet-50/90 transition-colors"
+            className="bg-violet-50/60 border border-violet-100 rounded-2xl p-4 flex gap-3 items-start cursor-pointer hover:bg-violet-50/90 transition-colors shadow-sm"
           >
-            <div className="h-8 w-8 rounded-full bg-violet-100 text-violet-750 text-violet-600 flex items-center justify-center shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-violet-100 border border-violet-200/50 text-violet-600 flex items-center justify-center shrink-0">
               <BookOpen className="h-4.5 w-4.5" />
             </div>
             <div>

@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, Search, Plus, Pencil, Trash2, MoreHorizontal,
-  CheckCircle, Wallet, ShoppingCart, FileDown
+  CheckCircle, Wallet, ShoppingCart, FileDown, Car
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -437,8 +437,8 @@ export default function Vehicles() {
                       {v.image_url ? (
                         <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
                       ) : (
-                        <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center">
-                          <img src="/car-icon.png" alt="car" className="h-5 w-5 opacity-20" />
+                        <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
+                          <Car className="h-5 w-5" />
                         </div>
                       )}
                     </TableCell>
