@@ -20,6 +20,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const CarPassengersIcon = ({ className }: { className?: string }) => (
+  <div 
+    className={`bg-current shrink-0 ${className || ""}`} 
+    style={{
+      maskImage: 'url(/car-passengers.png)',
+      WebkitMaskImage: 'url(/car-passengers.png)',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+    }}
+  />
+);
+
 export default function Vehicles() {
   const { user } = useAuth();
   const canUpdate = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'sales';
@@ -438,7 +454,7 @@ export default function Vehicles() {
                         <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
                       ) : (
                         <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
-                          <Car className="h-5 w-5" />
+                          <CarPassengersIcon className="h-5 w-5" />
                         </div>
                       )}
                     </TableCell>

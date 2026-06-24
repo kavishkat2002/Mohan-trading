@@ -13,6 +13,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+const CarPassengersIcon = ({ className }: { className?: string }) => (
+  <div 
+    className={cn("bg-current shrink-0", className)} 
+    style={{
+      maskImage: 'url(/car-passengers.png)',
+      WebkitMaskImage: 'url(/car-passengers.png)',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+    }}
+  />
+);
 
 export default function Dashboard() {
   const { user, updateUser } = useAuth();
@@ -530,7 +547,7 @@ export default function Dashboard() {
                 <div>
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
                     <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100/50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
-                      <Car className="h-4 w-4" />
+                      <CarPassengersIcon className="h-4 w-4" />
                     </div>
                     Dealership Inventory
                   </CardTitle>
@@ -600,7 +617,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-0 space-y-3">
               {[
-                { label: "Vehicles Catalog", desc: "Manage vehicle catalog and prices.", path: "/dashboard/vehicles", icon: Car },
+                { label: "Vehicles Catalog", desc: "Manage vehicle catalog and prices.", path: "/dashboard/vehicles", icon: CarPassengersIcon },
                 { label: "Client Leads", desc: "Manage customer inquiries and deals.", path: "/dashboard/leads", icon: Users },
                 {label: "WhatsApp Inbox", desc: "View chats and train AI responder.", path: "/dashboard/chat", icon: MessagesSquare},
                 { label: "CRM Settings", desc: "Configure business settings.", path: "/dashboard/settings", icon: Settings },

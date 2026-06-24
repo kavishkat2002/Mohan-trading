@@ -16,9 +16,25 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
+const CarPassengersIcon = ({ className }: { className?: string }) => (
+  <div 
+    className={cn("bg-current shrink-0", className)} 
+    style={{
+      maskImage: 'url(/car-passengers.png)',
+      WebkitMaskImage: 'url(/car-passengers.png)',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+    }}
+  />
+);
+
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { label: "Vehicles", icon: Car, path: "/dashboard/vehicles" },
+  { label: "Vehicles", icon: CarPassengersIcon, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
   { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
   { label: "Chat Box", icon: MessagesSquare, path: "/dashboard/chat" },
