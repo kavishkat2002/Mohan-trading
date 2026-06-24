@@ -619,63 +619,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* 2. Notices Announcements Card (formerly notices card) */}
-          <Card className="rounded-2xl border border-slate-150/60 shadow-sm overflow-hidden bg-white flex flex-col max-h-[380px]">
-            <CardHeader className="p-6 pb-4 bg-transparent border-none flex flex-row items-center justify-between shrink-0">
-              <div>
-                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
-                  <Bell className="h-4.5 w-4.5 text-primary" /> Bulletins Feed
-                </CardTitle>
-                <CardDescription className="text-[10px] text-slate-500 mt-0.5">Company announcements</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/noticeboard")} className="text-xs h-7 text-primary hover:text-primary/80 font-bold px-2 rounded-lg shrink-0">
-                All
-              </Button>
-            </CardHeader>
-            <CardContent className="p-6 pt-0 flex-1 overflow-y-auto scrollbar-minimal">
-              {notices.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 space-y-2">
-                  <Bell className="h-8 w-8 mx-auto opacity-35" />
-                  <p className="text-xs">No bulletins posted.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {notices.map((n, i) => (
-                    <motion.div
-                      key={`notice-${n.id}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={`p-3 rounded-xl border relative transition-all group flex flex-col justify-between hover:shadow-sm hover:-translate-y-0.5 duration-200 ${
-                        n.pinned 
-                          ? "border-l-4 border-l-amber-500 border-t border-r border-b border-slate-100 bg-amber-50/15" 
-                          : "border-l-4 border-l-slate-350 border-t border-r border-b border-slate-100 bg-slate-50/30"
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          {n.pinned && (
-                            <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-800 border-none text-[8px] font-bold px-1 rounded-md">
-                              Pinned
-                            </Badge>
-                          )}
-                          <h4 className="text-xs font-semibold text-slate-800 group-hover:text-primary transition-colors line-clamp-1 leading-tight">{n.title}</h4>
-                        </div>
-                        <div
-                          className="text-[10px] text-slate-600 line-clamp-2 leading-relaxed mb-2"
-                          dangerouslySetInnerHTML={{ __html: n.content }}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100/50 pt-1.5 shrink-0">
-                        <span className="font-semibold text-slate-500">{n.author_name || "Admin"}</span>
-                        <span>{new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
 
           {/* 3. Help & Documentation Card */}
           <div 
