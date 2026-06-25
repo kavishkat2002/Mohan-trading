@@ -166,6 +166,8 @@ export default function Vehicles() {
       description: v.description || "",
       fuel_type: v.fuel_type || "Petrol"
     });
+    setAdditionalImages([]);
+    setImageFile(null);
     setIsOpen(true);
   };
 
@@ -377,12 +379,37 @@ export default function Vehicles() {
 
                   <div className="space-y-1.5">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Additional Images</Label>
-                    <Input type="file" multiple accept="image/*" onChange={e => setAdditionalImages(Array.from(e.target.files || []))} className="text-sm" />
+                    <Input type="file" multiple accept="image/*" onChange={e => setAdditionalImages(prev => [...prev, ...Array.from(e.target.files || [])])} className="text-sm" />
+                    {additionalImages.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {additionalImages.map((file, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={URL.createObjectURL(file)} alt="preview" className="w-16 h-16 object-cover rounded-md border border-border" />
+                            <button type="button" onClick={() => setAdditionalImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : editingVehicle?.additional_images?.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {editingVehicle.additional_images.map((url: string, idx: number) => (
+                          <img key={idx} src={`http://localhost:5001${url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">Vehicle Image</Label>
                     <Input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="text-sm" />
+                    {imageFile ? (
+                      <div className="mt-2">
+                        <img src={URL.createObjectURL(imageFile)} alt="preview" className="w-16 h-16 object-cover rounded-md border border-border" />
+                      </div>
+                    ) : editingVehicle?.image_url ? (
+                      <div className="mt-2">
+                        <img src={`http://localhost:5001${editingVehicle.image_url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                      </div>
+                    ) : null}
                   </div>
                   <DialogFooter className="pt-2">
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="text-sm h-9">Cancel</Button>
