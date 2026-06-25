@@ -498,19 +498,47 @@ async function sendWhatsApp(to: string, text: string, imageUrl: string | null = 
   };
 
   let payload;
+  let useImagePayload = false;
+
   if (imageUrl) {
-    const publicImgUrl = getPublicUrl(imageUrl);
-    console.log(`[sendWhatsApp] Sending image: ${publicImgUrl}`);
-    payload = {
-      messaging_product: "whatsapp",
-      to: to,
-      type: "image",
-      image: {
-        link: publicImgUrl,
-        caption: text
+    const lower = imageUrl.toLowerCase();
+    const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png');
+    if (isSupported) {
+      const publicImgUrl = getPublicUrl(imageUrl);
+      let isReachable = false;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (checkRes.ok) {
+          isReachable = true;
+        }
+      } catch (err) {
+        console.warn(`[sendWhatsApp] Image reachability check failed for ${publicImgUrl}:`, err);
       }
-    };
-  } else {
+
+      if (isReachable) {
+        console.log(`[sendWhatsApp] Sending image: ${publicImgUrl}`);
+        payload = {
+          messaging_product: "whatsapp",
+          to: to,
+          type: "image",
+          image: {
+            link: publicImgUrl,
+            caption: text
+          }
+        };
+        useImagePayload = true;
+      } else {
+        console.warn(`[sendWhatsApp] Image url ${publicImgUrl} is unreachable. Falling back to plain text.`);
+      }
+    } else {
+      console.warn(`[sendWhatsApp] Image format of ${imageUrl} is not supported by WhatsApp (JPEG/PNG only). Falling back to plain text.`);
+    }
+  }
+
+  if (!useImagePayload) {
     payload = {
       messaging_product: "whatsapp",
       to: to,

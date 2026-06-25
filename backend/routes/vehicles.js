@@ -90,9 +90,10 @@ router.get('/', async (req, res) => {
 });
 
 // Add a new vehicle
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 10 }]), async (req, res) => {
   const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+  const imageUrl = req.files && req.files.image ? `/uploads/${req.files.image[0].filename}` : null;
+  const additionalImagesUrls = req.files && req.files.additional_images ? req.files.additional_images.map(f => `/uploads/${f.filename}`) : [];
 
   const purchaseAmt = parseFloat(purchase_price) || 0;
   const transportAmt = parseFloat(transport_cost) || 0;
@@ -102,8 +103,8 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   try {
     const { rows } = await db.query(
-      'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-      [brand, price, category, stock || 1, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol']
+      'INSERT INTO vehicles (brand, price, category, stock, description, image_url, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type, additional_images) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+      [brand, price, category, stock || 1, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol', JSON.stringify(additionalImagesUrls)]
     );
 
     // Auto-record total purchase cost in cash_flow so Finance reflects it
@@ -123,10 +124,15 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // Update vehicle stock or details
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 10 }]), async (req, res) => {
   const { id } = req.params;
   const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : existing_image;
+  const imageUrl = req.files && req.files.image ? `/uploads/${req.files.image[0].filename}` : existing_image;
+  
+  let newAdditionalImagesUrls = null;
+  if (req.files && req.files.additional_images) {
+    newAdditionalImagesUrls = req.files.additional_images.map(f => `/uploads/${f.filename}`);
+  }
 
   const purchaseAmt = parseFloat(purchase_price) || 0;
   const transportAmt = parseFloat(transport_cost) || 0;
@@ -141,10 +147,15 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     const oldTotal = old ? (parseFloat(old.purchase_price) + parseFloat(old.transport_cost) + parseFloat(old.repair_cost) + parseFloat(old.registration_fee)) : 0;
     const costDiff = totalCost - oldTotal;
 
-    const { rows } = await db.query(
-      'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10, fuel_type = $11 WHERE id = $12 RETURNING *',
-      [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol', id]
-    );
+    const updateQuery = newAdditionalImagesUrls
+      ? 'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10, fuel_type = $11, additional_images = $13 WHERE id = $12 RETURNING *'
+      : 'UPDATE vehicles SET brand = $1, price = $2, category = $3, stock = $4, description = $5, image_url = $6, purchase_price = $7, transport_cost = $8, repair_cost = $9, registration_fee = $10, fuel_type = $11 WHERE id = $12 RETURNING *';
+
+    const updateParams = newAdditionalImagesUrls
+      ? [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol', id, JSON.stringify(newAdditionalImagesUrls)]
+      : [brand, price, category, stock, description, imageUrl, purchaseAmt, transportAmt, repairAmt, regAmt, fuel_type || 'Petrol', id];
+
+    const { rows } = await db.query(updateQuery, updateParams);
     if (rows.length === 0) return res.status(404).json({ error: 'Vehicle not found' });
 
     // Update cash_flow if cost changed

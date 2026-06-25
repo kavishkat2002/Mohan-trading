@@ -50,10 +50,10 @@ export default function Vehicles() {
 
   const [newVehicle, setNewVehicle] = useState({
     brand: "", price: "", category: "", stock: "1", description: "",
-    purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0",
     fuel_type: "Petrol"
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [additionalImages, setAdditionalImages] = useState<File[]>([]);
 
   // Sale tracking state
   const [isSelling, setIsSelling] = useState(false);
@@ -115,16 +115,15 @@ export default function Vehicles() {
     formData.append("category", newVehicle.category);
     formData.append("stock", newVehicle.stock);
     formData.append("description", newVehicle.description);
-    formData.append("purchase_price", newVehicle.purchase_price);
-    formData.append("transport_cost", newVehicle.transport_cost);
-    formData.append("repair_cost", newVehicle.repair_cost);
-    formData.append("registration_fee", newVehicle.registration_fee);
     formData.append("fuel_type", newVehicle.fuel_type);
     if (imageFile) {
       formData.append("image", imageFile);
     } else if (editingVehicle && editingVehicle.image_url) {
       formData.append("existing_image", editingVehicle.image_url);
     }
+    additionalImages.forEach(file => {
+      formData.append("additional_images", file);
+    });
 
     try {
       const url = editingVehicle
@@ -142,10 +141,10 @@ export default function Vehicles() {
         setEditingVehicle(null);
         setNewVehicle({
           brand: "", price: "", category: "", stock: "1", description: "",
-          purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0",
           fuel_type: "Petrol"
         });
         setImageFile(null);
+        setAdditionalImages([]);
         fetchVehicles();
       } else {
         const error = await res.json();
@@ -165,10 +164,6 @@ export default function Vehicles() {
       category: v.category || "",
       stock: v.stock.toString(),
       description: v.description || "",
-      purchase_price: (v.purchase_price || 0).toString(),
-      transport_cost: (v.transport_cost || 0).toString(),
-      repair_cost: (v.repair_cost || 0).toString(),
-      registration_fee: (v.registration_fee || 0).toString(),
       fuel_type: v.fuel_type || "Petrol"
     });
     setIsOpen(true);
@@ -318,10 +313,10 @@ export default function Vehicles() {
                 setEditingVehicle(null);
                 setNewVehicle({
                   brand: "", price: "", category: "", stock: "1", description: "",
-                  purchase_price: "0", transport_cost: "0", repair_cost: "0", registration_fee: "0",
                   fuel_type: "Petrol"
                 });
                 setImageFile(null);
+                setAdditionalImages([]);
               }
             }}>
               <DialogTrigger asChild>
@@ -380,26 +375,9 @@ export default function Vehicles() {
                     <Input value={newVehicle.description} onChange={e => setNewVehicle({ ...newVehicle, description: e.target.value })} placeholder="Excellent condition..." className="h-9 text-sm" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 border-t pt-3 mt-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground font-bold text-emerald-600">Purchase Price (Cost)</Label>
-                      <Input type="number" value={newVehicle.purchase_price} onChange={e => setNewVehicle({ ...newVehicle, purchase_price: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Repair Cost</Label>
-                      <Input type="number" value={newVehicle.repair_cost} onChange={e => setNewVehicle({ ...newVehicle, repair_cost: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pb-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Transport Cost</Label>
-                      <Input type="number" value={newVehicle.transport_cost} onChange={e => setNewVehicle({ ...newVehicle, transport_cost: e.target.value })} className="h-9 text-sm" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Reg. / Taxes</Label>
-                      <Input type="number" value={newVehicle.registration_fee} onChange={e => setNewVehicle({ ...newVehicle, registration_fee: e.target.value })} className="h-9 text-sm" />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Additional Images</Label>
+                    <Input type="file" multiple accept="image/*" onChange={e => setAdditionalImages(Array.from(e.target.files || []))} className="text-sm" />
                   </div>
 
                   <div className="space-y-1.5">
