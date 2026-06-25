@@ -10,5 +10,10 @@
             "routePrefix": "/_/backend",
             "entrypoint": "server.js"
         }
+    },
+    "functions": {
+        "backend/server.js": {
+            "includeFiles": "backend/uploads/**"
+        }
     }
 }

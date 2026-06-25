@@ -352,11 +352,11 @@ Personality and Style Rules:
 
     // Include instructions for structured JSON output
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
-CRITICAL INSTRUCTION: If the customer asks for photos or more images, you MUST include the exact image URLs directly in the "reply" text (e.g. "Here are the photos: /uploads/photo1.jpg, /uploads/photo2.jpg").
+CRITICAL INSTRUCTION: NEVER include image URLs or links directly in the "reply" text. The "reply" should only contain conversational text.
 The JSON must have this exact structure:
 {
-  "reply": "Your conversational response to the customer here. Include image URLs in this text if the customer asked for photos.",
-  "send_image_urls": ["An array of up to 5 exact image path values"],
+  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. DO NOT put any image URLs in this text.",
+  "send_image_urls": ["An array of up to 5 exact image path values from the matching vehicle in the inventory (e.g. ['/uploads/photo1.jpg', '/uploads/photo2.jpg']) if the customer explicitly requested photos of that vehicle and photos are available in the inventory. Provide an empty array [] otherwise."],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
@@ -481,7 +481,7 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
         let isReachable = false;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const timeoutId = setTimeout(() => controller.abort(), 4500);
           const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
           clearTimeout(timeoutId);
           if (checkRes.ok) {
