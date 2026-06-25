@@ -264,6 +264,20 @@ async function handleIncomingMessage(phone, text) {
       const queryStr = `UPDATE leads SET ${updateFields.join(', ')} WHERE id = $${paramCount}`;
       await db.query(queryStr, updateValues);
       console.log(`[AI Agent] Lead ${lead.id} details updated:`, info);
+
+      // Handle Test Drive Booking
+      if (info.test_drive_booking && info.test_drive_booking.booked && info.test_drive_booking.vehicle_id && info.test_drive_booking.date_time) {
+        try {
+          await db.query(
+            `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [lead.id, parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Booked via local AI Agent', 'Scheduled']
+          );
+          console.log(`[AI Agent] Test drive booked locally for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
+        } catch (tdErr) {
+          console.error(`[AI Agent] Failed to insert local test drive: ${tdErr.message}`);
+        }
+      }
     } else {
       // Just update current_step to AI_AGENT
       await db.query("UPDATE leads SET current_step = 'AI_AGENT' WHERE id = $1", [lead.id]);

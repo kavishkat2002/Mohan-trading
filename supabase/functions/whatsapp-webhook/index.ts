@@ -184,6 +184,25 @@ serve(async (req: Request) => {
 
         await supabase.from('leads').update(updateObj).eq('id', lead.id);
         console.log(`[WEBHOOK] Lead details updated:`, info);
+        
+        if (info.test_drive_booking && info.test_drive_booking.booked && info.test_drive_booking.vehicle_id && info.test_drive_booking.date_time) {
+          try {
+            const { error: tdErr } = await supabase.from('test_drives').insert({
+              lead_id: lead.id,
+              vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
+              booking_date: info.test_drive_booking.date_time,
+              notes: "Booked via WhatsApp AI Agent",
+              status: "Scheduled"
+            });
+            if (tdErr) {
+              console.error(`[WEBHOOK] Failed to book test drive: ${tdErr.message}`);
+            } else {
+              console.log(`[WEBHOOK] Test drive booked for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
+            }
+          } catch (e: any) {
+             console.error(`[WEBHOOK] Error inserting test drive: ${e.message}`);
+          }
+        }
       } else {
         await supabase.from('leads').update({
           notes: `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: {} })}`
@@ -296,7 +315,20 @@ Personality and Style Rules:
           const availableVehicles = vehicles.filter((v: any) => v.stock > 0);
           if (availableVehicles && availableVehicles.length > 0) {
             systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
-              availableVehicles.map((v: any) => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.image_url ? ` | Images: [${v.image_url}]` : ''}`).join('\n');
+              availableVehicles.map((v: any) => {
+                let imagesStr = "";
+                if (v.image_url) {
+                  try {
+                    const parsed = JSON.parse(v.image_url);
+                    imagesStr = Array.isArray(parsed) ? parsed.join(', ') : v.image_url;
+                  } catch (e) {
+                    // Not valid JSON, just use as is
+                    // Check if it looks like a comma-separated string or just a URL
+                    imagesStr = Array.isArray(v.image_url) ? v.image_url.join(', ') : String(v.image_url);
+                  }
+                }
+                return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${imagesStr ? ` | Image URLs: ${imagesStr}` : ''}`;
+              }).join('\n');
           } else {
             systemContent += "\n\nAvailable Showroom Inventory Stock: (Currently no vehicles in stock). Please inform the customer politely.";
           }
@@ -313,15 +345,21 @@ Personality and Style Rules:
 
     // Include instructions for structured JSON output
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
+CRITICAL INSTRUCTION: NEVER include image URLs or links directly in the "reply" text. The "reply" should only contain conversational text.
 The JSON must have this exact structure:
 {
-  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
+  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. DO NOT put any image URLs in this text.",
   "send_image_urls": ["An array of up to 5 exact image path values from the matching vehicle in the inventory (e.g. ['/uploads/photo1.jpg', '/uploads/photo2.jpg']) if the customer explicitly requested photos of that vehicle and photos are available in the inventory. Provide an empty array [] otherwise."],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
     "budget": "Their budget range if they just shared it, otherwise null",
-    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)"
+    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)",
+    "test_drive_booking": {
+      "booked": "Boolean true if the customer just confirmed a test drive booking with a specific time/date, otherwise false",
+      "date_time": "The exact date and time agreed upon for the test drive in ISO format (e.g. '2026-07-01T10:00:00Z') or null if none",
+      "vehicle_id": "The numeric ID of the vehicle from the inventory they are booking for, or null if unknown"
+    }
   }
 }`;
 
@@ -429,7 +467,7 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
     for (let i = 0; i < urlsToProcess.length; i++) {
       const url = urlsToProcess[i];
       const lower = url.toLowerCase();
-      const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png');
+      const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp');
       
       if (isSupported) {
         const publicImgUrl = getPublicUrl(url);

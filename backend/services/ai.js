@@ -70,10 +70,10 @@ Personality and Style Rules:
     // Fetch active showroom inventory to auto-train AI
     let vehiclesContext = "";
     try {
-      const { rows: vehicles } = await db.query('SELECT brand, price, category, stock, description, ai_notes, image_url, additional_images FROM vehicles WHERE stock > 0');
+      const { rows: vehicles } = await db.query('SELECT id, brand, price, category, stock, description, ai_notes, image_url, additional_images FROM vehicles WHERE stock > 0');
       if (vehicles && vehicles.length > 0) {
         vehiclesContext = "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
-          vehicles.map(v => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.ai_notes ? ` | Custom AI guidelines: ${v.ai_notes}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}${v.additional_images && v.additional_images.length > 0 ? ` | Additional Images: ${JSON.stringify(v.additional_images)}` : ''}`).join('\n');
+          vehicles.map(v => `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.ai_notes ? ` | Custom AI guidelines: ${v.ai_notes}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}${v.additional_images && v.additional_images.length > 0 ? ` | Additional Images: ${JSON.stringify(v.additional_images)}` : ''}`).join('\n');
       }
     } catch (dbErr) {
       console.error("Failed to query vehicles inside AI service:", dbErr);
@@ -92,7 +92,12 @@ The JSON must have this exact structure:
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
     "budget": "Their budget range if they just shared it, otherwise null",
-    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)"
+    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)",
+    "test_drive_booking": {
+      "booked": "Boolean true if the customer just confirmed a test drive booking with a specific time/date, otherwise false",
+      "date_time": "The exact date and time agreed upon for the test drive in ISO format (e.g. '2026-07-01T10:00:00Z') or null if none",
+      "vehicle_id": "The numeric ID of the vehicle from the inventory they are booking for, or null if unknown"
+    }
   }
 }`;
 
