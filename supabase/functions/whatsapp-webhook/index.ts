@@ -316,17 +316,24 @@ Personality and Style Rules:
           if (availableVehicles && availableVehicles.length > 0) {
             systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
               availableVehicles.map((v: any) => {
-                let imagesStr = "";
+                let allImages: string[] = [];
                 if (v.image_url) {
                   try {
                     const parsed = JSON.parse(v.image_url);
-                    imagesStr = Array.isArray(parsed) ? parsed.join(', ') : v.image_url;
+                    if (Array.isArray(parsed)) allImages.push(...parsed);
+                    else allImages.push(String(v.image_url));
                   } catch (e) {
-                    // Not valid JSON, just use as is
-                    // Check if it looks like a comma-separated string or just a URL
-                    imagesStr = Array.isArray(v.image_url) ? v.image_url.join(', ') : String(v.image_url);
+                    if (Array.isArray(v.image_url)) allImages.push(...v.image_url);
+                    else allImages.push(String(v.image_url));
                   }
                 }
+                if (v.additional_images) {
+                  try {
+                    const parsedAdd = typeof v.additional_images === 'string' ? JSON.parse(v.additional_images) : v.additional_images;
+                    if (Array.isArray(parsedAdd)) allImages.push(...parsedAdd);
+                  } catch (e) {}
+                }
+                const imagesStr = allImages.length > 0 ? allImages.join(', ') : '';
                 return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${imagesStr ? ` | Image URLs: ${imagesStr}` : ''}`;
               }).join('\n');
           } else {
@@ -345,11 +352,11 @@ Personality and Style Rules:
 
     // Include instructions for structured JSON output
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
-CRITICAL INSTRUCTION: NEVER include image URLs or links directly in the "reply" text. The "reply" should only contain conversational text.
+CRITICAL INSTRUCTION: If the customer asks for photos or more images, you MUST include the exact image URLs directly in the "reply" text (e.g. "Here are the photos: /uploads/photo1.jpg, /uploads/photo2.jpg").
 The JSON must have this exact structure:
 {
-  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. DO NOT put any image URLs in this text.",
-  "send_image_urls": ["An array of up to 5 exact image path values from the matching vehicle in the inventory (e.g. ['/uploads/photo1.jpg', '/uploads/photo2.jpg']) if the customer explicitly requested photos of that vehicle and photos are available in the inventory. Provide an empty array [] otherwise."],
+  "reply": "Your conversational response to the customer here. Include image URLs in this text if the customer asked for photos.",
+  "send_image_urls": ["An array of up to 5 exact image path values"],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
