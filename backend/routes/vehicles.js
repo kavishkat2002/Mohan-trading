@@ -90,7 +90,7 @@ router.get('/', async (req, res) => {
 });
 
 // Add a new vehicle
-router.post('/', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 10 }]), async (req, res) => {
+router.post('/', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 5 }]), async (req, res) => {
   const { brand, price, category, stock, description, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
   const imageUrl = req.files && req.files.image ? `/uploads/${req.files.image[0].filename}` : null;
   const additionalImagesUrls = req.files && req.files.additional_images ? req.files.additional_images.map(f => `/uploads/${f.filename}`) : [];
@@ -124,7 +124,7 @@ router.post('/', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additio
 });
 
 // Update vehicle stock or details
-router.put('/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 10 }]), async (req, res) => {
+router.put('/:id', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'additional_images', maxCount: 5 }]), async (req, res) => {
   const { id } = req.params;
   const { brand, price, category, stock, description, existing_image, purchase_price, transport_cost, repair_cost, registration_fee, fuel_type } = req.body;
   const imageUrl = req.files && req.files.image ? `/uploads/${req.files.image[0].filename}` : existing_image;
