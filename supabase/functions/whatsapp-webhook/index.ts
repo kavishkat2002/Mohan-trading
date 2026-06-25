@@ -394,7 +394,7 @@ The JSON must have this exact structure:
     if (apiKey.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.3-70b-versatile';
+        finalModel = 'llama-3.1-8b-instant';
       }
     }
 
@@ -457,13 +457,17 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
   }
 
   // Helper to construct fully-qualified public URL for media files
-  const getPublicUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
+  const getPublicUrl = (urlPath: string) => {
+    if (urlPath.startsWith('http')) return urlPath;
     const baseUrl = Deno.env.get("BACKEND_URL") || Deno.env.get("PUBLIC_URL") || "https://mohan-trading.herokuapp.com";
-    return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+    
+    let finalBaseUrl = baseUrl.replace(/\/$/, '');
+    // If they provided the root Vercel URL, automatically append the backend route prefix
+    if (finalBaseUrl.includes('vercel.app') && !finalBaseUrl.endsWith('/_/backend')) {
+      finalBaseUrl += '/_/backend';
+    }
+    
+    return `${finalBaseUrl}${urlPath.startsWith('/') ? '' : '/'}${urlPath}`;
   };
 
   let payloads: any[] = [];
@@ -486,9 +490,11 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
           clearTimeout(timeoutId);
           if (checkRes.ok) {
             isReachable = true;
+          } else {
+            console.error(`Image URL not reachable: ${publicImgUrl} (Status: ${checkRes.status})`);
           }
-        } catch (err) {
-          console.warn(`[sendWhatsApp] Image reachability check failed for ${publicImgUrl}:`, err);
+        } catch (e: any) {
+          console.error(`Image URL check failed for ${publicImgUrl}:`, e);
         }
 
         if (isReachable) {
