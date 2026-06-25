@@ -348,7 +348,7 @@ Personality and Style Rules:
     }
 
     // Anti-hallucination constraint
-    systemContent += `\n\nCRITICAL INSTRUCTION ON VEHICLE MATCHING: Never hallucinate or invent vehicle brands, models, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle correctly (e.g. Toyota Land Cruiser LC300). If the requested vehicle IS in stock, enthusiastically confirm availability (e.g., "Great news! We have the Toyota Land Cruiser LC300 in stock!"). Do NOT say "Unfortunately" if it is in stock. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative from the list. Do not make up names like 'Lexus LC 300'.\n`;
+    systemContent += `\n\nCRITICAL INSTRUCTION ON VEHICLE MATCHING: Never hallucinate or invent vehicle brands, models, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle correctly. If the requested vehicle IS in stock, enthusiastically confirm availability IN YOUR VERY FIRST REPLY (e.g., "Great news! We have the Toyota Land Cruiser LC300 in stock!"). NEVER say "Let me check the inventory" or "I will check for you" - you already have the inventory data, so answer immediately. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative. Do not make up names.\n`;
 
     // Include instructions for structured JSON output
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
@@ -394,7 +394,7 @@ The JSON must have this exact structure:
     if (apiKey.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.1-8b-instant';
+        finalModel = 'llama-3.3-70b-versatile';
       }
     }
 
