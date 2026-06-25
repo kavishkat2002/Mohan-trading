@@ -70,10 +70,10 @@ Personality and Style Rules:
     // Fetch active showroom inventory to auto-train AI
     let vehiclesContext = "";
     try {
-      const { rows: vehicles } = await db.query('SELECT brand, price, category, stock, description, ai_notes, image_url FROM vehicles WHERE stock > 0');
+      const { rows: vehicles } = await db.query('SELECT brand, price, category, stock, description, ai_notes, image_url, additional_images FROM vehicles WHERE stock > 0');
       if (vehicles && vehicles.length > 0) {
         vehiclesContext = "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
-          vehicles.map(v => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.ai_notes ? ` | Custom AI guidelines: ${v.ai_notes}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}`).join('\n');
+          vehicles.map(v => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.ai_notes ? ` | Custom AI guidelines: ${v.ai_notes}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}${v.additional_images && v.additional_images.length > 0 ? ` | Additional Images: ${JSON.stringify(v.additional_images)}` : ''}`).join('\n');
       }
     } catch (dbErr) {
       console.error("Failed to query vehicles inside AI service:", dbErr);
@@ -86,8 +86,8 @@ Personality and Style Rules:
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
 The JSON must have this exact structure:
 {
-  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
-  "send_image_url": "The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg') if the customer explicitly requested photos or images of that vehicle and a photo is available in the inventory, otherwise null",
+  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. CRITICAL: Do NOT mention or include raw file paths like '/uploads/...' in this reply text! Just say 'Here are the photos:'",
+  "send_image_urls": ["The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg')", "Add more paths from 'Additional Images' here if they requested more photos"],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",

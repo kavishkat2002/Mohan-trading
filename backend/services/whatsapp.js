@@ -180,7 +180,7 @@ async function handleIncomingMessage(phone, text) {
   const settings = settingsRes.rows[0] || {};
 
   let outMsg = "";
-  let sendImageUrl = null;
+  let sendImageUrls = [];
 
   if (settings.ai_enabled) {
     // ---- SMART AI RESPONDER FLOW ----
@@ -215,7 +215,10 @@ async function handleIncomingMessage(phone, text) {
     });
 
     outMsg = aiResult.reply;
-    sendImageUrl = aiResult.send_image_url || null;
+    sendImageUrls = aiResult.send_image_urls || [];
+    if (aiResult.send_image_url) { // Backwards compatibility just in case
+      sendImageUrls.push(aiResult.send_image_url);
+    }
 
     // Process extracted info to update lead details
     if (aiResult.extracted_info) {
@@ -355,7 +358,18 @@ async function handleIncomingMessage(phone, text) {
   }
 
   // 4. SEND OUTGOING MESSAGE
-  await sendWhatsAppMessage(phone, outMsg, lead.id, 'bot', sendImageUrl);
+    if (outMsg) {
+      if (sendImageUrls && sendImageUrls.length > 0) {
+        // Send the first image with the caption
+        await sendWhatsAppMessage(normPhone, outMsg, lead.id, 'bot', sendImageUrls[0]);
+        // Send any remaining images without caption (or with a generic caption)
+        for (let i = 1; i < sendImageUrls.length; i++) {
+          await sendWhatsAppMessage(normPhone, '📸', lead.id, 'bot', sendImageUrls[i]);
+        }
+      } else {
+        await sendWhatsAppMessage(normPhone, outMsg, lead.id, 'bot');
+      }
+    }
 }
 
 module.exports = {

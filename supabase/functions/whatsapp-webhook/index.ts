@@ -103,7 +103,7 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     let settings = {
-      ai_enabled: false,
+      ai_enabled: true,
       ai_model: 'openai/gpt-3.5-turbo',
       ai_system_prompt: 'You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.',
       ai_business_description: 'Mohan Trading is a premium car dealership located in Colombo, Sri Lanka. We offer high-quality luxury cars, SUVs, and vans with warranty, flexible leasing partners, and a dedicated service station.',
@@ -120,7 +120,7 @@ serve(async (req: Request) => {
     }
 
     let outMsg = "";
-    let sendImageUrl: string | null = null;
+    let sendImageUrls: string[] = [];
 
     if (settings.ai_enabled) {
       // ─── SMART AI RESPONDER FLOW ────────────────────────────────────
@@ -157,7 +157,10 @@ serve(async (req: Request) => {
       });
 
       outMsg = aiResult.reply;
-      sendImageUrl = aiResult.send_image_url || null;
+      sendImageUrls = aiResult.send_image_urls || [];
+      if (aiResult.send_image_url) {
+        sendImageUrls.push(aiResult.send_image_url);
+      }
 
       // Update lead details in Supabase
       if (aiResult.extracted_info) {
@@ -188,98 +191,8 @@ serve(async (req: Request) => {
       }
 
     } else {
-      // ─── LEGACY CONVERSATION STATE MACHINE ──────────────────────────
-      console.log("[WEBHOOK] AI disabled. Using legacy state machine...");
-      let state = "GREETING";
-      let metadata: Record<string, string> = {};
-
-      // Parse current state from notes field
-      try {
-        if (lead.notes?.startsWith("STATE:")) {
-          const stateData = JSON.parse(lead.notes.replace("STATE:", ""));
-          state = stateData.step || "GREETING";
-          metadata = stateData.meta || {};
-        }
-      } catch {
-        state = "GREETING";
-      }
-
-      const inputLower = text.toLowerCase();
-      let nextStep = state;
-
-      // Global reset triggers
-      if (["hi", "hello", "reset", "start", "menu"].includes(inputLower)) {
-        nextStep = "GREETING";
-      }
-
-      switch (nextStep) {
-        case "GREETING":
-          outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
-          nextStep = "INTENT_DISCOVERY";
-          break;
-
-        case "INTENT_DISCOVERY":
-          if (text === "1") {
-            outMsg = "Exciting! 🚗 To find the perfect match for you, what *type of vehicle* are you looking for?\n\n(e.g., SUV, Sedan, Van, Pickup)";
-            nextStep = "BUYER_VEHICLE_TYPE";
-            metadata.intent = "BUY";
-          } else if (text === "2") {
-            outMsg = "We can help you sell! 💰 What is the *Make and Model* of your vehicle?\n\n(e.g., Toyota Aqua, Honda Vezel)";
-            nextStep = "SELLER_MODEL";
-            metadata.intent = "SELL";
-          } else if (text === "3") {
-            outMsg = "📋 Check out our latest vehicles here:\n🌐 https://mohantrading.lk/vehicles\n\nSee anything you like? Type *Buy* or reply *1* to proceed!";
-            nextStep = "GREETING";
-          } else {
-            outMsg = "Sorry, I didn't get that 😅\n\nPlease reply with *1*, *2*, or *3* to continue.";
-          }
-          break;
-
-        case "BUYER_VEHICLE_TYPE":
-          metadata.vehicle_type = text;
-          outMsg = `Got it — a *${text}*! 🚗\n\nWhat is your *approximate budget*?\n\n(e.g., 10M - 15M LKR)`;
-          nextStep = "BUYER_BUDGET";
-          break;
-
-        case "BUYER_BUDGET":
-          metadata.budget = text;
-          // Update lead record with collected info
-          await supabase.from('leads').update({
-            interested_car: metadata.vehicle_type || null,
-            budget: text,
-            status: "Hot"
-          }).eq('id', lead.id);
-
-          outMsg = `Thank you! 🎉\n\nI'm searching our inventory for the best *${metadata.vehicle_type}* within *${text}*.\n\nOne of our sales specialists will contact you shortly with personalized options! 🚗💨\n\n_Type *menu* anytime to start over._`;
-          nextStep = "COMPLETED";
-          break;
-
-        case "SELLER_MODEL":
-          metadata.sell_model = text;
-          // Update lead record
-          await supabase.from('leads').update({
-            interested_car: `SELL: ${text}`,
-            status: "Warm"
-          }).eq('id', lead.id);
-
-          outMsg = `Thanks for sharing! 📝\n\nWe've noted your *${text}* for sale. Our team will evaluate it and reach out to you with a fair offer soon! 💰\n\n_Type *menu* anytime to start over._`;
-          nextStep = "COMPLETED";
-          break;
-
-        case "COMPLETED":
-          outMsg = `Our team has already been notified and will contact you soon! 🚗\n\n_Type *menu* or *hi* to restart the conversation._`;
-          break;
-
-        default:
-          outMsg = `Hi 👋 Welcome to *Mohan Trading* 🚗\n\nI am your AI Sales Assistant. How can I help you today?\n\n1️⃣ I want to *Buy* a car\n2️⃣ I want to *Sell* my car\n3️⃣ View latest *Inventory*\n\n(Reply with 1, 2, or 3)`;
-          nextStep = "INTENT_DISCOVERY";
-      }
-
-      // Save updated state to lead notes
-      const { error: stateErr } = await supabase.from('leads').update({
-        notes: `STATE:${JSON.stringify({ step: nextStep, meta: metadata })}`
-      }).eq('id', lead.id);
-      if (stateErr) console.error("[WEBHOOK] State save error:", stateErr.message);
+      console.log("[WEBHOOK] AI is disabled, skipping message generation.");
+      return new Response("OK", { status: 200 });
     }
 
     // Log outbound message
@@ -290,7 +203,7 @@ serve(async (req: Request) => {
     });
 
     // Send WhatsApp reply
-    await sendWhatsApp(phone, outMsg, sendImageUrl);
+    await sendWhatsApp(phone, outMsg, sendImageUrls);
 
     console.log(`[WEBHOOK] Replied to ${phone}`);
     return new Response("OK", { status: 200 });
@@ -305,7 +218,9 @@ serve(async (req: Request) => {
 });
 
 async function generateSmartReply(userMessage: string, context: any) {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  let apiKey = Deno.env.get("OPENAI_API_KEY");
+  console.log("Deno.env OPENAI_API_KEY present:", !!apiKey, "starts with gsk_:", apiKey?.startsWith('gsk_'));
+
   if (!apiKey) {
     console.log("No OPENAI_API_KEY found, returning fallback.");
     return {
@@ -370,29 +285,38 @@ Personality and Style Rules:
       }
     }
 
-    // Query active showroom inventory from Supabase
-    if (context.supabaseClient) {
-      try {
-        const { data: vehicles } = await context.supabaseClient
+    // Query active showroom inventory from Supabase db
+    try {
+      if (context.supabaseClient) {
+        const { data: vehicles, error } = await context.supabaseClient
           .from('vehicles')
-          .select('brand, price, category, stock, description, image_url')
-          .gt('stock', 0);
-        
-        if (vehicles && vehicles.length > 0) {
-          systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
-            vehicles.map((v: any) => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.image_url ? ` | Image: ${v.image_url}` : ''}`).join('\n');
+          .select('*');
+          
+        if (!error && vehicles) {
+          const availableVehicles = vehicles.filter((v: any) => v.stock > 0);
+          if (availableVehicles && availableVehicles.length > 0) {
+            systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
+              availableVehicles.map((v: any) => `- Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${v.image_url ? ` | Images: [${v.image_url}]` : ''}`).join('\n');
+          } else {
+            systemContent += "\n\nAvailable Showroom Inventory Stock: (Currently no vehicles in stock). Please inform the customer politely.";
+          }
+        } else {
+          console.error("Failed to fetch vehicles from Supabase:", error?.message);
         }
-      } catch (dbErr: any) {
-        console.error("Failed to query vehicles in Deno:", dbErr.message || dbErr);
       }
+    } catch (dbErr: any) {
+      console.error("Failed to query vehicles in Deno:", dbErr.message || dbErr);
     }
+
+    // Anti-hallucination constraint
+    systemContent += `\n\nCRITICAL INSTRUCTION ON VEHICLE MATCHING: Never hallucinate or invent vehicle brands, models, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle correctly (e.g. Toyota Land Cruiser LC300). If the requested vehicle IS in stock, enthusiastically confirm availability (e.g., "Great news! We have the Toyota Land Cruiser LC300 in stock!"). Do NOT say "Unfortunately" if it is in stock. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative from the list. Do not make up names like 'Lexus LC 300'.\n`;
 
     // Include instructions for structured JSON output
     systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
 The JSON must have this exact structure:
 {
   "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone (feel free to write in English, Sinhala, or a mix depending on the customer's language, and use emojis if appropriate)",
-  "send_image_url": "The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg') if the customer explicitly requested photos or images of that vehicle and a photo is available in the inventory, otherwise null",
+  "send_image_urls": ["An array of up to 5 exact image path values from the matching vehicle in the inventory (e.g. ['/uploads/photo1.jpg', '/uploads/photo2.jpg']) if the customer explicitly requested photos of that vehicle and photos are available in the inventory. Provide an empty array [] otherwise."],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
@@ -425,7 +349,7 @@ The JSON must have this exact structure:
     if (apiKey.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.3-70b-versatile';
+        finalModel = 'llama-3.1-8b-instant';
       }
     }
 
@@ -472,13 +396,13 @@ The JSON must have this exact structure:
   } catch (error: any) {
     console.error('Error with OpenRouter API in Deno:', error.message || error);
     return {
-      reply: "I am having a little trouble connecting to my brain right now. A human agent will contact you soon!",
+      reply: `I am having a little trouble connecting to my brain right now. Error: ${error.message || 'Unknown error'}`,
       extracted_info: null
     };
   }
 }
 
-async function sendWhatsApp(to: string, text: string, imageUrl: string | null = null): Promise<void> {
+async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []): Promise<void> {
   const token = Deno.env.get("WHATSAPP_TOKEN");
   const phoneId = Deno.env.get("PHONE_NUMBER_ID");
 
@@ -497,69 +421,84 @@ async function sendWhatsApp(to: string, text: string, imageUrl: string | null = 
     return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
   };
 
-  let payload;
-  let useImagePayload = false;
+  let payloads: any[] = [];
+  let sentText = false;
 
-  if (imageUrl) {
-    const lower = imageUrl.toLowerCase();
-    const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png');
-    if (isSupported) {
-      const publicImgUrl = getPublicUrl(imageUrl);
-      let isReachable = false;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (checkRes.ok) {
-          isReachable = true;
-        }
-      } catch (err) {
-        console.warn(`[sendWhatsApp] Image reachability check failed for ${publicImgUrl}:`, err);
-      }
-
-      if (isReachable) {
-        console.log(`[sendWhatsApp] Sending image: ${publicImgUrl}`);
-        payload = {
-          messaging_product: "whatsapp",
-          to: to,
-          type: "image",
-          image: {
-            link: publicImgUrl,
-            caption: text
+  if (imageUrls && imageUrls.length > 0) {
+    const urlsToProcess = imageUrls.slice(0, 5); // Max 5 images
+    for (let i = 0; i < urlsToProcess.length; i++) {
+      const url = urlsToProcess[i];
+      const lower = url.toLowerCase();
+      const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png');
+      
+      if (isSupported) {
+        const publicImgUrl = getPublicUrl(url);
+        let isReachable = false;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (checkRes.ok) {
+            isReachable = true;
           }
-        };
-        useImagePayload = true;
+        } catch (err) {
+          console.warn(`[sendWhatsApp] Image reachability check failed for ${publicImgUrl}:`, err);
+        }
+
+        if (isReachable) {
+          console.log(`[sendWhatsApp] Preparing to send image: ${publicImgUrl}`);
+          payloads.push({
+            messaging_product: "whatsapp",
+            to: to,
+            type: "image",
+            image: {
+              link: publicImgUrl,
+              caption: i === 0 ? text : "" // Only put text caption on the first image
+            }
+          });
+          if (i === 0) sentText = true;
+        } else {
+          console.warn(`[sendWhatsApp] Image url ${publicImgUrl} is unreachable.`);
+        }
       } else {
-        console.warn(`[sendWhatsApp] Image url ${publicImgUrl} is unreachable. Falling back to plain text.`);
+        console.warn(`[sendWhatsApp] Image format of ${url} is not supported by WhatsApp (JPEG/PNG only).`);
       }
-    } else {
-      console.warn(`[sendWhatsApp] Image format of ${imageUrl} is not supported by WhatsApp (JPEG/PNG only). Falling back to plain text.`);
     }
   }
 
-  if (!useImagePayload) {
-    payload = {
+  // If no valid images were found, or none were provided, just send text
+  if (!sentText) {
+    payloads.push({
       messaging_product: "whatsapp",
       to: to,
       type: "text",
       text: { body: text }
-    };
+    });
   }
 
-  const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const resJson = await res.json();
-  if (!res.ok) {
-    console.error("[sendWhatsApp] Meta API error:", JSON.stringify(resJson));
-  } else {
-    console.log("[sendWhatsApp] Sent OK to", to, "| msgId:", resJson?.messages?.[0]?.id);
+  // Send payloads sequentially
+  for (const payload of payloads) {
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("[sendWhatsApp] Failed:", data);
+      } else {
+        console.log(`[sendWhatsApp] Message sent successfully (msg id: ${data.messages?.[0]?.id})`);
+      }
+    } catch (e) {
+      console.error("[sendWhatsApp] Network error:", e);
+    }
+    if (payloads.length > 1) {
+      await new Promise(r => setTimeout(r, 500));
+    }
   }
 }

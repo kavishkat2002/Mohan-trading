@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 
@@ -22,7 +22,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 // Serve static image uploads
-app.use('/uploads', express.static('uploads'));
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const subscriptionRouter = require('./routes/subscription');
 
