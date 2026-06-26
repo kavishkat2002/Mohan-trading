@@ -357,7 +357,7 @@ CRITICAL INSTRUCTION: NEVER include image URLs or links directly in the "reply" 
 The JSON must have this exact structure:
 {
   "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. DO NOT put any image URLs in this text.",
-  "send_image_urls": ["An array of up to 5 exact image path values from the matching vehicle in the inventory (e.g. ['/uploads/photo1.jpg', '/uploads/photo2.jpg']) if the customer explicitly requested photos of that vehicle and photos are available in the inventory. Provide an empty array [] otherwise."],
+  "send_image_urls": ["Copy the exact Image URLs listed in the inventory for this vehicle, e.g., '/uploads/123.jpg'. If no photos are requested, use []"],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
@@ -395,7 +395,7 @@ The JSON must have this exact structure:
     if (apiKey.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.1-8b-instant';
+        finalModel = 'llama-3.3-70b-versatile';
       }
     }
 
