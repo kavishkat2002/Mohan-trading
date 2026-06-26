@@ -11,7 +11,7 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 console.log('Using Token:', WHATSAPP_TOKEN ? WHATSAPP_TOKEN.substring(0, 15) + '...' : 'undefined');
 console.log('Using Phone Number ID:', PHONE_NUMBER_ID);
 
-const to = '94762345336'; // Sri Lanka country code prefix (94) + number
+const to = '94703375336'; // Sri Lanka country code prefix (94) + number
 const WA_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 
 async function testSend() {

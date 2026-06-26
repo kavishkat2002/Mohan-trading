@@ -76,6 +76,8 @@ async function runMigrations() {
       ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_unanswered_limit VARCHAR(255) DEFAULT '1 follow-up then stop';
       ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_objections JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS ai_notes TEXT DEFAULT '';
+      ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS whatsapp_main_media_id VARCHAR(255) DEFAULT '';
+      ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS whatsapp_additional_media_ids JSONB DEFAULT '[]'::jsonb;
     `);
     console.log('[Migration] Database schema migrated successfully.');
   } catch (error) {

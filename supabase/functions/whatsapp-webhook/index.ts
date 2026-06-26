@@ -2,11 +2,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @ts-ignore – resolved by Deno at runtime
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { detectLanguage, getLanguagePrompt } from "./languageDetector.ts";
 
 // Deno ambient type for VS Code
 declare const Deno: { env: { get(key: string): string | undefined } };
 
-const VERIFY_TOKEN = "mohan_trading_token";
+const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "smartbiz_verify_token";
 
 serve(async (req: Request) => {
   const url = new URL(req.url);
@@ -121,11 +122,52 @@ serve(async (req: Request) => {
 
     let outMsg = "";
     let sendImageUrls: string[] = [];
+    const mediaIdMap: Record<string, string> = {};
 
     if (settings.ai_enabled) {
       // ─── SMART AI RESPONDER FLOW ────────────────────────────────────
       console.log(`[WEBHOOK] AI enabled. Processing message for lead ${lead.id} using model ${settings.ai_model}...`);
       
+      // Fetch active showroom inventory from Supabase db
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('*');
+
+      if (vehicles) {
+        for (const v of vehicles) {
+          if (v.image_url && v.whatsapp_main_media_id) {
+            mediaIdMap[v.image_url] = v.whatsapp_main_media_id;
+          }
+          if (v.additional_images && v.whatsapp_additional_media_ids) {
+            let addImages: string[] = [];
+            try {
+              addImages = typeof v.additional_images === 'string' ? JSON.parse(v.additional_images) : v.additional_images;
+            } catch (e) {
+              if (Array.isArray(v.additional_images)) addImages = v.additional_images;
+            }
+            
+            let mediaIds: any = {};
+            try {
+              mediaIds = typeof v.whatsapp_additional_media_ids === 'string' ? JSON.parse(v.whatsapp_additional_media_ids) : v.whatsapp_additional_media_ids;
+            } catch (e) {
+              if (Array.isArray(v.whatsapp_additional_media_ids)) {
+                v.whatsapp_additional_media_ids.forEach((id: string, idx: number) => {
+                  if (addImages[idx]) {
+                    mediaIds[addImages[idx]] = id;
+                  }
+                });
+              }
+            }
+
+            if (mediaIds && typeof mediaIds === 'object' && !Array.isArray(mediaIds)) {
+              for (const [imgUrl, mediaId] of Object.entries(mediaIds)) {
+                mediaIdMap[imgUrl] = String(mediaId);
+              }
+            }
+          }
+        }
+      }
+
       // Fetch last 6 messages for short-term history
       const { data: historyData } = await supabase
         .from('messages')
@@ -153,7 +195,8 @@ serve(async (req: Request) => {
         ai_ask_budget_rule: (settings as any).ai_ask_budget_rule,
         ai_unanswered_limit: (settings as any).ai_unanswered_limit,
         ai_objections: (settings as any).ai_objections,
-        supabaseClient: supabase
+        supabaseClient: supabase,
+        vehicles: vehicles || []
       });
 
       outMsg = aiResult.reply;
@@ -222,7 +265,7 @@ serve(async (req: Request) => {
     });
 
     // Send WhatsApp reply
-    await sendWhatsApp(phone, outMsg, sendImageUrls);
+    await sendWhatsApp(phone, outMsg, sendImageUrls, mediaIdMap);
 
     console.log(`[WEBHOOK] Replied to ${phone}`);
     return new Response("OK", { status: 200 });
@@ -251,10 +294,17 @@ async function generateSmartReply(userMessage: string, context: any) {
   try {
     const model = context.ai_model || 'openai/gpt-3.5-turbo';
 
+    const detectedLang = detectLanguage(userMessage);
+    const langInstructions = getLanguagePrompt(detectedLang);
+
     let systemContent = "";
     if (context.ai_bot_name) {
       systemContent = `You are ${context.ai_bot_name}, a helpful, polite, and ${context.ai_tone || 'professional'} sales representative at ${context.ai_dealership_name || 'Mohan Trading'}.
 Greeting message (first thing you say to introduce yourself): "${context.ai_greeting_message || 'Hi!'}"
+
+Detected Language of user's last message: ${detectedLang.toUpperCase()}
+Language Instructions to apply (CRITICAL: Reply in the detected language style):
+${langInstructions}
 
 Personality and Style Rules:
 - Primary Tone: ${context.ai_tone || 'Professional & warm'}.
@@ -269,7 +319,11 @@ Personality and Style Rules:
         systemContent += `\n\nAdditional Instructions:\n${context.ai_system_prompt}`;
       }
     } else {
-      systemContent = context.ai_system_prompt || `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.`;
+      systemContent = `You are an AI sales assistant for Mohan Trading, a premium car dealership in Sri Lanka. Be helpful, polite, and professional. Guide the customer through buying, selling, or booking test drives. Politely collect their name, interested car type, and budget range during the chat.
+
+Detected Language of user's last message: ${detectedLang.toUpperCase()}
+Language Instructions to apply (CRITICAL: Reply in the detected language style):
+${langInstructions}`;
     }
 
     if (context.ai_business_description) {
@@ -306,41 +360,45 @@ Personality and Style Rules:
 
     // Query active showroom inventory from Supabase db
     try {
-      if (context.supabaseClient) {
-        const { data: vehicles, error } = await context.supabaseClient
+      let vehicles = context.vehicles;
+      if (!vehicles && context.supabaseClient) {
+        const { data, error } = await context.supabaseClient
           .from('vehicles')
           .select('*');
-          
-        if (!error && vehicles) {
-          const availableVehicles = vehicles.filter((v: any) => v.stock > 0);
-          if (availableVehicles && availableVehicles.length > 0) {
-            systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
-              availableVehicles.map((v: any) => {
-                let allImages: string[] = [];
-                if (v.image_url) {
-                  try {
-                    const parsed = JSON.parse(v.image_url);
-                    if (Array.isArray(parsed)) allImages.push(...parsed);
-                    else allImages.push(String(v.image_url));
-                  } catch (e) {
-                    if (Array.isArray(v.image_url)) allImages.push(...v.image_url);
-                    else allImages.push(String(v.image_url));
-                  }
+        if (!error && data) {
+          vehicles = data;
+        } else if (error) {
+          console.error("Failed to fetch vehicles from Supabase:", error.message);
+        }
+      }
+      
+      if (vehicles) {
+        const availableVehicles = vehicles.filter((v: any) => v.stock > 0);
+        if (availableVehicles && availableVehicles.length > 0) {
+          systemContent += "\n\nAvailable Showroom Inventory Stock (Use this live inventory to suggest options to customers):\n" + 
+            availableVehicles.map((v: any) => {
+              let allImages: string[] = [];
+              if (v.image_url) {
+                try {
+                  const parsed = JSON.parse(v.image_url);
+                  if (Array.isArray(parsed)) allImages.push(...parsed);
+                  else allImages.push(String(v.image_url));
+                } catch (e) {
+                  if (Array.isArray(v.image_url)) allImages.push(...v.image_url);
+                  else allImages.push(String(v.image_url));
                 }
-                if (v.additional_images) {
-                  try {
-                    const parsedAdd = typeof v.additional_images === 'string' ? JSON.parse(v.additional_images) : v.additional_images;
-                    if (Array.isArray(parsedAdd)) allImages.push(...parsedAdd);
-                  } catch (e) {}
-                }
-                const imagesStr = allImages.length > 0 ? allImages.join(', ') : '';
-                return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${imagesStr ? ` | Image URLs: ${imagesStr}` : ''}`;
-              }).join('\n');
-          } else {
-            systemContent += "\n\nAvailable Showroom Inventory Stock: (Currently no vehicles in stock). Please inform the customer politely.";
-          }
+              }
+              if (v.additional_images) {
+                try {
+                  const parsedAdd = typeof v.additional_images === 'string' ? JSON.parse(v.additional_images) : v.additional_images;
+                  if (Array.isArray(parsedAdd)) allImages.push(...parsedAdd);
+                } catch (e) {}
+              }
+              const imagesStr = allImages.length > 0 ? allImages.join(', ') : '';
+              return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${imagesStr ? ` | Image URLs: ${imagesStr}` : ''}`;
+            }).join('\n');
         } else {
-          console.error("Failed to fetch vehicles from Supabase:", error?.message);
+          systemContent += "\n\nAvailable Showroom Inventory Stock: (Currently no vehicles in stock). Please inform the customer politely.";
         }
       }
     } catch (dbErr: any) {
@@ -448,7 +506,7 @@ The JSON must have this exact structure:
   }
 }
 
-async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []): Promise<void> {
+async function sendWhatsApp(to: string, text: string, imageUrls: string[] = [], mediaIdMap: Record<string, string> = {}): Promise<void> {
   const token = Deno.env.get("WHATSAPP_TOKEN");
   const phoneId = Deno.env.get("PHONE_NUMBER_ID");
 
@@ -478,43 +536,59 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
     const urlsToProcess = imageUrls.slice(0, 5); // Max 5 images
     for (let i = 0; i < urlsToProcess.length; i++) {
       const url = urlsToProcess[i];
-      const lower = url.toLowerCase();
-      const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp');
-      
-      if (isSupported) {
-        const publicImgUrl = getPublicUrl(url);
-        let isReachable = false;
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 4500);
-          const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
-          clearTimeout(timeoutId);
-          if (checkRes.ok) {
-            isReachable = true;
-          } else {
-            console.error(`Image URL not reachable: ${publicImgUrl} (Status: ${checkRes.status})`);
-          }
-        } catch (e: any) {
-          console.error(`Image URL check failed for ${publicImgUrl}:`, e);
-        }
+      const mediaId = mediaIdMap[url];
 
-        if (isReachable) {
-          console.log(`[sendWhatsApp] Preparing to send image: ${publicImgUrl}`);
-          payloads.push({
-            messaging_product: "whatsapp",
-            to: to,
-            type: "image",
-            image: {
-              link: publicImgUrl,
-              caption: i === 0 ? text : "" // Only put text caption on the first image
-            }
-          });
-          if (i === 0) sentText = true;
-        } else {
-          console.warn(`[sendWhatsApp] Image url ${publicImgUrl} is unreachable.`);
-        }
+      if (mediaId) {
+        console.log(`[sendWhatsApp] Found media ID mapping for ${url}: ${mediaId}`);
+        payloads.push({
+          messaging_product: "whatsapp",
+          to: to,
+          type: "image",
+          image: {
+            id: mediaId,
+            caption: i === 0 ? text : "" // Only put text caption on the first image
+          }
+        });
+        if (i === 0) sentText = true;
       } else {
-        console.warn(`[sendWhatsApp] Image format of ${url} is not supported by WhatsApp (JPEG/PNG only).`);
+        const lower = url.toLowerCase();
+        const isSupported = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp');
+        
+        if (isSupported) {
+          const publicImgUrl = getPublicUrl(url);
+          let isReachable = false;
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4500);
+            const checkRes = await fetch(publicImgUrl, { method: "HEAD", signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (checkRes.ok) {
+              isReachable = true;
+            } else {
+              console.error(`Image URL not reachable: ${publicImgUrl} (Status: ${checkRes.status})`);
+            }
+          } catch (e: any) {
+            console.error(`Image URL check failed for ${publicImgUrl}:`, e);
+          }
+
+          if (isReachable) {
+            console.log(`[sendWhatsApp] Preparing to send image: ${publicImgUrl}`);
+            payloads.push({
+              messaging_product: "whatsapp",
+              to: to,
+              type: "image",
+              image: {
+                link: publicImgUrl,
+                caption: i === 0 ? text : "" // Only put text caption on the first image
+              }
+            });
+            if (i === 0) sentText = true;
+          } else {
+            console.warn(`[sendWhatsApp] Image url ${publicImgUrl} is unreachable.`);
+          }
+        } else {
+          console.warn(`[sendWhatsApp] Image format of ${url} is not supported by WhatsApp (JPEG/PNG only).`);
+        }
       }
     }
   }
@@ -550,7 +624,7 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = []):
       console.error("[sendWhatsApp] Network error:", e);
     }
     if (payloads.length > 1) {
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 1000)); // KEY FIX: 1 second delay between messages to prevent Meta silent drops
     }
   }
 }
