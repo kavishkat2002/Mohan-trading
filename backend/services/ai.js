@@ -83,11 +83,13 @@ Personality and Style Rules:
     }
 
     // Include instructions for structured JSON output
-    systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
+    systemContent += `\n\nCRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images, YOU MUST IMMEDIATELY provide them in the \`send_image_urls\` array.
+Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep the \`send_image_urls\` array completely empty []. Never send or repeat photos unless they are explicitly asked for in the current user message.
+CRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
 The JSON must have this exact structure:
 {
   "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. CRITICAL: Do NOT mention or include raw file paths like '/uploads/...' in this reply text! Just say 'Here are the photos:'",
-  "send_image_urls": ["The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg')", "Add more paths from 'Additional Images' here if they requested more photos"],
+  "send_image_urls": ["The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg'). CRITICAL: ONLY populate this array if the user's latest incoming message explicitly asks to see photos, pictures, or images. If the user's latest message is a question about price, mileage, budget, or other information, you MUST use [] to avoid duplicate photos."],
   "extracted_info": {
     "name": "Customer's name if they shared it or if you just learned it, otherwise null",
     "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
