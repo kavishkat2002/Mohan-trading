@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, Plus, Calendar, User, Car, CheckCircle2,
-  Clock, XCircle, Trash2, Edit, AlertCircle, FileText
+  Clock, XCircle, Trash2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function TestDrives() {
   const { user } = useAuth();
@@ -140,239 +138,277 @@ export default function TestDrives() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
       case 'Completed':
-        return <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</Badge>;
+        return { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' };
       case 'Cancelled':
-        return <Badge className="bg-rose-500 hover:bg-rose-600 text-white border-0"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+        return { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500' };
       default:
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-0"><Clock className="w-3 h-3 mr-1" /> Scheduled</Badge>;
+        return { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-500' };
     }
   };
+
+  const stats = [
+    { label: 'Total', value: bookings.length, color: 'text-foreground', dot: 'bg-foreground/30' },
+    { label: 'Scheduled', value: bookings.filter(b => b.status === 'Scheduled').length, color: 'text-amber-600', dot: 'bg-amber-400' },
+    { label: 'Completed', value: bookings.filter(b => b.status === 'Completed').length, color: 'text-emerald-600', dot: 'bg-emerald-400' },
+    { label: 'Cancelled', value: bookings.filter(b => b.status === 'Cancelled').length, color: 'text-rose-600', dot: 'bg-rose-400' },
+  ];
 
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Test Drive Bookings</h1>
-          <p className="text-muted-foreground text-sm mt-1">Schedule and manage test drives for customers.</p>
-        </div>
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 py-6 space-y-6">
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" /> Book Test Drive
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Book a Test Drive</DialogTitle>
-              <DialogDescription>Select the customer and vehicle to schedule a test drive session.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateBooking} className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Select Customer (Lead)</Label>
-                <Select
-                  required
-                  value={newBooking.lead_id}
-                  onValueChange={val => setNewBooking({...newBooking, lead_id: val})}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Search / Select Customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leads.map(l => (
-                      <SelectItem key={`lead-${l.id}`} value={l.id.toString()}>
-                        {l.name} ({l.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* ── Hero Banner with Illustration ── */}
+      <div className="rounded-xl border bg-gradient-to-br from-sky-50/60 to-slate-50 dark:from-sky-950/20 dark:to-slate-900/40 overflow-hidden relative">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 gap-4">
+          {/* Text */}
+          <div className="sm:max-w-xs">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Test Drives</h1>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              Schedule and manage customer test drives with ease.
+            </p>
+          </div>
 
-              <div className="space-y-2">
-                <Label>Select Vehicle</Label>
-                <Select
-                  required
-                  value={newBooking.vehicle_id}
-                  onValueChange={val => setNewBooking({...newBooking, vehicle_id: val})}
-                >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select Vehicle from Inventory" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vehicles.filter(v => v.stock > 0).map(v => (
-                      <SelectItem key={`veh-${v.id}`} value={v.id.toString()}>
-                        {v.brand} - Rs. {Number(v.price).toLocaleString()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Illustration */}
+          <div className="w-56 sm:w-64 shrink-0 opacity-90">
+            <svg viewBox="0 0 320 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+              {/* Sky / clouds */}
+              <rect width="320" height="160" fill="transparent"/>
+              {/* City skyline silhouette */}
+              <rect x="20"  y="95"  width="12" height="30" rx="1" fill="#C8DFF0" opacity="0.55"/>
+              <rect x="16"  y="85"  width="20" height="40" rx="1" fill="#C8DFF0" opacity="0.45"/>
+              <rect x="40"  y="100" width="10" height="25" rx="1" fill="#C8DFF0" opacity="0.45"/>
+              <rect x="54"  y="90"  width="14" height="35" rx="1" fill="#C8DFF0" opacity="0.4"/>
+              <rect x="245" y="92"  width="12" height="33" rx="1" fill="#C8DFF0" opacity="0.45"/>
+              <rect x="260" y="82"  width="18" height="43" rx="1" fill="#C8DFF0" opacity="0.55"/>
+              <rect x="281" y="97"  width="10" height="28" rx="1" fill="#C8DFF0" opacity="0.4"/>
+              <rect x="294" y="87"  width="16" height="38" rx="1" fill="#C8DFF0" opacity="0.45"/>
+              {/* Cloud 1 */}
+              <ellipse cx="82" cy="32" rx="22" ry="10" fill="#D6E9F5" opacity="0.7"/>
+              <ellipse cx="70" cy="36" rx="14" ry="9"  fill="#D6E9F5" opacity="0.7"/>
+              <ellipse cx="96" cy="36" rx="13" ry="8"  fill="#D6E9F5" opacity="0.7"/>
+              {/* Cloud 2 */}
+              <ellipse cx="218" cy="26" rx="20" ry="9"  fill="#D6E9F5" opacity="0.65"/>
+              <ellipse cx="207" cy="30" rx="13" ry="8"  fill="#D6E9F5" opacity="0.65"/>
+              <ellipse cx="231" cy="30" rx="12" ry="7"  fill="#D6E9F5" opacity="0.65"/>
+              {/* Ground line */}
+              <line x1="20" y1="128" x2="300" y2="128" stroke="#B0C8D8" strokeWidth="1.5" strokeLinecap="round"/>
 
-              <div className="space-y-2">
-                <Label>Booking Date & Time</Label>
-                <Input
-                  required
-                  type="datetime-local"
-                  value={newBooking.booking_date}
-                  onChange={e => setNewBooking({...newBooking, booking_date: e.target.value})}
-                  className="h-10 text-sm"
-                />
-              </div>
+              {/* ── Car body ── */}
+              {/* Wheel rear */}
+              <circle cx="100" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2"/>
+              <circle cx="100" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <circle cx="100" cy="128" r="3"  fill="#2C3E6B"/>
+              {/* Wheel front */}
+              <circle cx="230" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2"/>
+              <circle cx="230" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <circle cx="230" cy="128" r="3"  fill="#2C3E6B"/>
+              {/* Chassis / floor */}
+              <rect x="82" y="118" width="166" height="10" rx="3" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2"/>
+              {/* Car top / roof */}
+              <path d="M138 118 C138 118 148 78 180 75 C200 73 220 78 248 118Z" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2.2" strokeLinejoin="round"/>
+              {/* Windscreen */}
+              <path d="M188 118 C190 100 205 81 242 85 L248 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round"/>
+              {/* Rear window */}
+              <path d="M140 118 C142 104 150 83 180 78 L182 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round"/>
 
-              <div className="space-y-2">
-                <Label>Optional Notes</Label>
-                <Textarea
-                  placeholder="E.g., Customer prefers morning drive, requires route map, etc."
-                  value={newBooking.notes}
-                  onChange={e => setNewBooking({...newBooking, notes: e.target.value})}
-                  className="min-h-[80px] text-sm"
-                />
-              </div>
+              {/* ── Passenger (left, seat) ── */}
+              {/* Seat */}
+              <rect x="136" y="100" width="22" height="18" rx="3" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <rect x="134" y="96" width="5"  height="22" rx="2" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Body */}
+              <rect x="140" y="88" width="14" height="16" rx="6" fill="#4A9EBF" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Head */}
+              <circle cx="147" cy="82" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Seatbelt */}
+              <path d="M148 90 L144 108" stroke="#F5D642" strokeWidth="2" strokeLinecap="round"/>
+              {/* Arm */}
+              <path d="M154 95 L162 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
 
-              <DialogFooter className="pt-2">
-                <Button type="submit" className="w-full h-10" disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Booking...
-                    </>
-                  ) : (
-                    "Schedule Booking"
-                  )}
+              {/* ── Driver (right, steering) ── */}
+              {/* Body */}
+              <rect x="188" y="90" width="14" height="16" rx="6" fill="#4DBFB0" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Head */}
+              <circle cx="195" cy="84" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Steering wheel */}
+              <circle cx="218" cy="102" r="9" fill="none" stroke="#2C3E6B" strokeWidth="2"/>
+              <line x1="218" y1="93"  x2="218" y2="111" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <line x1="209" y1="102" x2="227" y2="102" stroke="#2C3E6B" strokeWidth="1.5"/>
+              {/* Arms to wheel */}
+              <path d="M202 97 L211 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M202 102 L209 105" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+
+          {/* CTA Button */}
+          <div className="sm:self-start">
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 px-3 text-xs font-medium gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  New Booking
                 </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-slate-50/50 border-slate-200 shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Total Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{bookings.length}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-50/30 border-amber-100 shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Scheduled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{bookings.filter(b => b.status === 'Scheduled').length}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-emerald-50/30 border-emerald-100 shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Completed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{bookings.filter(b => b.status === 'Completed').length}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-rose-50/30 border-rose-100 shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Cancelled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{bookings.filter(b => b.status === 'Cancelled').length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead>Date & Time</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookings.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                  No test drives booked yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              bookings.map((booking) => (
-                <TableRow key={booking.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                      <div>
-                        <span className="font-semibold text-sm block">{booking.lead_name}</span>
-                        <span className="text-xs text-muted-foreground">{booking.lead_phone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-xs font-medium">
-                      <Car className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{booking.vehicle_brand}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{new Date(booking.booking_date).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                    {booking.notes || <span className="italic">No notes</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={booking.status} 
-                      onValueChange={(val) => handleUpdateStatus(booking.id, val)}
-                    >
-                      <SelectTrigger className="w-[130px] h-8 text-xs border-0 bg-transparent hover:bg-muted p-0 shadow-none focus:ring-0">
-                        <SelectValue>
-                          {getStatusBadge(booking.status)}
-                        </SelectValue>
-                      </SelectTrigger>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[460px]">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-semibold">Book a Test Drive</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Select the customer and vehicle to schedule a test drive session.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateBooking} className="space-y-4 pt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Customer</Label>
+                    <Select required value={newBooking.lead_id} onValueChange={val => setNewBooking({...newBooking, lead_id: val})}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select customer…" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Scheduled">Scheduled</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                        {leads.map(l => (<SelectItem key={`lead-${l.id}`} value={l.id.toString()}>{l.name} ({l.phone})</SelectItem>))}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                      onClick={() => handleDeleteBooking(booking.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vehicle</Label>
+                    <Select required value={newBooking.vehicle_id} onValueChange={val => setNewBooking({...newBooking, vehicle_id: val})}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select vehicle…" /></SelectTrigger>
+                      <SelectContent>
+                        {vehicles.filter(v => v.stock > 0).map(v => (<SelectItem key={`veh-${v.id}`} value={v.id.toString()}>{v.brand} — Rs. {Number(v.price).toLocaleString()}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date & Time</Label>
+                    <Input required type="datetime-local" value={newBooking.booking_date} onChange={e => setNewBooking({...newBooking, booking_date: e.target.value})} className="h-9 text-sm"/>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notes <span className="normal-case font-normal">(optional)</span></Label>
+                    <Textarea placeholder="Any special requirements…" value={newBooking.notes} onChange={e => setNewBooking({...newBooking, notes: e.target.value})} className="min-h-[72px] text-sm resize-none"/>
+                  </div>
+                  <DialogFooter className="pt-1">
+                    <Button type="submit" className="w-full h-9 text-sm" disabled={saving}>
+                      {saving ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Scheduling…</> : "Schedule Booking"}
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
       </div>
+
+
+
+      {/* ── Stats Row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats.map(stat => (
+          <div key={stat.label} className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
+            <span className={`h-2 w-2 rounded-full shrink-0 ${stat.dot}`} />
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">{stat.label}</p>
+              <p className={`text-lg font-semibold leading-tight ${stat.color}`}>{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Bookings List ── */}
+      {bookings.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-card flex flex-col items-center justify-center py-16 gap-3">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">No bookings yet</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Click "New Booking" to schedule a test drive</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {bookings.map((booking) => {
+            const cfg = getStatusConfig(booking.status);
+            const StatusIcon = cfg.icon;
+            return (
+              <div
+                key={booking.id}
+                className="rounded-lg border bg-card px-4 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:bg-muted/20 transition-colors"
+              >
+                {/* Customer */}
+                <div className="flex items-center gap-2.5 min-w-0 sm:w-48 shrink-0">
+                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{booking.lead_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{booking.lead_phone}</p>
+                  </div>
+                </div>
+
+                {/* Divider (visible on desktop) */}
+                <div className="hidden sm:block h-8 w-px bg-border shrink-0" />
+
+                {/* Vehicle */}
+                <div className="flex items-center gap-1.5 sm:w-40 shrink-0">
+                  <Car className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-foreground truncate">{booking.vehicle_brand}</span>
+                </div>
+
+                {/* Date */}
+                <div className="flex items-center gap-1.5 text-muted-foreground sm:w-36 shrink-0">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span className="text-xs">
+                    {new Date(booking.booking_date).toLocaleString('en-GB', {
+                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+
+                {/* Notes */}
+                <div className="flex-1 min-w-0 hidden md:block">
+                  <p className="text-xs text-muted-foreground truncate">
+                    {booking.notes || <span className="italic opacity-60">No notes</span>}
+                  </p>
+                </div>
+
+                {/* Status select */}
+                <div className="shrink-0">
+                  <Select
+                    value={booking.status}
+                    onValueChange={(val) => handleUpdateStatus(booking.id, val)}
+                  >
+                    <SelectTrigger className={`h-7 px-2.5 text-xs font-medium border rounded-full w-auto gap-1.5 shadow-none focus:ring-0 ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                      <StatusIcon className="h-3 w-3 shrink-0" />
+                      <SelectValue>{booking.status}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Scheduled">Scheduled</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Delete */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 rounded-md self-start sm:self-auto"
+                  onClick={() => handleDeleteBooking(booking.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
