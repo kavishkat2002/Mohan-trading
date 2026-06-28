@@ -297,11 +297,11 @@ export default function Vehicles() {
           <p className="text-sm text-muted-foreground mt-1">Manage your car fleet, pricing, and stock levels.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {isElevated && vehicles.some(v => v.stock > 0) && (
             <Button
               variant="outline"
-              className="h-9 text-xs px-4 border-2 border-primary/30 text-primary hover:bg-primary/5 gap-2"
+              className="flex-1 sm:flex-none h-9 text-xs px-4 border-2 border-primary/30 text-primary hover:bg-primary/5 gap-2"
               onClick={generateCatalog}
             >
               <FileDown className="h-3.5 w-3.5" /> Export Catalog
@@ -322,7 +322,7 @@ export default function Vehicles() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
+                <Button className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/90 text-sm h-9 px-4 shadow-sm shadow-primary/20">
                   <Plus className="mr-2 h-3.5 w-3.5" /> Add Vehicle
                 </Button>
               </DialogTrigger>
@@ -436,87 +436,175 @@ export default function Vehicles() {
         {loading ? (
           <div className="flex justify-center p-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent bg-background/50">
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider w-[80px]">Image</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Brand / Model</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuel</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</TableHead>
-                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</TableHead>
-                {canUpdate && <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent bg-background/50">
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider w-[80px]">Image</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Brand / Model</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuel</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Price</TableHead>
+                    {canUpdate && <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 ? (
+                    <TableRow><TableCell colSpan={canUpdate ? 7 : 6} className="text-center py-16 text-sm text-muted-foreground">No vehicles found.</TableCell></TableRow>
+                  ) : (
+                    filtered.map(v => (
+                      <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
+                        <TableCell>
+                          {v.image_url ? (
+                            <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                          ) : (
+                            <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
+                              <CarPassengersIcon className="h-5 w-5" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground text-sm">{v.brand}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{v.category || "—"}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const fuel = v.fuel_type || 'Petrol';
+                            const styles: Record<string, string> = {
+                              Petrol: 'bg-orange-50 text-orange-700 border-orange-200',
+                              Diesel: 'bg-slate-100 text-slate-700 border-slate-300',
+                              Electric: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                              Hybrid: 'bg-blue-50 text-blue-700 border-blue-200',
+                            };
+                            return (
+                              <Badge variant="outline" className={`text-[11px] font-semibold rounded-md px-2 py-0.5 ${styles[fuel] || styles.Petrol}`}>
+                                {fuel}
+                              </Badge>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 border-border text-muted-foreground">
+                            {v.stock} in stock
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm font-medium text-foreground">Rs. {Number(v.price).toLocaleString()}</TableCell>
+                        {canUpdate && (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                {v.stock > 0 && (
+                                  <DropdownMenuItem onClick={() => { setSelectedVehicle(v); setNewSale(prev => ({ ...prev, selling_price: v.price.toString() })); setIsSelling(true); }} className="text-xs gap-2 text-emerald-600 font-bold focus:text-emerald-600">
+                                    <ShoppingCart className="h-3 w-3" /> Mark as Sold
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
+                                  <Pencil className="h-3 w-3" /> Edit Details
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
+                                  <Trash2 className="h-3 w-3" /> Delete Vehicle
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="md:hidden divide-y divide-border">
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-16 text-sm text-muted-foreground">No vehicles found.</TableCell></TableRow>
+                <div className="text-center py-16 text-sm text-muted-foreground">No vehicles found.</div>
               ) : (
                 filtered.map(v => (
-                  <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
-                    <TableCell>
+                  <div key={v.id} className="p-4 flex gap-4 hover:bg-primary/[0.02] transition-colors">
+                    {/* Left Side: Image */}
+                    <div className="w-20 h-16 shrink-0 relative">
                       {v.image_url ? (
-                        <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                        <img src={`http://localhost:5001${v.image_url}`} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
                       ) : (
-                        <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
-                          <CarPassengersIcon className="h-5 w-5" />
+                        <div className="w-full h-full bg-primary/5 rounded-lg border border-border flex items-center justify-center text-primary/30">
+                          <CarPassengersIcon className="h-6 w-6" />
                         </div>
                       )}
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground text-sm">{v.brand}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{v.category || "—"}</TableCell>
-                    <TableCell>
-                      {(() => {
-                        const fuel = v.fuel_type || 'Petrol';
-                        const styles: Record<string, string> = {
-                          Petrol: 'bg-orange-50 text-orange-700 border-orange-200',
-                          Diesel: 'bg-slate-100 text-slate-700 border-slate-300',
-                          Electric: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                          Hybrid: 'bg-blue-50 text-blue-700 border-blue-200',
-                        };
-                        return (
-                          <Badge variant="outline" className={`text-[11px] font-semibold rounded-md px-2 py-0.5 ${styles[fuel] || styles.Petrol}`}>
-                            {fuel}
+                    </div>
+
+                    {/* Right Side: Details */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start gap-1">
+                          <h4 className="font-semibold text-foreground text-[14.5px] leading-snug truncate pr-2">{v.brand}</h4>
+                          {canUpdate && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-1 -mr-1">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                {v.stock > 0 && (
+                                  <DropdownMenuItem onClick={() => { setSelectedVehicle(v); setNewSale(prev => ({ ...prev, selling_price: v.price.toString() })); setIsSelling(true); }} className="text-xs gap-2 text-emerald-600 font-bold focus:text-emerald-600">
+                                    <ShoppingCart className="h-3 w-3" /> Mark as Sold
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
+                                  <Pencil className="h-3 w-3" /> Edit Details
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
+                                  <Trash2 className="h-3 w-3" /> Delete Vehicle
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                        <p className="text-[13.5px] font-mono font-medium text-foreground mt-0.5">
+                          Rs. {Number(v.price).toLocaleString()}
+                        </p>
+                      </div>
+
+                      {/* Badges / Meta row */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {v.category && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 rounded border-none font-medium text-muted-foreground bg-slate-100">
+                            {v.category}
                           </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 border-border text-muted-foreground">
-                        {v.stock} in stock
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm font-medium text-foreground">Rs. {Number(v.price).toLocaleString()}</TableCell>
-                    {canUpdate && (
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            {v.stock > 0 && (
-                              <DropdownMenuItem onClick={() => { setSelectedVehicle(v); setNewSale(prev => ({ ...prev, selling_price: v.price.toString() })); setIsSelling(true); }} className="text-xs gap-2 text-emerald-600 font-bold focus:text-emerald-600">
-                                <ShoppingCart className="h-3 w-3" /> Mark as Sold
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => handleEditVehicle(v)} className="text-xs gap-2">
-                              <Pencil className="h-3 w-3" /> Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDeleteVehicle(v.id)} className="text-xs gap-2 text-rose-600 focus:text-rose-600">
-                              <Trash2 className="h-3 w-3" /> Delete Vehicle
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    )}
-                  </TableRow>
+                        )}
+                        {(() => {
+                          const fuel = v.fuel_type || 'Petrol';
+                          const styles: Record<string, string> = {
+                            Petrol: 'bg-orange-50 text-orange-700 border-orange-200',
+                            Diesel: 'bg-slate-100 text-slate-700 border-slate-300',
+                            Electric: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                            Hybrid: 'bg-blue-50 text-blue-700 border-blue-200',
+                          };
+                          return (
+                            <Badge variant="outline" className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${styles[fuel] || styles.Petrol}`}>
+                              {fuel}
+                            </Badge>
+                          );
+                        })()}
+                        <Badge variant="outline" className="text-[10px] font-medium rounded px-1.5 py-0.5 border-border text-muted-foreground">
+                          {v.stock} in stock
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
-            </TableBody>
-          </Table>
+            </div>
+          </>
         )}
       </div>
 
@@ -542,16 +630,6 @@ export default function Vehicles() {
             <div className="space-y-1.5">
               <Label className="text-xs uppercase font-bold text-muted-foreground">Final Selling Price (Rs.)</Label>
               <Input type="number" value={newSale.selling_price} onChange={e => setNewSale({ ...newSale, selling_price: e.target.value })} className="h-9" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase font-bold text-muted-foreground">Deposit to Account</Label>
-              <Select value={newSale.account} onValueChange={v => setNewSale({ ...newSale, account: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Bank">Bank Account</SelectItem>
-                  <SelectItem value="Cash">Cash Drawer</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsSelling(false)} className="h-9">Cancel</Button>

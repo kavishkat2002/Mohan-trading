@@ -31,12 +31,13 @@ router.post('/', async (req, res) => {
     if (body.entry && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.messages && body.entry[0].changes[0].value.messages[0]) {
       const phoneNumber = body.entry[0].changes[0].value.messages[0].from;
       const messageBody = body.entry[0].changes[0].value.messages[0].text?.body;
+      const profileName = body.entry[0].changes[0].value.contacts?.[0]?.profile?.name || 'WhatsApp User';
 
       if (messageBody) {
-        console.log(`Received message from ${phoneNumber}: ${messageBody}`);
+        console.log(`Received message from ${phoneNumber} (${profileName}): ${messageBody}`);
 
         // Process message through WhatsApp service for auto-reply and lead capture
-        await whatsappService.handleIncomingMessage(phoneNumber, messageBody);
+        await whatsappService.handleIncomingMessage(phoneNumber, messageBody, profileName);
       }
     }
     res.sendStatus(200);

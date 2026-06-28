@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, MessagesSquare, ListTodo,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Car, Menu, X, Shield, CalendarClock, Banknote, Bell, ClipboardList,
-  AlertTriangle, CreditCard, Phone, CheckCircle2, Clock
+  AlertTriangle, CreditCard, Phone, CheckCircle2, Clock, Briefcase, Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,8 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Vehicles", icon: CarPassengersIcon, path: "/dashboard/vehicles" },
   { label: "Leads", icon: Users, path: "/dashboard/leads" },
+  { label: "Customers", icon: Briefcase, path: "/dashboard/customers" },
+  { label: "Marketing", icon: Megaphone, path: "/dashboard/marketing" },
   { label: "Noticeboard", icon: Bell, path: "/dashboard/noticeboard" },
   { label: "Chat Box", icon: MessagesSquare, path: "/dashboard/chat" },
   { label: "Tasks", icon: ClipboardList, path: "/dashboard/tasks" },
@@ -386,7 +388,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="text-right hidden sm:block">
-              <p className="text-[13px] font-semibold text-foreground capitalize tracking-wide">{user?.role?.replace('_', ' ') || user?.role} Profile</p>
               <div className="flex flex-col items-end">
                 <p className="text-[11px] text-muted-foreground">{profileName || user?.email}</p>
                 {!isElevated && user?.role !== 'accountant' && commissionTotal > 0 && (
@@ -523,6 +524,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !localUserId) return;
@@ -615,44 +617,105 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto w-11/12 rounded-lg">
-        <DialogHeader>
-          <DialogTitle>Profile Settings</DialogTitle>
+      <DialogContent className="sm:max-w-[460px] max-h-[90vh] overflow-y-auto w-11/12 rounded-2xl border border-slate-150 p-6">
+        <DialogHeader className="pb-4 border-b border-slate-100">
+          <DialogTitle className="font-display text-base font-bold text-slate-800 tracking-tight">Profile Settings</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSave} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label>Email Address</Label>
-            <Input value={user?.email || ""} readOnly disabled className="bg-gray-50 text-gray-500" />
+        <form onSubmit={handleSave} className="space-y-5 pt-4">
+          
+          {/* Avatar Upload circle */}
+          <div className="flex flex-col items-center justify-center pb-2">
+            <div 
+              className="relative h-20 w-20 rounded-full border border-slate-200 overflow-hidden cursor-pointer group bg-slate-50 flex items-center justify-center shadow-inner transition-all duration-200 hover:border-slate-350"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-slate-400 bg-slate-50 text-xl font-bold uppercase">
+                  {name.split(" ").map(n => n[0]).slice(0,2).join("") || user?.email?.[0] || "U"}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <span className="text-[9px] text-white font-bold tracking-wide uppercase">Change</span>
+              </div>
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-2.5 uppercase">Profile Picture</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Your Full Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Type your full name" />
+
+          <div>
+            <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Email Address</label>
+            <Input 
+              value={user?.email || ""} 
+              readOnly 
+              disabled 
+              className="h-10 text-xs rounded-xl border-slate-100 bg-slate-50 text-slate-400 font-medium cursor-not-allowed" 
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Your Full Name</label>
+              <Input 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="Type your name" 
+                className="h-10 text-xs rounded-xl border-slate-200 focus:border-slate-350 focus:ring-0 focus:outline-none"
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Mobile Number</Label>
-              <Input value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} placeholder="e.g. +1 234 567 890" />
+            <div>
+              <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Mobile Number</label>
+              <Input 
+                value={mobileNumber} 
+                onChange={e => setMobileNumber(e.target.value)} 
+                placeholder="e.g. +1 234 567 890" 
+                className="h-10 text-xs rounded-xl border-slate-200 focus:border-slate-350 focus:ring-0 focus:outline-none"
+              />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label>Profile Picture (Upload from device)</Label>
-            <div className="flex gap-3 items-center">
-              {avatarUrl && <img src={avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full object-cover border shrink-0" />}
-              <Input type="file" accept="image/*" onChange={handleFileUpload} className="cursor-pointer file:cursor-pointer flex-1 text-[11px] h-9" />
+
+          <div className="border-t border-slate-100 pt-5 space-y-4">
+            <h4 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest">Security Credentials</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Current Password</label>
+                <Input 
+                  type="password" 
+                  value={oldPassword} 
+                  onChange={e => setOldPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="h-10 text-xs rounded-xl border-slate-200 focus:border-slate-350 focus:ring-0 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">New Password</label>
+                <Input 
+                  type="password" 
+                  value={newPassword} 
+                  onChange={e => setNewPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="h-10 text-xs rounded-xl border-slate-200 focus:border-slate-350 focus:ring-0 focus:outline-none"
+                />
+              </div>
             </div>
           </div>
-          <div className="pt-4 border-t border-border space-y-4">
-            <h4 className="text-sm font-semibold">Change Password</h4>
-            <div className="space-y-2">
-              <Label>Current Password</Label>
-              <Input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="Required only if changing password" />
-            </div>
-            <div className="space-y-2">
-              <Label>New Password</Label>
-              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" />
-            </div>
+
+          <div className="pt-2">
+            <Button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold gap-2"
+            >
+              {loading ? "Saving changes..." : "Save settings"}
+            </Button>
           </div>
-          <Button type="submit" disabled={loading} className="w-full mt-4">Save Profile</Button>
         </form>
       </DialogContent>
     </Dialog>
@@ -698,10 +761,10 @@ function SidebarContent({
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden"
             >
-              <p className="text-[17px] font-semibold text-white leading-tight break-all">
+              <p className="text-[15px] font-bold text-slate-150 text-slate-100 leading-tight break-all">
                 {business?.name || "Mohan Trading"}
               </p>
-              <p className="text-[10px] text-white/40 tracking-wide italic leading-tight mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+              <p className="text-[9.5px] text-slate-400 tracking-wide font-medium leading-tight mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                 {business?.slogan || "Delivering Dreams, Driving Trust"}
               </p>
             </motion.div>
@@ -725,12 +788,12 @@ function SidebarContent({
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 relative group",
                 active
-                  ? "bg-primary text-white"
-                  : "text-sidebar-accent-foreground hover:text-white hover:bg-sidebar-accent",
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
+                  : "text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50",
                 collapsed && "justify-center px-2"
               )}
             >
-              <item.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "opacity-60 group-hover:opacity-100")} />
+              <item.icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-sidebar-primary-foreground opacity-100" : "opacity-60 group-hover:opacity-100")} />
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span

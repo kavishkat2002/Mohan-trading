@@ -138,8 +138,12 @@ router.put('/:id/profile', async (req, res) => {
   }
 });
 
+const fs = require('fs');
+const avatarDir = path.join(__dirname, '..', 'uploads', 'avatars');
+if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/avatars/'),
+  destination: (req, file, cb) => cb(null, avatarDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });

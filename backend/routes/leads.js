@@ -44,16 +44,15 @@ router.post('/sync', async (req, res) => {
           [lead.name || 'WhatsApp User', normPhone, lead.interested_car, lead.budget, lead.status || 'New', 'whatsapp', lead.notes || null]
         );
       } else {
-        // Update existing lead if there's new car interest data
-        if (lead.interested_car || lead.budget) {
-          await db.query(
-            `UPDATE leads 
-             SET interested_car = COALESCE($1, interested_car), 
-                 budget = COALESCE($2, budget) 
-             WHERE phone = $3`,
-            [lead.interested_car, lead.budget, normPhone]
-          );
-        }
+        // Update existing lead
+        await db.query(
+          `UPDATE leads 
+           SET name = CASE WHEN name = 'WhatsApp User' AND $1 <> 'WhatsApp User' THEN $1 ELSE name END,
+               interested_car = COALESCE($2, interested_car), 
+               budget = COALESCE($3, budget) 
+           WHERE phone = $4`,
+          [lead.name, lead.interested_car, lead.budget, normPhone]
+        );
       }
     }
     res.json({ message: "Synced successfully" });

@@ -353,49 +353,14 @@ export default function Leads() {
       {/* Header section with view switcher */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 pb-6 border-b border-slate-100">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-slate-900 tracking-tight">Lead Registry</h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-xl leading-relaxed">
-            Manage incoming <span className="text-emerald-600 font-semibold">WhatsApp</span> & <span className="text-blue-600 font-semibold">Facebook</span> deals. Track metrics, assign members, and declare commissions.
+          <h1 className="font-display text-2xl font-bold text-slate-900 tracking-tight">Lead Registry</h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
+            Manage incoming customer deals, assign sales staff, and coordinate commissions.
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto shrink-0">
-          {/* Layout Toggle View Mode Switcher */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start sm:self-center shrink-0">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                viewMode === "table"
-                  ? "bg-white text-slate-800 shadow-sm border border-slate-200/40"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <List className="h-3.5 w-3.5" />
-              Table Workspace
-            </button>
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                viewMode === "kanban"
-                  ? "bg-white text-slate-800 shadow-sm border border-slate-200/40"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <Kanban className="h-3.5 w-3.5" />
-              Pipeline Board
-            </button>
-            <button
-              onClick={() => setViewMode("previous")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                viewMode === "previous"
-                  ? "bg-white text-slate-800 shadow-sm border border-slate-200/40"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              Previous Customers
-            </button>
-          </div>
+
 
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
@@ -526,7 +491,6 @@ export default function Leads() {
               : "bg-white text-slate-650 border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
           }`}
         >
-          <div className={`h-1.5 w-1.5 rounded-full ${sourceFilter === "all" ? "bg-white" : "bg-slate-400"}`} />
           All Leads
           <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-md font-bold ${sourceFilter === "all" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
             {leads.length}
@@ -546,7 +510,6 @@ export default function Leads() {
                   : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
               }`}
             >
-              <div className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-white" : style.dotColor}`} />
               {style.label}
               <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-md font-bold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-550"}`}>
                 {count}
@@ -616,7 +579,6 @@ export default function Leads() {
                                 </div>
                                 
                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold border border-slate-200 bg-slate-50 text-slate-650">
-                                  <div className={`h-1 w-1 rounded-full ${src.dotColor}`} />
                                   {src.label}
                                 </span>
                               </div>
@@ -714,7 +676,7 @@ export default function Leads() {
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                <Input 
                  placeholder="Search name, phone, or car..." 
-                 className="pl-9 h-9 text-xs bg-white border-slate-205 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary shadow-sm"
+                 className="pl-9 h-9 text-xs bg-white border-slate-200 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary shadow-sm"
                  value={search}
                  onChange={e => setSearch(e.target.value)}
                />
@@ -730,149 +692,260 @@ export default function Leads() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-100 bg-slate-50/50 hover:bg-slate-50/50">
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-6">Customer</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Source</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vehicle Interest</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Budget</TableHead>
-                  {viewMode === "previous" && <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sold Price</TableHead>}
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Agent</TableHead>
-                  <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right pr-6">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-100 bg-slate-50/50 hover:bg-slate-50/50">
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-6">Customer</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Source</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vehicle Interest</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Budget</TableHead>
+                      {viewMode === "previous" && <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sold Price</TableHead>}
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Agent</TableHead>
+                      <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right pr-6">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={viewMode === "previous" ? 9 : 8} className="text-center py-20 bg-white">
+                          <div className="flex flex-col items-center gap-2">
+                            <MessageCircle className="h-10 w-10 text-slate-200" />
+                            <p className="text-sm font-semibold text-slate-700">No matching leads found</p>
+                            <p className="text-xs text-slate-400">Connect your WhatsApp or Facebook feeds to auto-sync leads.</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredLeads.map(lead => {
+                        const src = getSourceInfo(lead.source);
+                        return (
+                          <TableRow 
+                            key={lead.id} 
+                            className="hover:bg-slate-50/60 transition-colors border-slate-100 cursor-pointer group"
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setIsDetailsOpen(true);
+                            }}
+                          >
+                            {/* Name with avatar */}
+                            <TableCell className="pl-6 py-4 font-semibold text-slate-800 text-xs">
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600 uppercase shrink-0">
+                                  {lead.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+                                </div>
+                                <div>
+                                  <span className="hover:text-primary transition-colors font-semibold block text-slate-800">
+                                    {lead.name}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-xs text-slate-500 font-mono font-semibold">{lead.phone}</TableCell>
+
+                            <TableCell>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-600">
+                                {src.label}
+                              </span>
+                            </TableCell>
+
+                            <TableCell className="text-xs font-semibold text-slate-700">
+                              {lead.interested_product || lead.interested_car || "—"}
+                            </TableCell>
+
+                            <TableCell>
+                              {viewMode !== "previous" && lead.budget ? (
+                                <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
+                                  {lead.budget}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </TableCell>
+
+                            {viewMode === "previous" && (
+                              <TableCell>
+                                {lead.budget ? (
+                                  <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                                    {lead.budget}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
+                                )}
+                              </TableCell>
+                            )}
+
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] font-bold rounded-full px-2.5 py-0.5 ${getStatusStyle(lead.status)}`}>
+                                {lead.status}
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell className="text-xs font-semibold text-slate-650">
+                              {lead.assigned_to ? (
+                                lead.assigned_to === user?.id ? (
+                                  <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[9px] border border-emerald-100">Me</span>
+                                ) : (
+                                  <span className="text-[11px] font-semibold text-slate-700">{lead.assigned_to_name || "Assigned"}</span>
+                                )
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">Unassigned</span>
+                              )}
+                              {lead.commission_amount > 0 && (isElevated || user?.role === 'accountant') && (
+                                <div className="text-[10px] text-emerald-600 font-black mt-0.5 font-mono">
+                                  LKR {Number(lead.commission_amount).toLocaleString()}
+                                </div>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-right pr-6" onClick={e => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreHorizontal className="h-4 w-4 text-slate-400 hover:text-slate-600" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {isElevated && (
+                                    <DropdownMenuItem onClick={() => setAssignLead({...lead})} className="text-xs gap-2 text-primary font-semibold">
+                                      <UserPlus className="h-3.5 w-3.5" /> Assign to Staff
+                                    </DropdownMenuItem>
+                                  )}
+                                  {isElevated && lead.status !== 'Closed' && (
+                                    <DropdownMenuItem onClick={() => setCommissionLead({...lead})} className="text-xs gap-2 text-amber-600 focus:text-amber-600 font-semibold">
+                                      <DollarSign className="h-3.5 w-3.5" /> Declare Commission
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => { setEditLead({...lead}); setIsEditOpen(true); }} className="text-xs gap-2 font-semibold">
+                                    <Pencil className="h-3.5 w-3.5" /> Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { setDeleteId(lead.id); setIsDeleteOpen(true); }} className="text-xs gap-2 text-red-600 focus:text-red-650 font-semibold">
+                                    <Trash2 className="h-3.5 w-3.5" /> Delete Lead
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Lead Cards View */}
+              <div className="md:hidden divide-y divide-slate-100 bg-white">
                 {filteredLeads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={viewMode === "previous" ? 9 : 8} className="text-center py-20 bg-white">
-                      <div className="flex flex-col items-center gap-2">
-                        <MessageCircle className="h-10 w-10 text-slate-200" />
-                        <p className="text-sm font-semibold text-slate-655 text-slate-700">No matching leads found</p>
-                        <p className="text-xs text-slate-400">Connect your WhatsApp or Facebook feeds to auto-sync leads.</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center py-16 bg-white">
+                    <div className="flex flex-col items-center gap-2">
+                      <MessageCircle className="h-10 w-10 text-slate-200" />
+                      <p className="text-sm font-semibold text-slate-700">No matching leads found</p>
+                      <p className="text-xs text-slate-400">Connect your WhatsApp or Facebook feeds to auto-sync leads.</p>
+                    </div>
+                  </div>
                 ) : (
                   filteredLeads.map(lead => {
                     const src = getSourceInfo(lead.source);
                     return (
-                      <TableRow 
+                      <div 
                         key={lead.id} 
-                        className="hover:bg-slate-50/60 transition-colors border-slate-100 cursor-pointer group"
+                        className="p-4 flex gap-3 hover:bg-slate-50/40 cursor-pointer active:bg-slate-100 transition-colors"
                         onClick={() => {
                           setSelectedLead(lead);
                           setIsDetailsOpen(true);
                         }}
                       >
-                        {/* Name with avatar */}
-                        <TableCell className="pl-6 py-4 font-semibold text-slate-800 text-xs">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-205 flex items-center justify-center text-[10px] font-black text-slate-600 uppercase shrink-0">
-                              {lead.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
-                            </div>
+                        {/* Avatar */}
+                        <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-205 flex items-center justify-center text-[11px] font-bold text-slate-600 uppercase shrink-0">
+                          {lead.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
                             <div>
-                              <span className="hover:text-primary transition-colors font-semibold block text-slate-800">
-                                {lead.name}
-                              </span>
+                              <h4 className="font-semibold text-slate-800 text-[14px] leading-tight truncate">{lead.name}</h4>
+                              <p className="text-[12px] text-slate-500 font-mono font-medium mt-0.5">{lead.phone}</p>
+                            </div>
+                            
+                            {/* Actions Dropdown */}
+                            <div onClick={e => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 -mt-1 -mr-1">
+                                    <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {isElevated && (
+                                    <DropdownMenuItem onClick={() => setAssignLead({...lead})} className="text-xs gap-2 text-primary font-semibold">
+                                      <UserPlus className="h-3.5 w-3.5" /> Assign to Staff
+                                    </DropdownMenuItem>
+                                  )}
+                                  {isElevated && lead.status !== 'Closed' && (
+                                    <DropdownMenuItem onClick={() => setCommissionLead({...lead})} className="text-xs gap-2 text-amber-600 focus:text-amber-600 font-semibold">
+                                      <DollarSign className="h-3.5 w-3.5" /> Declare Commission
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => { setEditLead({...lead}); setIsEditOpen(true); }} className="text-xs gap-2 font-semibold">
+                                    <Pencil className="h-3.5 w-3.5" /> Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { setDeleteId(lead.id); setIsDeleteOpen(true); }} className="text-xs gap-2 text-red-600 focus:text-red-650 font-semibold">
+                                    <Trash2 className="h-3.5 w-3.5" /> Delete Lead
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
-                        </TableCell>
 
-                        <TableCell className="text-xs text-slate-500 font-mono font-semibold">{lead.phone}</TableCell>
-
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-600">
-                            <div className={`h-1.5 w-1.5 rounded-full ${src.dotColor}`} />
-                            {src.label}
-                          </span>
-                        </TableCell>
-
-                        <TableCell className="text-xs font-semibold text-slate-700">
-                          {lead.interested_product || lead.interested_car || "—"}
-                        </TableCell>
-
-                        <TableCell>
-                          {viewMode !== "previous" && lead.budget ? (
-                            <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-105 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
-                              {lead.budget}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">—</span>
-                          )}
-                        </TableCell>
-
-                        {viewMode === "previous" && (
-                          <TableCell>
-                            {lead.budget ? (
-                              <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
-                                {lead.budget}
+                          {/* Metadata row */}
+                          <div className="flex items-center justify-between mt-2.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[12.5px] font-medium text-slate-700 truncate">
+                                🚗 {lead.interested_product || lead.interested_car || "No Interest"}
                               </span>
-                            ) : (
-                              <span className="text-slate-300">—</span>
-                            )}
-                          </TableCell>
-                        )}
-
-                        <TableCell>
-                          <Badge variant="outline" className={`text-[10px] font-bold rounded-full px-2.5 py-0.5 ${getStatusStyle(lead.status)}`}>
-                            {lead.status}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell className="text-xs font-semibold text-slate-650">
-                          {lead.assigned_to ? (
-                            lead.assigned_to === user?.id ? (
-                              <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[9px] border border-emerald-100">Me</span>
-                            ) : (
-                              <span className="text-[11px] font-semibold text-slate-700">{lead.assigned_to_name || "Assigned"}</span>
-                            )
-                          ) : (
-                            <span className="text-slate-400 italic text-[10px]">Unassigned</span>
-                          )}
-                          {lead.commission_amount > 0 && (isElevated || user?.role === 'accountant') && (
-                            <div className="text-[10px] text-emerald-600 font-black mt-0.5 font-mono">
-                              LKR {Number(lead.commission_amount).toLocaleString()}
+                              {lead.budget && (
+                                <span className="text-[10px] bg-slate-100 text-slate-650 border border-slate-200 px-1.5 py-0.5 rounded font-mono font-bold shrink-0 font-medium">
+                                  {lead.budget}
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </TableCell>
+                            <Badge variant="outline" className={`text-[9px] font-bold rounded-full px-2 py-0.5 shrink-0 ${getStatusStyle(lead.status)}`}>
+                              {lead.status}
+                            </Badge>
+                          </div>
 
-                        <TableCell className="text-right pr-6" onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="h-4 w-4 text-slate-400 hover:text-slate-600" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              {isElevated && (
-                                <DropdownMenuItem onClick={() => setAssignLead({...lead})} className="text-xs gap-2 text-primary font-semibold">
-                                  <UserPlus className="h-3.5 w-3.5" /> Assign to Staff
-                                </DropdownMenuItem>
+                          {/* Source + Agent */}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50 text-[10px] text-slate-400">
+                            <span className="inline-flex items-center gap-1">
+                              {src.label}
+                            </span>
+                            <span>
+                              {lead.assigned_to ? (
+                                lead.assigned_to === user?.id ? (
+                                  <span className="text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Assigned: Me</span>
+                                ) : (
+                                  <span className="text-slate-500 font-medium">Assigned: {lead.assigned_to_name || "Agent"}</span>
+                                )
+                              ) : (
+                                <span className="italic text-slate-400">Unassigned</span>
                               )}
-                              {isElevated && lead.status !== 'Closed' && (
-                                <DropdownMenuItem onClick={() => setCommissionLead({...lead})} className="text-xs gap-2 text-amber-600 focus:text-amber-600 font-semibold">
-                                  <DollarSign className="h-3.5 w-3.5" /> Declare Commission
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => { setEditLead({...lead}); setIsEditOpen(true); }} className="text-xs gap-2 font-semibold">
-                                <Pencil className="h-3.5 w-3.5" /> Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setDeleteId(lead.id); setIsDeleteOpen(true); }} className="text-xs gap-2 text-red-600 focus:text-red-600 font-semibold">
-                                <Trash2 className="h-3.5 w-3.5" /> Delete Lead
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })
                 )}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -884,7 +957,7 @@ export default function Leads() {
             <div className="space-y-6 pt-6">
               {/* Profile Header */}
               <div className="flex items-center gap-4 pb-5 border-b border-slate-100">
-                <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-primary to-indigo-600 flex items-center justify-center text-white text-xl font-black shrink-0">
+                <div className="h-16 w-16 rounded-full bg-slate-900 flex items-center justify-center text-white text-xl font-black shrink-0">
                   {selectedLead.name.split(" ").map((n: string) => n[0]).slice(0,2).join("").toUpperCase()}
                 </div>
                 <div>
@@ -933,7 +1006,6 @@ export default function Leads() {
                   <div>
                     <p className="text-slate-400 font-bold">Lead Source Channel</p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <div className={`h-1.5 w-1.5 rounded-full ${getSourceInfo(selectedLead.source).dotColor}`} />
                       <span className="font-bold text-slate-700 capitalize">{getSourceInfo(selectedLead.source).label}</span>
                     </div>
                   </div>

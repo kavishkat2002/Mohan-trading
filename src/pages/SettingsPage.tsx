@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -524,79 +524,112 @@ export default function SettingsPage() {
     );
   }
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your business configuration</p>
+        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h1>
+        <p className="text-[11px] text-slate-400 font-medium mt-0.5">Manage your business configuration</p>
       </div>
 
       <Tabs defaultValue="business">
-        <TabsList className="bg-background border border-border p-0.5 rounded-lg h-auto">
-          <TabsTrigger value="business" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Building2 className="h-3.5 w-3.5" />Business</TabsTrigger>
-          <TabsTrigger value="whatsapp" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><MessageSquare className="h-3.5 w-3.5" />WhatsApp</TabsTrigger>
-          <TabsTrigger value="ai-agent" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Brain className="h-3.5 w-3.5" />AI Agent</TabsTrigger>
-          <TabsTrigger value="voice" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><PhoneCall className="h-3.5 w-3.5" />Voice AI</TabsTrigger>
-          <TabsTrigger value="plans" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><CreditCard className="h-3.5 w-3.5" />Plans</TabsTrigger>
-          <TabsTrigger value="team" className="gap-2 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-3 py-1.5"><Users className="h-3.5 w-3.5" />Team</TabsTrigger>
+        <TabsList className="bg-slate-50 border border-slate-100 p-1 rounded-xl h-auto gap-0.5 flex-wrap">
+          <TabsTrigger value="business" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><Building2 className="h-3 w-3" />Business</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><MessageSquare className="h-3 w-3" />WhatsApp</TabsTrigger>
+          <TabsTrigger value="ai-agent" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><Brain className="h-3 w-3" />AI Agent</TabsTrigger>
+          <TabsTrigger value="voice" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><PhoneCall className="h-3 w-3" />Voice AI</TabsTrigger>
+          <TabsTrigger value="plans" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><CreditCard className="h-3 w-3" />Plans</TabsTrigger>
+          <TabsTrigger value="team" className="gap-1.5 text-[11px] font-semibold data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-none rounded-lg px-3 py-1.5 text-slate-500 transition-all"><Users className="h-3 w-3" />Team</TabsTrigger>
         </TabsList>
 
         <TabsContent value="business" className="mt-6">
-          <SectionCard title="Business Profile" desc="Update your business information">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Name</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} className="h-9 text-sm" />
+          <SectionCard title="Business Profile" desc="Update your business identity and contact details">
+            {/* Logo Upload Circle */}
+            <div className="flex flex-col items-center justify-center pb-3 pt-1">
+              <div
+                className="relative h-20 w-20 rounded-2xl border border-slate-200 overflow-hidden cursor-pointer group bg-slate-50 flex items-center justify-center shadow-inner transition-all duration-200 hover:border-slate-300"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {logoUrl ? (
+                  <img src={`http://localhost:5001${logoUrl.replace('http://localhost:5001', '')}`} alt="Logo" className="h-full w-full object-contain p-1.5" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center">
+                    <Building2 className="h-7 w-7 text-slate-300" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                  <span className="text-[9px] text-white font-bold tracking-wide uppercase">Upload</span>
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={logoInputRef}
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+              <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-2.5 uppercase">Business Logo</p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Slogan</Label>
-              <Input value={slogan} onChange={e => setSlogan(e.target.value)} placeholder="e.g. Delivering Dreams..." className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Logo</Label>
-              <div className="flex gap-4 items-center">
-                {logoUrl && <img src={`http://localhost:5001${logoUrl.replace('http://localhost:5001', '')}`} alt="Logo" className="w-12 h-12 object-contain rounded-md border" />}
-                <Input type="file" accept="image/*" onChange={handleLogoUpload} className="h-9 text-sm w-full" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Business Name</label>
+                <Input value={name} onChange={e => setName(e.target.value)} className="h-10 text-xs rounded-xl border-slate-200" />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Slogan</label>
+                <Input value={slogan} onChange={e => setSlogan(e.target.value)} placeholder="e.g. Delivering Dreams..." className="h-10 text-xs rounded-xl border-slate-200" />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Business Type</Label>
-              <Select onValueChange={setBusinessType} value={businessType || (business as any)?.business_type || ""}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select business type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="retail">Retail Store</SelectItem>
-                  <SelectItem value="restaurant">Restaurant / Cafe</SelectItem>
-                  <SelectItem value="service">Service Provider</SelectItem>
-                  <SelectItem value="ecommerce">E-commerce</SelectItem>
-                  <SelectItem value="wholesale">Wholesale</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Business Type</label>
+                <Select onValueChange={setBusinessType} value={businessType || (business as any)?.business_type || ""}>
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                    <SelectValue placeholder="Select business type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="retail">Retail Store</SelectItem>
+                    <SelectItem value="restaurant">Restaurant / Cafe</SelectItem>
+                    <SelectItem value="service">Service Provider</SelectItem>
+                    <SelectItem value="ecommerce">E-commerce</SelectItem>
+                    <SelectItem value="wholesale">Wholesale</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">Contact Email</label>
+                <Input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-10 text-xs rounded-xl border-slate-200" />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                Description <span className="normal-case text-muted-foreground/60">(Used by AI to answer customers)</span>
-              </Label>
+
+            <div>
+              <label className="text-[10px] text-slate-400 font-bold block mb-1 uppercase tracking-wider">
+                Description <span className="normal-case text-slate-300 font-medium">(Used by AI to answer customers)</span>
+              </label>
               <Textarea
                 placeholder="e.g. We sell premium used cars with warranty..."
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="min-h-[80px] text-sm"
+                className="min-h-[80px] text-xs rounded-xl border-slate-200 resize-none"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Contact Email</Label>
-              <Input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className="h-9 text-sm" />
+
+            <div className="flex items-center gap-2 pt-1">
+              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Your Role</label>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md">{userRole || "—"}</span>
             </div>
-            <div className="flex items-center gap-2 pt-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Your Role:</Label>
-              <Badge variant="outline" className="text-[11px] rounded-md px-2 py-0.5 font-medium bg-primary/5 text-primary border-primary/20">{userRole || "—"}</Badge>
-            </div>
+
             {['owner', 'admin'].includes(user?.role) && (
-              <Button onClick={() => updateBusiness.mutate(undefined)} disabled={updateBusiness.isPending} className="bg-primary text-white hover:bg-primary/90 text-sm h-9 mt-2 shadow-sm shadow-primary/20">
-                Save Changes
-              </Button>
+              <div className="pt-2">
+                <Button onClick={() => updateBusiness.mutate(undefined)} disabled={updateBusiness.isPending} className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold">
+                  {updateBusiness.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             )}
           </SectionCard>
         </TabsContent>
@@ -613,9 +646,9 @@ export default function SettingsPage() {
                   <p className="text-[11px] text-muted-foreground">Active and linked to system</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[11px] text-emerald-700 font-medium">Online</span>
+              <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full">
+                <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                <span className="text-[11px] text-slate-600 font-medium">Online</span>
               </div>
             </div>
 
@@ -665,9 +698,9 @@ export default function SettingsPage() {
                   { label: "Customer CRM Sync", active: true },
                   { label: "Voice-to-Cart (Beta)", active: false },
                 ].map(item => (
-                  <div key={item.label} className="flex items-center gap-2 p-2.5 border border-border rounded-lg text-sm bg-background/50">
-                    <div className={`h-1.5 w-1.5 rounded-full ${item.active ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-                    <span className="text-xs text-foreground/80">{item.label}</span>
+                  <div key={item.label} className="flex items-center gap-2 p-2.5 border border-slate-100 rounded-lg text-sm bg-slate-50/50">
+                    <div className={`h-1.5 w-1.5 rounded-full ${item.active ? 'bg-slate-500' : 'bg-slate-300'}`} />
+                    <span className="text-xs text-slate-600">{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -681,10 +714,10 @@ export default function SettingsPage() {
           <div className="space-y-6">
             {/* Automatic Setup Option */}
             <SectionCard title="WhatsApp Connection" desc="Connect your profile automatically using Facebook Login">
-              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3.5">
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/40 space-y-3.5">
                 <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-blue-900 uppercase tracking-wide">Automatic & Recommended</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Automatic & Recommended</span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Share your WhatsApp Business account with <strong>Mohan Traders CRM</strong> instantly. Connect your existing number, contacts, and WhatsApp profiles.
@@ -840,14 +873,14 @@ export default function SettingsPage() {
                   <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500 border border-slate-100/50">
                     <MessageSquare className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">WhatsApp Trigger</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">On Incoming Message</p>
                   </div>
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
                 <ConnectorLine active={activeNode === "trigger" || activeNode === "agent"} />
@@ -861,18 +894,18 @@ export default function SettingsPage() {
                       : "border-zinc-200 hover:border-indigo-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-indigo-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-slate-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600 border border-indigo-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-600 border border-slate-100/50">
                     <Brain className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">AI Sales Agent</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Name: {aiBotName}</p>
                   </div>
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white shadow-sm" />
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
                 <ConnectorLine active={activeNode === "agent" || activeNode === "rules"} />
@@ -886,18 +919,18 @@ export default function SettingsPage() {
                       : "border-zinc-200 hover:border-blue-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-slate-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-50 text-blue-600 border border-blue-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-600 border border-slate-100/50">
                     <Users className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">Lead Capture Rules</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Name: {aiAskNameRule}</p>
                   </div>
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
                 <ConnectorLine active={activeNode === "rules" || activeNode === "objections"} />
@@ -911,18 +944,18 @@ export default function SettingsPage() {
                       : "border-zinc-200 hover:border-rose-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-rose-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-slate-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-600 border border-rose-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500 border border-slate-100/50">
                     <AlertTriangle className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">Objections Handler</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">{aiObjections.length} rules active</p>
                   </div>
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white shadow-sm" />
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
                 <ConnectorLine active={activeNode === "objections" || activeNode === "knowledge"} />
@@ -936,18 +969,18 @@ export default function SettingsPage() {
                       : "border-zinc-200 hover:border-amber-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-slate-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-600 border border-amber-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500 border border-slate-100/50">
                     <Building2 className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">Inventory & FAQ</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">{aiFaqData.length} FAQs | {aiVehicles.length} cars</p>
                   </div>
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
-                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
+                  <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
                 <ConnectorLine active={activeNode === "knowledge" || activeNode === "respond"} />
@@ -961,17 +994,17 @@ export default function SettingsPage() {
                       : "border-zinc-200 hover:border-cyan-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-cyan-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <div className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 bg-slate-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <div className="h-1.5 w-1.5 bg-white rounded-full" />
                   </div>
-                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-cyan-50 text-cyan-600 border border-cyan-100/50">
+                  <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500 border border-slate-100/50">
                     <Send className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold text-zinc-800 leading-tight">Send Response</p>
                     <p className="text-[9px] text-zinc-400 mt-0.5 truncate leading-none">Smart Reply JSON</p>
                   </div>
-                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white shadow-sm" />
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-slate-400 border-2 border-white shadow-sm" />
                 </div>
 
               </div>
@@ -987,9 +1020,9 @@ export default function SettingsPage() {
                 {activeNode === "trigger" && (
                   <SectionCard title="WhatsApp Trigger Settings" desc="Review configuration parameters for the WhatsApp Incoming Message trigger node">
                     <div className="space-y-4">
-                      <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
-                        <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs uppercase tracking-wide">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-slate-700 font-semibold text-xs uppercase tracking-wide">
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                           System Webhook Active
                         </div>
                         <p className="text-xs text-emerald-700 leading-normal font-sans">
@@ -1652,10 +1685,10 @@ export default function SettingsPage() {
 
 function SectionCard({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="border border-border rounded-lg bg-white">
-      <div className="px-6 py-4 border-b border-border">
-        <h3 className="font-display text-base font-semibold text-foreground">{title}</h3>
-        {desc && <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>}
+    <div className="border border-slate-100 rounded-2xl bg-white">
+      <div className="px-6 py-4 border-b border-slate-100">
+        <h3 className="text-[13px] font-bold text-slate-800 tracking-tight">{title}</h3>
+        {desc && <p className="text-[10px] text-slate-400 font-medium mt-0.5">{desc}</p>}
       </div>
       <div className="p-6 space-y-4">
         {children}

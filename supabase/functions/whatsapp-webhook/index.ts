@@ -96,6 +96,11 @@ serve(async (req: Request) => {
       content: text
     });
 
+    // ── Unconditional Test Drive Keyword Detection (Deno) ──
+    if (detectTestDriveKeyword(text)) {
+      await autoCreateTestDriveBooking(supabase, lead);
+    }
+
     // 3. Fetch Settings from Supabase 'leads' where phone = 'SYSTEM_SETTINGS'
     const { data: settingsLead } = await supabase
       .from('leads')
@@ -178,6 +183,13 @@ serve(async (req: Request) => {
 
       const chatHistory = (historyData || []).reverse();
 
+      // Fetch existing test drive bookings for conversational memory
+      const { data: bookingsData } = await supabase
+        .from('test_drives')
+        .select('*, vehicles(brand)')
+        .eq('lead_id', lead.id)
+        .order('booking_date', { ascending: false });
+
       // Call OpenRouter / OpenAI
       const aiResult = await generateSmartReply(text, {
         ai_system_prompt: settings.ai_system_prompt,
@@ -196,7 +208,13 @@ serve(async (req: Request) => {
         ai_unanswered_limit: (settings as any).ai_unanswered_limit,
         ai_objections: (settings as any).ai_objections,
         supabaseClient: supabase,
-        vehicles: vehicles || []
+        vehicles: vehicles || [],
+        // Lead memory context
+        leadName: lead.name,
+        leadPhone: lead.phone,
+        leadInterestedCar: lead.interested_car,
+        leadBudget: lead.budget,
+        leadBookings: bookingsData || []
       });
 
       outMsg = aiResult.reply;
@@ -230,22 +248,44 @@ serve(async (req: Request) => {
         
         if (info.test_drive_booking && info.test_drive_booking.booked && info.test_drive_booking.vehicle_id && info.test_drive_booking.date_time) {
           try {
-            const { error: tdErr } = await supabase.from('test_drives').insert({
-              lead_id: lead.id,
-              vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
-              booking_date: info.test_drive_booking.date_time,
-              notes: "Booked via WhatsApp AI Agent",
-              status: "Scheduled"
-            });
-            if (tdErr) {
-              console.error(`[WEBHOOK] Failed to book test drive: ${tdErr.message}`);
+            // Check for existing whatsapp_auto entry to upgrade instead of duplicating
+            const { data: autoEntries } = await supabase
+              .from('test_drives')
+              .select('id')
+              .eq('lead_id', lead.id)
+              .eq('source', 'whatsapp_auto')
+              .limit(1);
+
+            if (autoEntries && autoEntries.length > 0) {
+              const { error: updErr } = await supabase
+                .from('test_drives')
+                .update({
+                  vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
+                  booking_date: info.test_drive_booking.date_time,
+                  notes: "Confirmed via WhatsApp AI Agent",
+                  source: "whatsapp_confirmed",
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', autoEntries[0].id);
+              if (updErr) console.error(`[WEBHOOK] Failed to upgrade auto test drive: ${updErr.message}`);
+              else console.log(`[WEBHOOK] Test drive CONFIRMED and upgraded for lead ${lead.id}`);
             } else {
-              console.log(`[WEBHOOK] Test drive booked for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
+              const { error: tdErr } = await supabase.from('test_drives').insert({
+                lead_id: lead.id,
+                vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
+                booking_date: info.test_drive_booking.date_time,
+                notes: "Confirmed via WhatsApp AI Agent",
+                status: "Scheduled",
+                source: "whatsapp_confirmed"
+              });
+              if (tdErr) console.error(`[WEBHOOK] Failed to book test drive: ${tdErr.message}`);
+              else console.log(`[WEBHOOK] Test drive booked for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
             }
           } catch (e: any) {
              console.error(`[WEBHOOK] Error inserting test drive: ${e.message}`);
           }
         }
+
       } else {
         await supabase.from('leads').update({
           notes: `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: {} })}`
@@ -405,8 +445,31 @@ ${langInstructions}`;
       console.error("Failed to query vehicles in Deno:", dbErr.message || dbErr);
     }
 
-    // Anti-hallucination constraint
-    systemContent += `\n\nCRITICAL INSTRUCTION ON VEHICLE MATCHING: Never hallucinate or invent vehicle brands, models, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle correctly. If the requested vehicle IS in stock, enthusiastically confirm availability IN YOUR VERY FIRST REPLY (e.g., "Great news! We have the Toyota Land Cruiser LC300 in stock!"). NEVER say "Let me check the inventory" or "I will check for you" - you already have the inventory data, so answer immediately. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative. Do not make up names.
+    // Include current customer's profile and existing bookings to give the AI memory
+    let customerContext = `\n\n[Current Customer Context / Profile]:
+- Lead Name: "${context.leadName || 'WhatsApp User'}"
+- Lead Phone: "${context.leadPhone || 'Unknown'}"
+- Interested Car: "${context.leadInterestedCar || 'Not specified'}"
+- Budget: "${context.leadBudget || 'Not specified'}"`;
+
+    if (context.leadBookings && context.leadBookings.length > 0) {
+      customerContext += `\n- Existing Test Drive Bookings (Memory):`;
+      context.leadBookings.forEach((b: any, i: number) => {
+        // Handle format of vehicles relationship brand in PostgREST vs pg rows
+        const vehicleBrand = b.vehicles?.brand || b.vehicle_brand || 'Unknown';
+        const dStr = new Date(b.booking_date).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        customerContext += `\n  ${i + 1}. [ID: ${b.id}] Vehicle: "${vehicleBrand}" | Scheduled Date/Time: "${dStr}" | Status: "${b.status}" | Notes: "${b.notes || 'None'}"`;
+      });
+      customerContext += `\n\nCRITICAL CONTEXTUAL RULE: If the customer references their existing booking (e.g. saying they already booked, or asking about their appointment), acknowledge it! Do NOT ask them for booking details again or attempt to create a new booking unless they specifically want to book another session or reschedule.`;
+    } else {
+      customerContext += `\n- Existing Test Drive Bookings: None`;
+    }
+    
+    systemContent += customerContext;
+
+    // Strict inventory booking and pricing rules
+    systemContent += `\n\nCRITICAL INVENTORY & BOOKING RULE: You can ONLY book a test drive and return \`test_drive_booking.booked: true\` if the vehicle the customer requested is explicitly present in the 'Available Showroom Inventory Stock' list above. If the customer requests a vehicle that is not in the list (e.g. Honda Vezel), do NOT set \`booked: true\` and do NOT extract a vehicle ID. Instead, explain politely that we currently do not have that vehicle in stock, suggest one of our available options, and keep \`test_drive_booking.booked: false\`.
+CRITICAL INSTRUCTION ON VEHICLE MATCHING & PRICING: Never hallucinate or invent vehicle brands, models, prices, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle and check the price correctly. If the requested vehicle IS in stock, enthusiastically confirm availability IN YOUR VERY FIRST REPLY. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative. Do not make up names.
 CRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images, YOU MUST IMMEDIATELY provide them in the \`send_image_urls\` array. NEVER say "Please bear with me for a moment" or "I'll share them with you". You MUST populate the \`send_image_urls\` array in the EXACT same response!
 Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep the \`send_image_urls\` array completely empty []. Never send or repeat photos unless they are explicitly asked for in the current user message.\n`;
 
@@ -629,3 +692,85 @@ async function sendWhatsApp(to: string, text: string, imageUrls: string[] = [], 
     }
   }
 }
+
+// ─── Test Drive Keyword Detection & Auto-Creation (Deno) ───────────────────
+const TEST_DRIVE_KEYWORDS = [
+  'test drive', 'test ride', 'test run', 'testdrive', 'testride',
+  'test-drive', 'test-ride', 'trial drive', 'demo drive', 'demo ride',
+  'try the car', 'try a car', 'drive the car', 'book a test',
+  'schedule a test', 'want to test', 'like to test'
+];
+
+function detectTestDriveKeyword(text: string): boolean {
+  const lower = text.toLowerCase();
+  return TEST_DRIVE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+async function autoCreateTestDriveBooking(supabase: any, lead: any) {
+  try {
+    // Check if we already created one recently (within last 2 hours) to avoid duplicates
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const { data: existing } = await supabase
+      .from('test_drives')
+      .select('id')
+      .eq('lead_id', lead.id)
+      .eq('source', 'whatsapp_auto')
+      .gt('created_at', twoHoursAgo);
+
+    if (existing && existing.length > 0) {
+      console.log(`[TestDrive Auto Deno] Skipping duplicate - recent entry exists`);
+      return;
+    }
+
+    // Try to find a matching vehicle
+    let vehicleId = null;
+    if (lead.interested_car) {
+      const { data: matched } = await supabase
+        .from('vehicles')
+        .select('id')
+        .ilike('brand', `%${lead.interested_car}%`)
+        .gt('stock', 0)
+        .limit(1);
+      if (matched && matched.length > 0) vehicleId = matched[0].id;
+    }
+
+    // Fallback: any in-stock vehicle
+    if (!vehicleId) {
+      const { data: anyVehicles } = await supabase
+        .from('vehicles')
+        .select('id')
+        .gt('stock', 0)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (anyVehicles && anyVehicles.length > 0) vehicleId = anyVehicles[0].id;
+    }
+
+    if (!vehicleId) {
+      console.log(`[TestDrive Auto Deno] No in-stock vehicle found, skipping auto-booking`);
+      return;
+    }
+
+    // Book 1 day from now as a placeholder
+    const tentativeDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    const { error: insertErr } = await supabase
+      .from('test_drives')
+      .insert({
+        lead_id: lead.id,
+        vehicle_id: vehicleId,
+        booking_date: tentativeDate,
+        notes: 'Auto-detected via WhatsApp conversation — please confirm date & time with customer.',
+        status: 'Scheduled',
+        source: 'whatsapp_auto'
+      });
+
+    if (insertErr) {
+      console.error(`[TestDrive Auto Deno] Failed to insert: ${insertErr.message}`);
+    } else {
+      console.log(`[TestDrive Auto Deno] Created pending test drive for lead ${lead.id} on vehicle ${vehicleId}`);
+    }
+  } catch (err: any) {
+    console.error(`[TestDrive Auto Deno] Error: ${err.message}`);
+  }
+}
+

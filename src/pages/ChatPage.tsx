@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Send, User, Car, RefreshCw, Trash2, Search, Phone, MoreVertical, Check, CheckCheck } from "lucide-react";
+import { Loader2, Send, User, Car, RefreshCw, Trash2, Search, Phone, MoreVertical, Check, CheckCheck, MessagesSquare, ArrowLeft } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -284,16 +284,18 @@ export default function ChatPage() {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
   };
 
+  const activeLead = leads.find((l) => l.id === selectedLead?.id) || selectedLead;
+
   return (
     <div className="flex h-[calc(100vh-112px)] rounded-xl overflow-hidden border border-[#d1d7db] shadow-sm bg-white">
 
       {/* ── LEFT SIDEBAR ──────────────────────────────── */}
-      <div className="w-[340px] shrink-0 flex flex-col border-r border-[#d1d7db] bg-white">
+      <div className={`w-full md:w-[340px] md:shrink-0 flex flex-col border-r border-[#d1d7db] bg-white ${selectedLead ? "hidden md:flex" : "flex"}`}>
 
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#f0f2f5]">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#f0f2f5] border-b border-[#d1d7db] shrink-0 h-[59px]">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-[#00a884] flex items-center justify-center text-white text-sm font-semibold shrink-0">
+            <div className="h-9 w-9 rounded-full bg-[#00a884] flex items-center justify-center text-white text-xs font-semibold shrink-0">
               {getInitials(user?.email || "MT")}
             </div>
             <span className="font-semibold text-[#111b21] text-sm">Mohan Traders</span>
@@ -314,14 +316,14 @@ export default function ChatPage() {
 
         {/* Search */}
         <div className="px-3 py-2 bg-white">
-          <div className="flex items-center gap-2 bg-[#f0f2f5] rounded-lg px-3 h-9">
+          <div className="flex items-center gap-2 bg-[#f0f2f5] rounded-full px-4 h-9">
             <Search className="h-4 w-4 text-[#54656f] shrink-0" />
             <input
               type="text"
               placeholder="Search or start new chat"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-[#111b21] placeholder:text-[#8696a0] outline-none"
+              className="flex-1 bg-transparent text-xs text-[#111b21] placeholder:text-[#8696a0] outline-none"
             />
           </div>
         </div>
@@ -385,31 +387,35 @@ export default function ChatPage() {
       </div>
 
       {/* ── MAIN CHAT AREA ────────────────────────────── */}
-      <div className="flex-1 flex flex-col" style={{ background: "#efeae2" }}>
+      <div className={`flex-1 flex flex-col ${selectedLead ? "flex" : "hidden md:flex"}`} style={{ background: "#efeae2" }}>
         {selectedLead ? (
           <>
             {/* Chat Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f0f2f5] border-b border-[#d1d7db]">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f0f2f5] border-b border-[#d1d7db] shrink-0 h-[59px]">
               <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full ${getAvatarColor(selectedLead.name || "?")} flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
-                  {getInitials(selectedLead.name || "?")}
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedLead(null)}
+                  className="md:hidden h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 text-[#54656f] mr-1 shrink-0"
+                  title="Back to list"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className={`h-10 w-10 rounded-full ${getAvatarColor(activeLead.name || "?")} flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
+                  {getInitials(activeLead.name || "?")}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#111b21] text-[14.5px] leading-tight">{selectedLead.name}</h3>
+                  <h3 className="font-semibold text-[#111b21] text-[14.5px] leading-tight">{activeLead.name}</h3>
                   <p className="text-[12px] text-[#667781]">
-                    {isLive ? (
-                      <span className="text-[#00a884]">● online</span>
-                    ) : (
-                      <span className="font-mono">+{selectedLead.phone}</span>
-                    )}
+                    <span className="font-mono">+{activeLead.phone}</span>
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1">
-                {selectedLead.budget && (
+                {activeLead.budget && (
                   <span className="text-[11px] bg-white border border-[#d1d7db] text-[#3b4a54] px-2 py-0.5 rounded-full font-medium mr-1">
-                    💰 {selectedLead.budget}
+                    💰 {activeLead.budget}
                   </span>
                 )}
                 <button className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#d1d7db]/60 transition-colors">
@@ -432,7 +438,7 @@ export default function ChatPage() {
 
             {/* Messages */}
             <div
-              className="flex-1 overflow-y-auto px-8 py-4 space-y-1"
+              className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-4 space-y-1"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5ddd5'/%3E%3C/svg%3E")`,
               }}
@@ -467,7 +473,7 @@ export default function ChatPage() {
                       )}
 
                       <div className={`flex ${isOutgoing ? "justify-end" : "justify-start"} mb-0.5`}>
-                        <div className={`group relative max-w-[65%]`}>
+                        <div className="group relative max-w-[85%] md:max-w-[65%]">
                           {/* Bubble */}
                           <div
                             className={`relative px-3 pt-1.5 pb-1 rounded-lg shadow-sm ${
@@ -477,10 +483,10 @@ export default function ChatPage() {
                             }`}
                           >
                             {/* Sender label for bot */}
-                            {msg.sender === "bot" && (
+                            {isOutgoing && msg.sender === "bot" && (
                               <p className="text-[10px] font-semibold text-[#00a884] mb-0.5">Auto-Reply Bot</p>
                             )}
-                            {msg.sender === "sales" && (
+                            {isOutgoing && msg.sender === "sales" && (
                               <p className="text-[10px] font-semibold text-[#00a884] mb-0.5">Sales Team</p>
                             )}
 
@@ -489,7 +495,7 @@ export default function ChatPage() {
                             </p>
 
                             {/* Time + ticks */}
-                            <div className={`flex items-center justify-end gap-0.5 mt-0.5 -mb-0.5`}>
+                            <div className="flex items-center justify-end gap-0.5 mt-0.5 -mb-0.5">
                               <span className="text-[11px] text-[#667781]">{formatTime(msg.created_at)}</span>
                               {isOutgoing && (
                                 <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />
@@ -534,16 +540,17 @@ export default function ChatPage() {
                 disabled={sending || !newMessage.trim()}
                 className="h-10 w-10 shrink-0 rounded-full bg-[#00a884] hover:bg-[#017c63] flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
               >
-                {sending
-                  ? <Loader2 className="h-4 w-4 text-white animate-spin" />
-                  : <Send className="h-4 w-4 text-white" />
-                }
+                {sending ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 text-white" />
+                )}
               </button>
             </div>
           </>
         ) : (
           /* Empty state */
-          <div className="flex flex-col items-center justify-center h-full gap-4">
+          <div className="flex flex-col items-center justify-center h-full gap-4" style={{ background: "#f8f9fa" }}>
             <div className="flex flex-col items-center gap-3 bg-white/60 rounded-2xl px-10 py-8 text-center shadow-sm">
               <div className="h-16 w-16 rounded-full bg-[#00a884]/10 flex items-center justify-center">
                 <svg viewBox="0 0 24 24" className="h-9 w-9 fill-[#00a884]" xmlns="http://www.w3.org/2000/svg">

@@ -2,13 +2,22 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Migration: ensure source column exists
+(async () => {
+  try {
+    await db.query(`ALTER TABLE test_drives ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'manual'`);
+    await db.query(`ALTER TABLE test_drives ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+  } catch (e) { /* columns may already exist */ }
+})();
+
 // Get all test drives
 router.get('/', async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT td.*, 
              l.name as lead_name, l.phone as lead_phone,
-             v.brand as vehicle_brand, v.price as vehicle_price
+             v.brand as vehicle_brand, v.price as vehicle_price,
+             td.source as source
       FROM test_drives td
       JOIN leads l ON td.lead_id = l.id
       JOIN vehicles v ON td.vehicle_id = v.id

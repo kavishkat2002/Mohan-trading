@@ -82,8 +82,33 @@ Personality and Style Rules:
       systemContent += vehiclesContext;
     }
 
+    // Include current customer's profile and existing bookings to give the AI memory
+    let customerContext = `\n\n[Current Customer Context / Profile]:
+- Lead Name: "${context.leadName || 'WhatsApp User'}"
+- Lead Phone: "${context.leadPhone || 'Unknown'}"
+- Interested Car: "${context.leadInterestedCar || 'Not specified'}"
+- Budget: "${context.leadBudget || 'Not specified'}"`;
+
+    if (context.leadBookings && context.leadBookings.length > 0) {
+      customerContext += `\n- Existing Test Drive Bookings (Memory):`;
+      context.leadBookings.forEach((b, i) => {
+        const dStr = new Date(b.booking_date).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        customerContext += `\n  ${i + 1}. [ID: ${b.id}] Vehicle: "${b.vehicle_brand || 'Unknown'}" | Scheduled Date/Time: "${dStr}" | Status: "${b.status}" | Notes: "${b.notes || 'None'}"`;
+      });
+      customerContext += `\n\nCRITICAL CONTEXTUAL RULE: If the customer references their existing booking (e.g. saying they already booked, or asking about their appointment), acknowledge it! Do NOT ask them for booking details again or attempt to create a new booking unless they specifically want to book another session or reschedule.`;
+    } else {
+      customerContext += `\n- Existing Test Drive Bookings: None`;
+    }
+    
+    systemContent += customerContext;
+
     // Include instructions for structured JSON output
-    systemContent += `\n\nCRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images, YOU MUST IMMEDIATELY provide them in the \`send_image_urls\` array.
+    systemContent += `\n\n[Buffer Memory & Summary Memory]:
+- You must always remember the specific vehicle, brand, or topic that the user is currently focused on from the chat history.
+- If the user uses pronouns like "this", "it", or "that car", resolve it to the vehicle recently discussed (e.g., "Ford Raptor 2025" from previous messages).
+- When asked for photos of "this", ONLY send photos of the exact vehicle they are focused on. Do NOT send photos of other vehicles like the LC300 unless explicitly requested.
+
+CRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images, YOU MUST IMMEDIATELY provide them in the \`send_image_urls\` array.
 Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep the \`send_image_urls\` array completely empty []. Never send or repeat photos unless they are explicitly asked for in the current user message.
 CRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
 The JSON must have this exact structure:

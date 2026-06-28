@@ -30,7 +30,7 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
   try {
     let { data: lead, error } = await supabase
       .from('leads')
-      .select('id')
+      .select('id, name')
       .eq('phone', normPhone)
       .maybeSingle();
 
@@ -49,6 +49,12 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
 
       if (insertErr) throw insertErr;
       return newLead.id;
+    } else if (lead.name === 'WhatsApp User' && name !== 'WhatsApp User') {
+      // Update name if it was previously default
+      await supabase
+        .from('leads')
+        .update({ name })
+        .eq('id', lead.id);
     }
     return lead.id;
   } catch (err) {
@@ -58,11 +64,11 @@ async function ensureLeadInSupabase(phone, name = 'WhatsApp User') {
 }
 
 // Sync message to Supabase to trigger real-time updates on client
-async function syncMessageToSupabase(phone, sender, content) {
+async function syncMessageToSupabase(phone, sender, content, senderName = 'WhatsApp User') {
   if (!supabase) return null;
   const normPhone = normalizePhone(phone);
   try {
-    const supaLeadId = await ensureLeadInSupabase(normPhone);
+    const supaLeadId = await ensureLeadInSupabase(normPhone, senderName);
     if (!supaLeadId) return null;
 
     const { data, error } = await supabase
@@ -151,8 +157,80 @@ async function sendWhatsAppMessage(to, text, leadId = null, sender = 'bot', imag
   }
 }
 
+// ─── Test Drive Keyword Detection ───────────────────────────────────────────
+const TEST_DRIVE_KEYWORDS = [
+  'test drive', 'test ride', 'test run', 'testdrive', 'testride',
+  'test-drive', 'test-ride', 'trial drive', 'demo drive', 'demo ride',
+  'try the car', 'try a car', 'drive the car', 'book a test',
+  'schedule a test', 'want to test', 'like to test'
+];
+
+function detectTestDriveKeyword(text) {
+  const lower = text.toLowerCase();
+  return TEST_DRIVE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+// Auto-create a 'whatsapp_auto' test drive entry when intent is detected.
+// Picks the first in-stock vehicle matching the lead's interested_car, or any in-stock vehicle.
+async function autoCreateTestDriveBooking(lead) {
+  try {
+    // Check if we already created one recently (within last 2 hours) to avoid duplicates
+    const { rows: existing } = await db.query(
+      `SELECT id FROM test_drives 
+       WHERE lead_id = $1 AND source = 'whatsapp_auto' 
+         AND created_at > NOW() - INTERVAL '2 hours'`,
+      [lead.id]
+    );
+    if (existing.length > 0) {
+      console.log(`[TestDrive Auto] Skipping duplicate for lead ${lead.id} — recent whatsapp_auto entry exists`);
+      return;
+    }
+
+    // Try to find a matching vehicle
+    let vehicleId = null;
+    if (lead.interested_car) {
+      const { rows: matched } = await db.query(
+        `SELECT id FROM vehicles WHERE brand ILIKE $1 AND stock > 0 LIMIT 1`,
+        [`%${lead.interested_car}%`]
+      );
+      if (matched.length > 0) vehicleId = matched[0].id;
+    }
+    // Fallback: any in-stock vehicle
+    if (!vehicleId) {
+      const { rows: any } = await db.query(
+        `SELECT id FROM vehicles WHERE stock > 0 ORDER BY created_at DESC LIMIT 1`
+      );
+      if (any.length > 0) vehicleId = any[0].id;
+    }
+
+    if (!vehicleId) {
+      console.log(`[TestDrive Auto] No in-stock vehicle found, skipping auto-booking for lead ${lead.id}`);
+      return;
+    }
+
+    // Book 1 day from now as a placeholder
+    const tentativeDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    await db.query(
+      `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status, source)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        lead.id,
+        vehicleId,
+        tentativeDate,
+        'Auto-detected via WhatsApp conversation — please confirm date & time with customer.',
+        'Scheduled',
+        'whatsapp_auto'
+      ]
+    );
+    console.log(`[TestDrive Auto] Created pending test drive for lead ${lead.id} (vehicle ${vehicleId})`);
+  } catch (err) {
+    console.error(`[TestDrive Auto] Failed to auto-create test drive: ${err.message}`);
+  }
+}
+
 // Main logic for AI Sales Assistant (WhatsApp Flow)
-async function handleIncomingMessage(phone, text) {
+async function handleIncomingMessage(phone, text, senderName = 'WhatsApp User') {
   const normPhone = normalizePhone(phone);
   // 1. RECOVER OR CREATE LEAD (Tier 2 Memory)
   let leadResult = await db.query('SELECT * FROM leads WHERE phone = $1', [normPhone]);
@@ -161,19 +239,30 @@ async function handleIncomingMessage(phone, text) {
   if (!lead) {
     const insertRes = await db.query(
       'INSERT INTO leads (phone, name, status, current_step, chat_metadata) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [normPhone, 'WhatsApp User', 'New', 'START', '{}']
+      [normPhone, senderName, 'New', 'START', '{}']
     );
     lead = insertRes.rows[0];
+  } else if (lead.name === 'WhatsApp User' && senderName !== 'WhatsApp User') {
+    const updateRes = await db.query(
+      'UPDATE leads SET name = $1 WHERE id = $2 RETURNING *',
+      [senderName, lead.id]
+    );
+    lead = updateRes.rows[0] || lead;
   }
 
   // Sync incoming message to Supabase first
-  const supabaseId = await syncMessageToSupabase(normPhone, 'customer', text);
+  const supabaseId = await syncMessageToSupabase(normPhone, 'customer', text, senderName);
 
   // 2. LOG INCOMING MESSAGE
   await db.query(
     'INSERT INTO messages (lead_id, sender, content, supabase_id) VALUES ($1, $2, $3, $4)',
     [lead.id, 'customer', text, supabaseId]
   );
+
+  // ── Unconditional Test Drive Keyword Detection ──
+  if (detectTestDriveKeyword(text)) {
+    await autoCreateTestDriveBooking(lead);
+  }
 
   // Fetch settings to check if AI responder is enabled
   const settingsRes = await db.query('SELECT * FROM settings WHERE id = 1');
@@ -194,6 +283,16 @@ async function handleIncomingMessage(phone, text) {
     // Reverse to chronological order (since we selected DESC)
     const chatHistory = historyRes.rows.reverse();
 
+    // Fetch lead details and existing test drive bookings to provide conversational memory
+    const bookingsRes = await db.query(
+      `SELECT td.*, v.brand as vehicle_brand 
+       FROM test_drives td
+       LEFT JOIN vehicles v ON td.vehicle_id = v.id
+       WHERE td.lead_id = $1 
+       ORDER BY td.booking_date DESC`,
+      [lead.id]
+    );
+
     // Call generateSmartReply
     const { generateSmartReply } = require('./ai');
     const aiResult = await generateSmartReply(text, {
@@ -211,7 +310,13 @@ async function handleIncomingMessage(phone, text) {
       ai_ask_name_rule: settings.ai_ask_name_rule,
       ai_ask_budget_rule: settings.ai_ask_budget_rule,
       ai_unanswered_limit: settings.ai_unanswered_limit,
-      ai_objections: settings.ai_objections
+      ai_objections: settings.ai_objections,
+      // Lead context
+      leadName: lead.name,
+      leadPhone: lead.phone,
+      leadInterestedCar: lead.interested_car,
+      leadBudget: lead.budget,
+      leadBookings: bookingsRes.rows
     });
 
     outMsg = aiResult.reply;
@@ -265,17 +370,32 @@ async function handleIncomingMessage(phone, text) {
       await db.query(queryStr, updateValues);
       console.log(`[AI Agent] Lead ${lead.id} details updated:`, info);
 
-      // Handle Test Drive Booking
+      // Handle Test Drive Booking (AI confirmed a specific date+vehicle)
       if (info.test_drive_booking && info.test_drive_booking.booked && info.test_drive_booking.vehicle_id && info.test_drive_booking.date_time) {
         try {
-          await db.query(
-            `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [lead.id, parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Booked via local AI Agent', 'Scheduled']
+          // Check for existing whatsapp_auto entry to upgrade instead of duplicating
+          const { rows: autoEntries } = await db.query(
+            `SELECT id FROM test_drives WHERE lead_id = $1 AND source = 'whatsapp_auto' LIMIT 1`,
+            [lead.id]
           );
-          console.log(`[AI Agent] Test drive booked locally for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
+          if (autoEntries.length > 0) {
+            // Upgrade the auto-pending entry with confirmed details
+            await db.query(
+              `UPDATE test_drives SET vehicle_id = $1, booking_date = $2, notes = $3, source = 'whatsapp_confirmed', updated_at = NOW()
+               WHERE id = $4`,
+              [parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Confirmed via WhatsApp AI Agent', autoEntries[0].id]
+            );
+            console.log(`[AI Agent] Test drive CONFIRMED for lead ${lead.id} — upgraded auto entry ${autoEntries[0].id}`);
+          } else {
+            await db.query(
+              `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status, source)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [lead.id, parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Confirmed via WhatsApp AI Agent', 'Scheduled', 'whatsapp_confirmed']
+            );
+            console.log(`[AI Agent] Test drive CONFIRMED for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
+          }
         } catch (tdErr) {
-          console.error(`[AI Agent] Failed to insert local test drive: ${tdErr.message}`);
+          console.error(`[AI Agent] Failed to insert/update local test drive: ${tdErr.message}`);
         }
       }
     } else {
