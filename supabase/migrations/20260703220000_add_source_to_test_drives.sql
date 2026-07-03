@@ -1,0 +1,1 @@
+ALTER TABLE public.test_drives ADD COLUMN IF NOT EXISTS source VARCHAR(50);

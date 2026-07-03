@@ -89,6 +89,25 @@ serve(async (req: Request) => {
       console.log("[WEBHOOK] New lead created:", lead.id);
     }
 
+    // ─── 'Clear' Command Handler ─────────────────────────────────────────────
+    if (text.trim().toLowerCase() === 'clear') {
+      console.log(`[WEBHOOK] Clear command received from ${rawPhone}. Erasing chat memory.`);
+      
+      // Delete all messages for this lead to erase memory
+      await supabase.from('messages').delete().eq('lead_id', lead.id);
+      
+      // Reset the lead profile fields that the AI collected
+      await supabase.from('leads').update({
+        interested_car: null,
+        budget: null,
+        status: 'New'
+      }).eq('id', lead.id);
+
+      await sendWhatsApp(rawPhone, "Your chat memory has been successfully cleared! Let me know how I can help you today. 🧹✨");
+      return new Response("OK", { status: 200 });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Log the incoming message in 'messages' table
     await supabase.from('messages').insert({
       lead_id: lead.id,
@@ -218,7 +237,33 @@ serve(async (req: Request) => {
       });
 
       outMsg = aiResult.reply;
-      sendImageUrls = aiResult.send_image_urls || [];
+      sendImageUrls = [];
+      
+      if (aiResult.send_photos_for_vehicle_id) {
+        const vehicle = (vehicles || []).find((v: any) => v.id === aiResult.send_photos_for_vehicle_id);
+        if (vehicle) {
+          if (vehicle.image_url) {
+            try {
+              const parsed = JSON.parse(vehicle.image_url);
+              if (Array.isArray(parsed)) sendImageUrls.push(...parsed);
+            } catch (e) {
+              if (Array.isArray(vehicle.image_url)) sendImageUrls.push(...vehicle.image_url);
+              else sendImageUrls.push(String(vehicle.image_url));
+            }
+          }
+          if (vehicle.additional_images) {
+            try {
+              const parsedAdd = typeof vehicle.additional_images === 'string' ? JSON.parse(vehicle.additional_images) : vehicle.additional_images;
+              if (Array.isArray(parsedAdd)) sendImageUrls.push(...parsedAdd);
+            } catch (e) {}
+          }
+        }
+      }
+      
+      // Fallback if LLM outputs old structure
+      if (aiResult.send_image_urls && Array.isArray(aiResult.send_image_urls)) {
+        sendImageUrls.push(...aiResult.send_image_urls);
+      }
       if (aiResult.send_image_url) {
         sendImageUrls.push(aiResult.send_image_url);
       }
@@ -263,11 +308,13 @@ serve(async (req: Request) => {
                   vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
                   booking_date: info.test_drive_booking.date_time,
                   notes: "Confirmed via WhatsApp AI Agent",
-                  source: "whatsapp_confirmed",
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', autoEntries[0].id);
-              if (updErr) console.error(`[WEBHOOK] Failed to upgrade auto test drive: ${updErr.message}`);
+              if (updErr) {
+                console.error(`[WEBHOOK] Failed to upgrade auto test drive: ${updErr.message}`);
+                outMsg = `⚠️ Sorry, there was an issue scheduling your test drive: ${updErr.message}. Could you please provide a different time or confirm the details?`;
+              }
               else console.log(`[WEBHOOK] Test drive CONFIRMED and upgraded for lead ${lead.id}`);
             } else {
               const { error: tdErr } = await supabase.from('test_drives').insert({
@@ -275,14 +322,17 @@ serve(async (req: Request) => {
                 vehicle_id: parseInt(info.test_drive_booking.vehicle_id, 10),
                 booking_date: info.test_drive_booking.date_time,
                 notes: "Confirmed via WhatsApp AI Agent",
-                status: "Scheduled",
-                source: "whatsapp_confirmed"
+                status: "Scheduled"
               });
-              if (tdErr) console.error(`[WEBHOOK] Failed to book test drive: ${tdErr.message}`);
+              if (tdErr) {
+                console.error(`[WEBHOOK] Failed to book test drive: ${tdErr.message}`);
+                outMsg = `⚠️ Sorry, there was an issue scheduling your test drive: ${tdErr.message}. Could you please provide a different time or confirm the details?`;
+              }
               else console.log(`[WEBHOOK] Test drive booked for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
             }
           } catch (e: any) {
              console.error(`[WEBHOOK] Error inserting test drive: ${e.message}`);
+             outMsg = `⚠️ Sorry, there was an issue scheduling your test drive: ${e.message}. Could you please provide a different time or confirm the details?`;
           }
         }
 
@@ -434,8 +484,8 @@ ${langInstructions}`;
                   if (Array.isArray(parsedAdd)) allImages.push(...parsedAdd);
                 } catch (e) {}
               }
-              const imagesStr = allImages.length > 0 ? allImages.join(', ') : '';
-              return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${imagesStr ? ` | Image URLs: ${imagesStr}` : ''}`;
+              const hasImages = allImages.length > 0;
+              return `- ID: ${v.id} | Model: ${v.brand} | Price: LKR ${parseFloat(v.price).toLocaleString()} | Category: ${v.category} | Stock: ${v.stock}${v.description ? ` | Description: ${v.description}` : ''}${hasImages ? ` | Has Photos: Yes` : ` | Has Photos: No`}`;
             }).join('\n');
         } else {
           systemContent += "\n\nAvailable Showroom Inventory Stock: (Currently no vehicles in stock). Please inform the customer politely.";
@@ -468,30 +518,56 @@ ${langInstructions}`;
     systemContent += customerContext;
 
     // Strict inventory booking and pricing rules
-    systemContent += `\n\nCRITICAL INVENTORY & BOOKING RULE: You can ONLY book a test drive and return \`test_drive_booking.booked: true\` if the vehicle the customer requested is explicitly present in the 'Available Showroom Inventory Stock' list above. If the customer requests a vehicle that is not in the list (e.g. Honda Vezel), do NOT set \`booked: true\` and do NOT extract a vehicle ID. Instead, explain politely that we currently do not have that vehicle in stock, suggest one of our available options, and keep \`test_drive_booking.booked: false\`.
+    systemContent += `\n\nCRITICAL INVENTORY & BOOKING RULE: You can ONLY book a test drive and return \`test_drive_booking.booked: true\` if the vehicle the customer requested is explicitly present in the 'Available Showroom Inventory Stock' list above. If the customer requests a vehicle that is not in the list, do NOT set \`booked: true\` and do NOT extract a vehicle ID. Instead, explain politely that we currently do not have that vehicle in stock, suggest one of our available options, and keep \`test_drive_booking.booked: false\`.
 CRITICAL INSTRUCTION ON VEHICLE MATCHING & PRICING: Never hallucinate or invent vehicle brands, models, prices, or details. If a user asks for a car (e.g. 'LC 300'), refer ONLY to the provided 'Available Showroom Inventory Stock' list to match the vehicle and check the price correctly. If the requested vehicle IS in stock, enthusiastically confirm availability IN YOUR VERY FIRST REPLY. If the exact vehicle isn't in the inventory, politely inform them that it is currently out of stock or offer the closest available alternative. Do not make up names.
-CRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images, YOU MUST IMMEDIATELY provide them in the \`send_image_urls\` array. NEVER say "Please bear with me for a moment" or "I'll share them with you". You MUST populate the \`send_image_urls\` array in the EXACT same response!
-Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep the \`send_image_urls\` array completely empty []. Never send or repeat photos unless they are explicitly asked for in the current user message.\n`;
+CRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images of a specific vehicle, YOU MUST return that vehicle's exact ID in the \`send_photos_for_vehicle_id\` field. NEVER say "Please bear with me for a moment" or "I've already sent them". Do NOT set this ID for other vehicles unless the user asked for them.
+Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep \`send_photos_for_vehicle_id\` as null. Never send or repeat photos unless they are explicitly asked for in the current user message.\n`;
 
     // Include instructions for structured JSON output
-    systemContent += `\n\nCRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
-CRITICAL INSTRUCTION: NEVER include image URLs or links directly in the "reply" text. The "reply" should only contain conversational text.
-The JSON must have this exact structure:
+    systemContent += `\n\n[Buffer Memory & Conversation Awareness]:
+- CURRENT VEHICLE FOCUS: Always determine the vehicle the customer is currently talking about by reading the MOST RECENT messages in the conversation. Ignore the "Interested Car" profile field above if the chat has clearly moved to a different vehicle.
+- If the user uses pronouns like "this", "it", or "that car", resolve it to the vehicle from the last 2-3 messages, not from old history.
+- Speak naturally and conversationally like a human sales agent. NEVER narrate your internal database searches.
+- Avoid contradictory statements. If you see the car in inventory, smoothly offer to book it.
+- The current date and time is ${new Date().toISOString()}. Use this to resolve relative dates like "tomorrow" or "10 Jul" into strict ISO 8601 format strings.
+
+[CONVERSATION-ENDING DETECTION — CRITICAL]:
+- If the customer's message is a farewell, thank-you, or conversation closer (e.g., "okay thanks", "thank you", "thanks", "bye", "see you", "alright", "got it", "ok", "okay"), you MUST:
+  1. Reply with a short, warm, friendly goodbye. Example: "You're welcome! See you on test drive day! 🚗 Feel free to message us anytime."
+  2. Set send_photos_for_vehicle_id to null — NEVER send photos in a farewell response.
+  3. Do NOT pitch any vehicles, suggest any actions, or mention any previous vehicles.
+  4. Keep the reply to 1-2 sentences maximum.
+
+CRITICAL INSTRUCTION ON PHOTOS: NEVER send photos unless the customer's current message contains an explicit photo request word: "show", "send", "photo", "picture", "image", "photos". ANY other message — including "okay", "okay thanks", "thanks", "yes", "yep", confirmations, goodbyes, booking requests — MUST have send_photos_for_vehicle_id as null.
+CRITICAL INSTRUCTION: Respond ONLY with a valid raw JSON object. No markdown code blocks. No extra text.
+
+JSON STRUCTURE — use EXACTLY this format with real values (not descriptions):
 {
-  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. DO NOT put any image URLs in this text.",
-  "send_image_urls": ["Copy the exact Image URLs listed in the inventory for this vehicle. CRITICAL: ONLY populate this array if the user's latest incoming message explicitly asks to see photos, pictures, or images. If the user's latest message is a question about price, mileage, budget, or other information, you MUST use [] to avoid sending duplicate photos."],
+  "reply": "Great! I've booked your test drive for the Bentley 2025 on 10 July at 3:30 PM! ✅",
+  "send_photos_for_vehicle_id": null,
   "extracted_info": {
-    "name": "Customer's name if they shared it or if you just learned it, otherwise null",
-    "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
-    "budget": "Their budget range if they just shared it, otherwise null",
-    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)",
+    "name": "Customer Name",
+    "interested_car": "Bentley 2025",
+    "budget": null,
+    "status": "Hot",
     "test_drive_booking": {
-      "booked": "Boolean true if the customer just confirmed a test drive booking with a specific time/date, otherwise false",
-      "date_time": "The exact date and time agreed upon for the test drive in ISO format (e.g. '2026-07-01T10:00:00Z') or null if none",
-      "vehicle_id": "The numeric ID of the vehicle from the inventory they are booking for, or null if unknown"
+      "booked": true,
+      "date_time": "2026-07-10T10:00:00.000Z",
+      "vehicle_id": 7
     }
   }
-}`;
+}
+
+FIELD RULES (read carefully):
+- "reply": string — your natural language message to the customer. Do NOT include raw URLs (e.g. "/uploads/...") in your text reply. The system will automatically attach the photos for you.
+- "send_photos_for_vehicle_id": INTEGER or null. Set this to the exact vehicle ID ONLY if customer explicitly asked for photos NOW. Otherwise, always null.
+- "extracted_info.name": string or null — only if customer just shared their name.
+- "extracted_info.interested_car": string or null — vehicle model/brand if just mentioned.
+- "extracted_info.budget": string or null — budget range if just mentioned.
+- "extracted_info.status": ONE of exactly: "New", "Warm", "Hot", "Cold" — no other values.
+- "extracted_info.test_drive_booking.booked": BOOLEAN true or false — NOT a string. Set true ONLY when the customer has confirmed BOTH a specific date AND time for a test drive in this exact conversation turn.
+- "extracted_info.test_drive_booking.date_time": STRICT ISO 8601 string (e.g. "2026-07-10T10:00:00.000Z") or null. CRITICAL: YOU MUST USE THE EXACT DATE AND TIME REQUESTED IN THE VERY LATEST MESSAGE. DO NOT COPY DATES FROM PREVIOUS MESSAGES! Use EXACTLY the ISO format, or the database will crash.
+- "extracted_info.test_drive_booking.vehicle_id": INTEGER (e.g. 7) or null — use the numeric ID from the inventory list above, NOT the vehicle name.`;
 
     const messages = [
       { role: 'system', content: systemContent }
@@ -516,8 +592,9 @@ The JSON must have this exact structure:
 
     if (apiKey.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-      if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.3-70b-versatile';
+      // Force a supported Groq model
+      if (finalModel !== 'llama-3.3-70b-versatile' && finalModel !== 'llama-3.1-8b-instant') {
+        finalModel = 'llama-3.1-8b-instant';
       }
     }
 

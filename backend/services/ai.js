@@ -90,12 +90,18 @@ Personality and Style Rules:
 - Budget: "${context.leadBudget || 'Not specified'}"`;
 
     if (context.leadBookings && context.leadBookings.length > 0) {
-      customerContext += `\n- Existing Test Drive Bookings (Memory):`;
+      customerContext += `\n- Past Test Drive Bookings (for reference only — do NOT let these override the customer's current request):`;
       context.leadBookings.forEach((b, i) => {
         const dStr = new Date(b.booking_date).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        customerContext += `\n  ${i + 1}. [ID: ${b.id}] Vehicle: "${b.vehicle_brand || 'Unknown'}" | Scheduled Date/Time: "${dStr}" | Status: "${b.status}" | Notes: "${b.notes || 'None'}"`;
+        customerContext += `\n  ${i + 1}. [ID: ${b.id}] Vehicle: "${b.vehicle_brand || 'Unknown'}" | Date/Time: "${dStr}" | Status: "${b.status}"`;
       });
-      customerContext += `\n\nCRITICAL CONTEXTUAL RULE: If the customer references their existing booking (e.g. saying they already booked, or asking about their appointment), acknowledge it! Do NOT ask them for booking details again or attempt to create a new booking unless they specifically want to book another session or reschedule.`;
+      customerContext += `\n\n[BOOKING CONTEXT RULES — READ CAREFULLY]:
+- The past bookings above are shown for YOUR reference only. Do NOT proactively mention them unless the customer explicitly asks about their existing bookings.
+- INTENT DETECTION: If the customer's current message is asking to book a test drive for a DIFFERENT vehicle than their past bookings (e.g., they had an LC300 booking but now say "book a Bentley"), this is a NEW SEPARATE booking request. Treat it as a completely independent booking for that NEW vehicle.
+- Do NOT say "I see you already have a booking for Vehicle X" when the customer is asking about Vehicle Y. Just focus on booking Vehicle Y.
+- Do NOT ask the customer to reschedule their existing booking when they want a new one. They want BOTH, or a separate one. 
+- ONLY reference a past booking when: (a) the customer directly asks about it, (b) the customer says "my booking" without specifying a car, or (c) the customer asks to cancel/reschedule a specific existing booking.
+- When the customer says "schedule a new booking" or names a specific new vehicle, just proceed with that new booking.`;
     } else {
       customerContext += `\n- Existing Test Drive Bookings: None`;
     }
@@ -103,31 +109,50 @@ Personality and Style Rules:
     systemContent += customerContext;
 
     // Include instructions for structured JSON output
-    systemContent += `\n\n[Buffer Memory & Summary Memory]:
-- You must always remember the specific vehicle, brand, or topic that the user is currently focused on from the chat history.
-- If the user uses pronouns like "this", "it", or "that car", resolve it to the vehicle recently discussed (e.g., "Ford Raptor 2025" from previous messages).
-- When asked for photos of "this", ONLY send photos of the exact vehicle they are focused on. Do NOT send photos of other vehicles like the LC300 unless explicitly requested.
-- Speak naturally and conversationally, like a human sales agent. NEVER narrate your internal database searches (e.g., do not say "I checked the inventory" or "I couldn't find a booking, but I found the car"). 
-- Avoid contradictory statements like "I couldn't find X, but we have X". If you see the car in the inventory, just smoothly offer to book it!
+    systemContent += `\n\n[Buffer Memory & Conversation Awareness]:
+- CURRENT VEHICLE FOCUS: Always determine the vehicle the customer is currently talking about by reading the MOST RECENT messages in the conversation. Ignore the "Interested Car" profile field above if the chat has clearly moved to a different vehicle.
+- If the user uses pronouns like "this", "it", or "that car", resolve it to the vehicle from the last 2-3 messages, not from old history.
+- Speak naturally and conversationally like a human sales agent. NEVER narrate your internal database searches.
+- Avoid contradictory statements. If you see the car in inventory, smoothly offer to book it.
+- The current date and time is ${new Date().toISOString()}. Use this to resolve relative dates like "tomorrow" or "10 Jul" into strict ISO 8601 format strings.
 
-CRITICAL INSTRUCTION ON PHOTOS: YOU MUST NOT populate the \`send_image_urls\` array UNLESS the user's VERY LATEST incoming message explicitly asks to see photos, pictures, or images (e.g., "show me", "send pictures"). For ANY OTHER response (including simple confirmations like "yes", "yep", "okay", answering questions, or booking a test drive), you MUST leave \`send_image_urls\` as an empty array []. NEVER send photos proactively when confirming bookings to avoid sending irrelevant images.
-CRITICAL INSTRUCTION: You MUST respond ONLY in a valid JSON object. Do NOT wrap it in markdown code blocks like \`\`\`json. Output raw JSON only.
-The JSON must have this exact structure:
+[CONVERSATION-ENDING DETECTION — CRITICAL]:
+- If the customer's message is a farewell, thank-you, or conversation closer (e.g., "okay thanks", "thank you", "thanks", "bye", "see you", "alright", "got it", "ok", "okay"), you MUST:
+  1. Reply with a short, warm, friendly goodbye. Example: "You're welcome, Kavishka! See you on test drive day! 🚗 Feel free to message us anytime."
+  2. Set send_image_urls to [] — NEVER send photos in a farewell response.
+  3. Do NOT pitch any vehicles, suggest any actions, or mention any previous vehicles.
+  4. Keep the reply to 1-2 sentences maximum.
+
+CRITICAL INSTRUCTION ON PHOTOS: If the user asks for photos, pictures, or images of a specific vehicle, YOU MUST IMMEDIATELY provide the 'Image URLs' for THAT EXACT vehicle in the \`send_image_urls\` array. NEVER say "Please bear with me for a moment" or "I've already sent them". You MUST populate the \`send_image_urls\` array in the EXACT same response! Do NOT include URLs for other vehicles unless the user asked for them.
+Conversely, if the user's latest incoming message does NOT explicitly request photos (e.g., asking about price, budget, fuel consumption, showroom location, or booking a test drive), you MUST keep the \`send_image_urls\` array completely empty []. Never send or repeat photos unless they are explicitly asked for in the current user message.\n\nCRITICAL INSTRUCTION: Respond ONLY with a valid raw JSON object. No markdown code blocks. No extra text.
+
+JSON STRUCTURE — use EXACTLY this format with real values (not descriptions):
 {
-  "reply": "Your conversational response to the customer here in a polite, helpful, and friendly tone. CRITICAL: Do NOT mention or include raw file paths like '/uploads/...' in this reply text! Just say 'Here are the photos:'",
-  "send_image_urls": ["The exact 'Image' path value from the matching vehicle in the inventory (e.g. '/uploads/filename.jpg'). CRITICAL: ONLY populate this array if the user's latest incoming message explicitly asks to see photos, pictures, or images. If the user's latest message is a question about price, mileage, budget, or other information, you MUST use [] to avoid duplicate photos."],
+  "reply": "Great! I've booked your test drive for the Bentley 2025 on 10 July at 3:30 PM! ✅",
+  "send_image_urls": [],
   "extracted_info": {
-    "name": "Customer's name if they shared it or if you just learned it, otherwise null",
-    "interested_car": "The type of vehicle, brand, or model they are looking to buy or sell if they just shared it, otherwise null",
-    "budget": "Their budget range if they just shared it, otherwise null",
-    "status": "Recommended lead status based on their interest level: 'New' (first greeting), 'Warm' (inquiring details), 'Hot' (ready to buy/sell/book test drive), 'Cold' (not interested)",
+    "name": "Kavishka",
+    "interested_car": "Bentley 2025",
+    "budget": null,
+    "status": "Hot",
     "test_drive_booking": {
-      "booked": "Boolean true if the customer just confirmed a test drive booking with a specific time/date, otherwise false",
-      "date_time": "The exact date and time agreed upon for the test drive in ISO format (e.g. '2026-07-01T10:00:00Z') or null if none",
-      "vehicle_id": "The numeric ID of the vehicle from the inventory they are booking for, or null if unknown"
+      "booked": true,
+      "date_time": "2026-07-10T10:00:00.000Z",
+      "vehicle_id": 7
     }
   }
-}`;
+}
+
+FIELD RULES (read carefully):
+- "reply": string — your natural language message to the customer. Do NOT include raw URLs (e.g. "/uploads/...") in your text reply. The system will automatically attach the photos from the \`send_image_urls\` array.
+- "send_image_urls": array — always [] unless customer explicitly asked for photos NOW.
+- "extracted_info.name": string or null — only if customer just shared their name.
+- "extracted_info.interested_car": string or null — vehicle model/brand if just mentioned.
+- "extracted_info.budget": string or null — budget range if just mentioned.
+- "extracted_info.status": ONE of exactly: "New", "Warm", "Hot", "Cold" — no other values.
+- "extracted_info.test_drive_booking.booked": BOOLEAN true or false — NOT a string. Set true ONLY when the customer has confirmed BOTH a specific date AND time for a test drive in this exact conversation turn.
+- "extracted_info.test_drive_booking.date_time": STRICT ISO 8601 string (e.g. "2026-07-10T10:00:00.000Z") or null. CRITICAL: YOU MUST USE THE EXACT DATE AND TIME REQUESTED IN THE VERY LATEST MESSAGE. DO NOT COPY DATES FROM PREVIOUS MESSAGES! Use EXACTLY the ISO format, or the database will crash.
+- "extracted_info.test_drive_booking.vehicle_id": INTEGER (e.g. 7) or null — use the numeric ID from the inventory list above, NOT the vehicle name.`;
 
     const messages = [
       { role: 'system', content: systemContent }
@@ -152,8 +177,9 @@ The JSON must have this exact structure:
 
     if (OPENAI_API_KEY.startsWith('gsk_')) {
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-      if (!finalModel.startsWith('llama') && !finalModel.startsWith('mixtral') && !finalModel.startsWith('gemma')) {
-        finalModel = 'llama-3.3-70b-versatile';
+      // Force a supported Groq model
+      if (finalModel !== 'llama-3.3-70b-versatile' && finalModel !== 'llama-3.1-8b-instant') {
+        finalModel = 'llama-3.1-8b-instant';
       }
     }
 

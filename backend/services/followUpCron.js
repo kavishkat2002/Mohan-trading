@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const db = require('../db');
 const { generateSmartReply } = require('./ai');
 const { sendWhatsAppMessage } = require('./whatsapp');
+const testDrivesRouter = require('../routes/test_drives');
 
 // Follow-up limit configurations
 const FOLLOW_UP_LIMITS = {
@@ -17,6 +18,11 @@ async function runFollowUpJob() {
   console.log('[Cron] Running WhatsApp AI Follow-Up Check...');
 
   try {
+    // 1. Sync test drives automatically in the background
+    if (typeof testDrivesRouter.syncTestDrives === 'function') {
+      await testDrivesRouter.syncTestDrives();
+    }
+
     // Get settings
     const settingsRes = await db.query('SELECT * FROM settings WHERE id = 1');
     const settings = settingsRes.rows[0] || {};

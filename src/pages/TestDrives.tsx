@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2, Plus, Calendar, User, Car, CheckCircle2,
-  Clock, XCircle, Trash2, AlertCircle
+  Clock, XCircle, Trash2, AlertCircle, RefreshCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -182,78 +182,91 @@ export default function TestDrives() {
           <div className="w-56 sm:w-64 shrink-0 opacity-90">
             <svg viewBox="0 0 320 160" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
               {/* Sky / clouds */}
-              <rect width="320" height="160" fill="transparent"/>
+              <rect width="320" height="160" fill="transparent" />
               {/* City skyline silhouette */}
-              <rect x="20"  y="95"  width="12" height="30" rx="1" fill="#C8DFF0" opacity="0.55"/>
-              <rect x="16"  y="85"  width="20" height="40" rx="1" fill="#C8DFF0" opacity="0.45"/>
-              <rect x="40"  y="100" width="10" height="25" rx="1" fill="#C8DFF0" opacity="0.45"/>
-              <rect x="54"  y="90"  width="14" height="35" rx="1" fill="#C8DFF0" opacity="0.4"/>
-              <rect x="245" y="92"  width="12" height="33" rx="1" fill="#C8DFF0" opacity="0.45"/>
-              <rect x="260" y="82"  width="18" height="43" rx="1" fill="#C8DFF0" opacity="0.55"/>
-              <rect x="281" y="97"  width="10" height="28" rx="1" fill="#C8DFF0" opacity="0.4"/>
-              <rect x="294" y="87"  width="16" height="38" rx="1" fill="#C8DFF0" opacity="0.45"/>
+              <rect x="20" y="95" width="12" height="30" rx="1" fill="#C8DFF0" opacity="0.55" />
+              <rect x="16" y="85" width="20" height="40" rx="1" fill="#C8DFF0" opacity="0.45" />
+              <rect x="40" y="100" width="10" height="25" rx="1" fill="#C8DFF0" opacity="0.45" />
+              <rect x="54" y="90" width="14" height="35" rx="1" fill="#C8DFF0" opacity="0.4" />
+              <rect x="245" y="92" width="12" height="33" rx="1" fill="#C8DFF0" opacity="0.45" />
+              <rect x="260" y="82" width="18" height="43" rx="1" fill="#C8DFF0" opacity="0.55" />
+              <rect x="281" y="97" width="10" height="28" rx="1" fill="#C8DFF0" opacity="0.4" />
+              <rect x="294" y="87" width="16" height="38" rx="1" fill="#C8DFF0" opacity="0.45" />
               {/* Cloud 1 */}
-              <ellipse cx="82" cy="32" rx="22" ry="10" fill="#D6E9F5" opacity="0.7"/>
-              <ellipse cx="70" cy="36" rx="14" ry="9"  fill="#D6E9F5" opacity="0.7"/>
-              <ellipse cx="96" cy="36" rx="13" ry="8"  fill="#D6E9F5" opacity="0.7"/>
+              <ellipse cx="82" cy="32" rx="22" ry="10" fill="#D6E9F5" opacity="0.7" />
+              <ellipse cx="70" cy="36" rx="14" ry="9" fill="#D6E9F5" opacity="0.7" />
+              <ellipse cx="96" cy="36" rx="13" ry="8" fill="#D6E9F5" opacity="0.7" />
               {/* Cloud 2 */}
-              <ellipse cx="218" cy="26" rx="20" ry="9"  fill="#D6E9F5" opacity="0.65"/>
-              <ellipse cx="207" cy="30" rx="13" ry="8"  fill="#D6E9F5" opacity="0.65"/>
-              <ellipse cx="231" cy="30" rx="12" ry="7"  fill="#D6E9F5" opacity="0.65"/>
+              <ellipse cx="218" cy="26" rx="20" ry="9" fill="#D6E9F5" opacity="0.65" />
+              <ellipse cx="207" cy="30" rx="13" ry="8" fill="#D6E9F5" opacity="0.65" />
+              <ellipse cx="231" cy="30" rx="12" ry="7" fill="#D6E9F5" opacity="0.65" />
               {/* Ground line */}
-              <line x1="20" y1="128" x2="300" y2="128" stroke="#B0C8D8" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="20" y1="128" x2="300" y2="128" stroke="#B0C8D8" strokeWidth="1.5" strokeLinecap="round" />
 
               {/* ── Car body ── */}
               {/* Wheel rear */}
-              <circle cx="100" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2"/>
-              <circle cx="100" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5"/>
-              <circle cx="100" cy="128" r="3"  fill="#2C3E6B"/>
+              <circle cx="100" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2" />
+              <circle cx="100" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5" />
+              <circle cx="100" cy="128" r="3" fill="#2C3E6B" />
               {/* Wheel front */}
-              <circle cx="230" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2"/>
-              <circle cx="230" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5"/>
-              <circle cx="230" cy="128" r="3"  fill="#2C3E6B"/>
+              <circle cx="230" cy="128" r="18" fill="#E8D9B8" stroke="#2C3E6B" strokeWidth="2.2" />
+              <circle cx="230" cy="128" r="10" fill="#C8B898" stroke="#2C3E6B" strokeWidth="1.5" />
+              <circle cx="230" cy="128" r="3" fill="#2C3E6B" />
               {/* Chassis / floor */}
-              <rect x="82" y="118" width="166" height="10" rx="3" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2"/>
+              <rect x="82" y="118" width="166" height="10" rx="3" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2" />
               {/* Car top / roof */}
-              <path d="M138 118 C138 118 148 78 180 75 C200 73 220 78 248 118Z" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2.2" strokeLinejoin="round"/>
+              <path d="M138 118 C138 118 148 78 180 75 C200 73 220 78 248 118Z" fill="#E0ECF5" stroke="#2C3E6B" strokeWidth="2.2" strokeLinejoin="round" />
               {/* Windscreen */}
-              <path d="M188 118 C190 100 205 81 242 85 L248 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round"/>
+              <path d="M188 118 C190 100 205 81 242 85 L248 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round" />
               {/* Rear window */}
-              <path d="M140 118 C142 104 150 83 180 78 L182 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round"/>
+              <path d="M140 118 C142 104 150 83 180 78 L182 118Z" fill="#B8D8EC" stroke="#2C3E6B" strokeWidth="1.6" strokeLinejoin="round" />
 
               {/* ── Passenger (left, seat) ── */}
               {/* Seat */}
-              <rect x="136" y="100" width="22" height="18" rx="3" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5"/>
-              <rect x="134" y="96" width="5"  height="22" rx="2" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <rect x="136" y="100" width="22" height="18" rx="3" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5" />
+              <rect x="134" y="96" width="5" height="22" rx="2" fill="#D6E9F5" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Body */}
-              <rect x="140" y="88" width="14" height="16" rx="6" fill="#4A9EBF" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <rect x="140" y="88" width="14" height="16" rx="6" fill="#4A9EBF" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Head */}
-              <circle cx="147" cy="82" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <circle cx="147" cy="82" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Seatbelt */}
-              <path d="M148 90 L144 108" stroke="#F5D642" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M148 90 L144 108" stroke="#F5D642" strokeWidth="2" strokeLinecap="round" />
               {/* Arm */}
-              <path d="M154 95 L162 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M154 95 L162 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round" />
 
               {/* ── Driver (right, steering) ── */}
               {/* Body */}
-              <rect x="188" y="90" width="14" height="16" rx="6" fill="#4DBFB0" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <rect x="188" y="90" width="14" height="16" rx="6" fill="#4DBFB0" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Head */}
-              <circle cx="195" cy="84" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <circle cx="195" cy="84" r="8" fill="#F5C5A3" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Steering wheel */}
-              <circle cx="218" cy="102" r="9" fill="none" stroke="#2C3E6B" strokeWidth="2"/>
-              <line x1="218" y1="93"  x2="218" y2="111" stroke="#2C3E6B" strokeWidth="1.5"/>
-              <line x1="209" y1="102" x2="227" y2="102" stroke="#2C3E6B" strokeWidth="1.5"/>
+              <circle cx="218" cy="102" r="9" fill="none" stroke="#2C3E6B" strokeWidth="2" />
+              <line x1="218" y1="93" x2="218" y2="111" stroke="#2C3E6B" strokeWidth="1.5" />
+              <line x1="209" y1="102" x2="227" y2="102" stroke="#2C3E6B" strokeWidth="1.5" />
               {/* Arms to wheel */}
-              <path d="M202 97 L211 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M202 102 L209 105" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M202 97 L211 100" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M202 102 L209 105" stroke="#2C3E6B" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
 
           {/* CTA Button */}
-          <div className="sm:self-start">
+          <div className="sm:self-start flex items-center gap-2">
+            {isAdmin && (
+              <Button 
+                onClick={() => {
+                  toast({ title: "Syncing...", description: "Pulling latest test drives from cloud." });
+                  fetchData().then(() => toast({ title: "Sync Complete", description: "Test drives successfully updated!" }));
+                }} 
+                size="sm" variant="outline" className="h-8 px-3 text-xs font-medium gap-1.5 bg-white/60 hover:bg-white border-slate-200 shadow-sm"
+                disabled={loading}
+              >
+                <RefreshCcw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Sync Cloud
+              </Button>
+            )}
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-8 px-3 text-xs font-medium gap-1.5">
+                <Button size="sm" className="h-8 px-3 text-xs font-medium gap-1.5 shadow-sm">
                   <Plus className="h-3.5 w-3.5" />
                   New Booking
                 </Button>
@@ -268,7 +281,7 @@ export default function TestDrives() {
                 <form onSubmit={handleCreateBooking} className="space-y-4 pt-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Customer</Label>
-                    <Select required value={newBooking.lead_id} onValueChange={val => setNewBooking({...newBooking, lead_id: val})}>
+                    <Select required value={newBooking.lead_id} onValueChange={val => setNewBooking({ ...newBooking, lead_id: val })}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select customer…" /></SelectTrigger>
                       <SelectContent>
                         {leads.map(l => (<SelectItem key={`lead-${l.id}`} value={l.id.toString()}>{l.name} ({l.phone})</SelectItem>))}
@@ -277,7 +290,7 @@ export default function TestDrives() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vehicle</Label>
-                    <Select required value={newBooking.vehicle_id} onValueChange={val => setNewBooking({...newBooking, vehicle_id: val})}>
+                    <Select required value={newBooking.vehicle_id} onValueChange={val => setNewBooking({ ...newBooking, vehicle_id: val })}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select vehicle…" /></SelectTrigger>
                       <SelectContent>
                         {vehicles.filter(v => v.stock > 0).map(v => (<SelectItem key={`veh-${v.id}`} value={v.id.toString()}>{v.brand} — Rs. {Number(v.price).toLocaleString()}</SelectItem>))}
@@ -286,11 +299,11 @@ export default function TestDrives() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date & Time</Label>
-                    <Input required type="datetime-local" value={newBooking.booking_date} onChange={e => setNewBooking({...newBooking, booking_date: e.target.value})} className="h-9 text-sm"/>
+                    <Input required type="datetime-local" value={newBooking.booking_date} onChange={e => setNewBooking({ ...newBooking, booking_date: e.target.value })} className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notes <span className="normal-case font-normal">(optional)</span></Label>
-                    <Textarea placeholder="Any special requirements…" value={newBooking.notes} onChange={e => setNewBooking({...newBooking, notes: e.target.value})} className="min-h-[72px] text-sm resize-none"/>
+                    <Textarea placeholder="Any special requirements…" value={newBooking.notes} onChange={e => setNewBooking({ ...newBooking, notes: e.target.value })} className="min-h-[72px] text-sm resize-none" />
                   </div>
                   <DialogFooter className="pt-1">
                     <Button type="submit" className="w-full h-9 text-sm" disabled={saving}>
@@ -397,12 +410,11 @@ export default function TestDrives() {
 
                 {/* WhatsApp source badge */}
                 {(booking.source === 'whatsapp_auto' || booking.source === 'whatsapp_confirmed') && (
-                  <span className={`shrink-0 hidden sm:flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 border ${
-                    booking.source === 'whatsapp_confirmed'
+                  <span className={`shrink-0 hidden sm:flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 border ${booking.source === 'whatsapp_confirmed'
                       ? 'bg-sky-50 text-sky-600 border-sky-200'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  }`}>
-                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                    }`}>
+                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 fill-current" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347" /></svg>
                     {booking.source === 'whatsapp_confirmed' ? 'WA Confirmed' : 'WA Detected'}
                   </span>
                 )}

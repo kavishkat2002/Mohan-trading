@@ -229,6 +229,83 @@ async function autoCreateTestDriveBooking(lead) {
   }
 }
 
+/**
+ * Saves a confirmed test drive booking from the AI agent.
+ * Handles slot-conflict check, upsert of whatsapp_auto entries, and new inserts.
+ * Returns an object { success, message }.
+ */
+async function saveTestDriveBooking(leadId, bookingInfo) {
+  const { vehicle_id, date_time, booked } = bookingInfo;
+
+  // Guard: booked must be literally true (boolean)
+  if (booked !== true) {
+    return { success: false, message: 'booked flag is not true' };
+  }
+
+  if (!vehicle_id || !date_time) {
+    console.warn(`[TestDrive Save] Missing vehicle_id (${vehicle_id}) or date_time (${date_time}) for lead ${leadId}`);
+    return { success: false, message: 'Missing vehicle_id or date_time' };
+  }
+
+  const vehicleIdInt = parseInt(vehicle_id, 10);
+  if (isNaN(vehicleIdInt)) {
+    console.warn(`[TestDrive Save] vehicle_id is not a valid integer: "${vehicle_id}"`);
+    return { success: false, message: `vehicle_id "${vehicle_id}" is not a valid integer` };
+  }
+
+  // Validate and parse date_time
+  const bookingDate = new Date(date_time);
+  if (isNaN(bookingDate.getTime())) {
+    console.warn(`[TestDrive Save] date_time "${date_time}" is not a valid date for lead ${leadId}`);
+    return { success: false, message: `Invalid date_time: "${date_time}"` };
+  }
+
+  try {
+    // Slot-conflict check: another lead already booked the same vehicle within 1 hour
+    const { rows: conflicts } = await db.query(
+      `SELECT id FROM test_drives
+       WHERE vehicle_id = $1
+         AND lead_id != $2
+         AND status != 'Cancelled'
+         AND ABS(EXTRACT(EPOCH FROM (booking_date - $3::timestamptz))) < 3600`,
+      [vehicleIdInt, leadId, bookingDate.toISOString()]
+    );
+    if (conflicts.length > 0) {
+      console.log(`[TestDrive Save] Slot conflict for lead ${leadId} on vehicle ${vehicleIdInt} at ${date_time}`);
+      return { success: false, message: 'Slot is already taken. Please offer another time.' };
+    }
+
+    // Check if there's a whatsapp_auto entry we should upgrade instead of duplicating
+    const { rows: autoEntries } = await db.query(
+      `SELECT id FROM test_drives WHERE lead_id = $1 AND source = 'whatsapp_auto' LIMIT 1`,
+      [leadId]
+    );
+
+    if (autoEntries.length > 0) {
+      await db.query(
+        `UPDATE test_drives
+         SET vehicle_id = $1, booking_date = $2, notes = $3, source = 'whatsapp_confirmed', status = 'Scheduled', updated_at = NOW()
+         WHERE id = $4`,
+        [vehicleIdInt, bookingDate.toISOString(), 'Confirmed via WhatsApp AI Agent', autoEntries[0].id]
+      );
+      console.log(`[TestDrive Save] ✅ Upgraded whatsapp_auto entry ${autoEntries[0].id} to confirmed for lead ${leadId}`);
+    } else {
+      const { rows: inserted } = await db.query(
+        `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status, source)
+         VALUES ($1, $2, $3, $4, 'Scheduled', 'whatsapp_confirmed')
+         RETURNING id`,
+        [leadId, vehicleIdInt, bookingDate.toISOString(), 'Confirmed via WhatsApp AI Agent']
+      );
+      console.log(`[TestDrive Save] ✅ New test drive #${inserted[0].id} saved for lead ${leadId} on vehicle ${vehicleIdInt} at ${bookingDate.toISOString()}`);
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(`[TestDrive Save] ❌ DB error for lead ${leadId}: ${err.message}`);
+    return { success: false, message: err.message };
+  }
+}
+
+
 // Main logic for AI Sales Assistant (WhatsApp Flow)
 async function handleIncomingMessage(phone, text, senderName = 'WhatsApp User') {
   const normPhone = normalizePhone(phone);
@@ -249,6 +326,25 @@ async function handleIncomingMessage(phone, text, senderName = 'WhatsApp User') 
     );
     lead = updateRes.rows[0] || lead;
   }
+
+  // ─── 'Clear' Command Handler ─────────────────────────────────────────────
+  if (text.trim().toLowerCase() === 'clear') {
+    console.log(`[WhatsApp Service] Clear command received from ${normPhone}. Erasing chat memory.`);
+    
+    // Delete all messages for this lead to erase memory
+    await db.query('DELETE FROM messages WHERE lead_id = $1', [lead.id]);
+    
+    // Reset the lead profile fields that the AI collected
+    await db.query(`
+      UPDATE leads 
+      SET interested_car = NULL, budget = NULL, status = 'New' 
+      WHERE id = $1
+    `, [lead.id]);
+
+    await sendWhatsAppMessage(normPhone, "Your chat memory has been successfully cleared! Let me know how I can help you today. 🧹✨");
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Sync incoming message to Supabase first
   const supabaseId = await syncMessageToSupabase(normPhone, 'customer', text, senderName);
@@ -371,31 +467,18 @@ async function handleIncomingMessage(phone, text, senderName = 'WhatsApp User') 
       console.log(`[AI Agent] Lead ${lead.id} details updated:`, info);
 
       // Handle Test Drive Booking (AI confirmed a specific date+vehicle)
-      if (info.test_drive_booking && info.test_drive_booking.booked && info.test_drive_booking.vehicle_id && info.test_drive_booking.date_time) {
-        try {
-          // Check for existing whatsapp_auto entry to upgrade instead of duplicating
-          const { rows: autoEntries } = await db.query(
-            `SELECT id FROM test_drives WHERE lead_id = $1 AND source = 'whatsapp_auto' LIMIT 1`,
-            [lead.id]
-          );
-          if (autoEntries.length > 0) {
-            // Upgrade the auto-pending entry with confirmed details
-            await db.query(
-              `UPDATE test_drives SET vehicle_id = $1, booking_date = $2, notes = $3, source = 'whatsapp_confirmed', updated_at = NOW()
-               WHERE id = $4`,
-              [parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Confirmed via WhatsApp AI Agent', autoEntries[0].id]
-            );
-            console.log(`[AI Agent] Test drive CONFIRMED for lead ${lead.id} — upgraded auto entry ${autoEntries[0].id}`);
-          } else {
-            await db.query(
-              `INSERT INTO test_drives (lead_id, vehicle_id, booking_date, notes, status, source)
-               VALUES ($1, $2, $3, $4, $5, $6)`,
-              [lead.id, parseInt(info.test_drive_booking.vehicle_id, 10), info.test_drive_booking.date_time, 'Confirmed via WhatsApp AI Agent', 'Scheduled', 'whatsapp_confirmed']
-            );
-            console.log(`[AI Agent] Test drive CONFIRMED for lead ${lead.id} on vehicle ${info.test_drive_booking.vehicle_id}`);
-          }
-        } catch (tdErr) {
-          console.error(`[AI Agent] Failed to insert/update local test drive: ${tdErr.message}`);
+      const tdBooking = info.test_drive_booking;
+      console.log(`[AI Agent] test_drive_booking from AI:`, JSON.stringify(tdBooking));
+
+      if (tdBooking) {
+        const { success, message } = await saveTestDriveBooking(lead.id, {
+          vehicle_id: tdBooking.vehicle_id,
+          date_time: tdBooking.date_time,
+          booked: tdBooking.booked
+        });
+        if (!success) {
+          console.warn(`[AI Agent] Test drive NOT saved: ${message}`);
+          outMsg = `⚠️ Sorry, there was an issue scheduling your test drive: ${message}. Could you please provide a different time or confirm the details?`;
         }
       }
     } else {
