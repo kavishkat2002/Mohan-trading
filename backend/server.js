@@ -15,6 +15,7 @@ const supabaseAdminRouter = require('./routes/supabaseAdmin');
 const settingsRouter = require('./routes/settings');
 const testDrivesRouter = require('./routes/test_drives');
 const db = require('./db');
+const { initFollowUpCron } = require('./services/followUpCron');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -56,6 +57,8 @@ app.listen(PORT, () => {
         console.error('Database connection error:', err.stack);
       } else {
         console.log('Connected to PostgreSQL at:', res.rows[0].now);
+        // Start background jobs
+        initFollowUpCron();
       }
     });
   });
