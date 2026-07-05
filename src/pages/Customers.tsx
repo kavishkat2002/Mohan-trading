@@ -78,7 +78,7 @@ export default function Customers() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`);
       const data = await res.json();
       // Filter for closed/won deals OR WhatsApp live chat synced leads
       const filtered = data.filter((l: any) => 
@@ -95,7 +95,7 @@ export default function Customers() {
 
   const fetchVehicles = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`);
       const data = await res.json();
       setVehicles(data || []);
     } catch (err) {
@@ -108,7 +108,7 @@ export default function Customers() {
     setSavingDetails(true);
     try {
       const newStatus = editIsSold ? "Closed Deal" : "Negotiating";
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads/${selectedCustomer.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${selectedCustomer.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,7 +125,7 @@ export default function Customers() {
         if (editIsSold && selectedVehicleId && markSoldInInventory) {
           const matched = vehicles.find(v => String(v.id) === String(selectedVehicleId));
           if (matched) {
-            await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/finance/sales`, {
+            await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/sales`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -169,7 +169,7 @@ export default function Customers() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads/${deleteId}`, { method: "DELETE" });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${deleteId}`, { method: "DELETE" });
       if (res.ok) {
         toast({ title: "Deleted", description: "Customer record removed." });
         setIsDeleteOpen(false);

@@ -41,7 +41,7 @@ export default function Attendance() {
   const fetchStatus = async (dateStr: string) => {
     if (!user) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/status/${user.id}?date=${dateStr}&email=${encodeURIComponent(user.email)}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/status/${user.id}?date=${dateStr}&email=${encodeURIComponent(user.email)}`);
       const data = await res.json();
       setTodayAttendance(data);
     } catch (e) {
@@ -52,8 +52,8 @@ export default function Attendance() {
   const fetchAdminData = async () => {
     try {
       const [attRes, leavesRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/attendance/all`),
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/attendance/leaves`)
+        fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}/api/attendance/all`),
+        fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}/api/attendance/leaves`)
       ]);
       const attData = await attRes.json();
       const leavesData = await leavesRes.json();
@@ -68,8 +68,8 @@ export default function Attendance() {
     if (!user) return;
     try {
       const [attRes, leavesRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/my-attendance/${user.id}?email=${encodeURIComponent(user.email)}`),
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/my-leaves/${user.id}?email=${encodeURIComponent(user.email)}`)
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/my-attendance/${user.id}?email=${encodeURIComponent(user.email)}`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/my-leaves/${user.id}?email=${encodeURIComponent(user.email)}`)
       ]);
       const attData = await attRes.json();
       const leavesData = await leavesRes.json();
@@ -94,7 +94,7 @@ export default function Attendance() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/check-in`, {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/check-in`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user_id: user?.id, email: user?.email, lat: pos.coords.latitude, lng: pos.coords.longitude })
@@ -131,7 +131,7 @@ export default function Attendance() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/check-out`, {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/check-out`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user_id: user?.id, email: user?.email, lat: pos.coords.latitude, lng: pos.coords.longitude })
@@ -163,7 +163,7 @@ export default function Attendance() {
   const submitLeaveRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/leaves`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/leaves`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user?.id, email: user?.email, leave_type: leaveType, start_date: startDate, end_date: endDate, reason })
@@ -183,7 +183,7 @@ export default function Attendance() {
 
   const updateLeaveStatus = async (id: number, status: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/leaves/${id}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/attendance/leaves/${id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })

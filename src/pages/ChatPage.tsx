@@ -71,7 +71,7 @@ export default function ChatPage() {
       // 1. Fetch from Supabase WhatsApp Leads to sync them locally
       const { data: supaLeads, error: supaErr } = await supabase.from('leads').select('*');
       if (!supaErr && supaLeads && supaLeads.length > 0) {
-        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads/sync`, {
+        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ leads: supaLeads })
@@ -79,7 +79,7 @@ export default function ChatPage() {
       }
 
       // 2. Fetch the newly merged data from main CRM
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setLeads(data);
@@ -111,7 +111,7 @@ export default function ChatPage() {
             .eq("lead_id", supaLead.id);
 
           if (supaMessages && supaMessages.length > 0) {
-            await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/messages/sync`, {
+            await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/messages/sync`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lead_id: lead.id, messages: supaMessages })
@@ -121,7 +121,7 @@ export default function ChatPage() {
       }
 
       // 2. Fetch the newly merged messages from local backend
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/messages/lead/${lead.id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/messages/lead/${lead.id}`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -154,7 +154,7 @@ export default function ChatPage() {
         filter: `lead_id=eq.${supaLeadId}`,
       }, async (payload) => {
         // Sync the newly received message to local backend
-        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/messages/sync`, {
+        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/messages/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lead_id: selectedLead.id, messages: [payload.new] })
@@ -226,7 +226,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, optimistic]);
     try {
       // 1. Save to local database via Express API
-      await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/messages`, {
+      await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lead_id: selectedLead.id, sender: "sales", content })
@@ -253,7 +253,7 @@ export default function ChatPage() {
     if (!selectedLead || !isElevated) return;
     if (!window.confirm("Delete this entire conversation? This cannot be undone.")) return;
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads/${selectedLead.id}`, { method: "DELETE" });
+      await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${selectedLead.id}`, { method: "DELETE" });
       if (supaLeadId) {
         await supabase.from("messages").delete().eq("lead_id", supaLeadId);
         await supabase.from("leads").delete().eq("id", supaLeadId);
