@@ -77,7 +77,7 @@ export default function Dashboard() {
       if (!silent) setLoading(true);
 
       // 1. Sync User to get Local database ID
-      const syncRes = await fetch("http://localhost:5001/api/users/sync", {
+      const syncRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,7 +102,7 @@ export default function Dashboard() {
 
       // Fetch latest profile details to get updated custom profile name
       try {
-        const profileRes = await fetch(`http://localhost:5001/api/users/${localId}/profile`);
+        const profileRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localId}/profile`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
           setDisplayName(profileData.name || profileData.email.split('@')[0]);
@@ -114,7 +114,7 @@ export default function Dashboard() {
       }
 
       // 2. Fetch Notices (Both roles)
-      const noticeRes = await fetch("http://localhost:5001/api/notices");
+      const noticeRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/notices`);
       const noticeData = noticeRes.ok ? await noticeRes.json() : [];
       setNotices(Array.isArray(noticeData) ? noticeData.slice(0, 5) : []);
 
@@ -122,13 +122,13 @@ export default function Dashboard() {
       if (user?.role === 'owner' || user?.role === 'admin') {
         // Owner / Admin fetches
         const [leadsRes, vehiclesRes, attendanceRes, tasksRes, usersRes, salesRes, attSummaryRes] = await Promise.all([
-          fetch("http://localhost:5001/api/leads"),
-          fetch("http://localhost:5001/api/vehicles"),
-          fetch("http://localhost:5001/api/attendance/all"),
-          fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
-          fetch("http://localhost:5001/api/users"),
-          fetch("http://localhost:5001/api/finance/sales"),
-          fetch("http://localhost:5001/api/attendance/dashboard-summary")
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/all`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/tasks?userId=${localId}&role=${user.role}`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/finance/sales`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/dashboard-summary`)
         ]);
 
         setLeads(leadsRes.ok ? await leadsRes.json() : []);
@@ -141,10 +141,10 @@ export default function Dashboard() {
       } else {
         // Employee / Accountant fetches
         const [leadsRes, tasksRes, commRes, attRes] = await Promise.all([
-          fetch("http://localhost:5001/api/leads"),
-          fetch(`http://localhost:5001/api/tasks?userId=${localId}&role=${user.role}`),
-          fetch(`http://localhost:5001/api/users/${localId}/commissions`),
-          fetch(`http://localhost:5001/api/attendance/status/${localId}`)
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/tasks?userId=${localId}&role=${user.role}`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localId}/commissions`),
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/attendance/status/${localId}`)
         ]);
 
         setLeads(leadsRes.ok ? await leadsRes.json() : []);
@@ -159,7 +159,7 @@ export default function Dashboard() {
 
       // Fetch general message statistics for both roles
       try {
-        const statsRes = await fetch("http://localhost:5001/api/messages/stats");
+        const statsRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/messages/stats`);
         if (statsRes.ok) {
           setMessageStats(await statsRes.json());
         }

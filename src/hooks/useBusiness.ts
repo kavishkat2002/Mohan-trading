@@ -7,7 +7,7 @@ export function useBusiness() {
   const { data: business, isLoading: businessLoading } = useQuery({
     queryKey: ["business"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5001/api/settings");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/settings`);
       if (!res.ok) throw new Error("Failed to fetch settings");
       return res.json();
     },

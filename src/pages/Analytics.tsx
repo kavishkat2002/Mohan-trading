@@ -25,7 +25,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/leads")
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`)
       .then(res => res.json())
       .then(data => {
         setLeads(Array.isArray(data) ? data : []);

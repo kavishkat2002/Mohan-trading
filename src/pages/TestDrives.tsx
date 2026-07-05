@@ -41,9 +41,9 @@ export default function TestDrives() {
       if (!silent) setLoading(true);
 
       const [leadsRes, vehiclesRes, bookingsRes] = await Promise.all([
-        fetch("http://localhost:5001/api/leads"),
-        fetch("http://localhost:5001/api/vehicles"),
-        fetch("http://localhost:5001/api/test-drives")
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/test-drives`)
       ]);
 
       const leadsData = leadsRes.ok ? await leadsRes.json() : [];
@@ -76,7 +76,7 @@ export default function TestDrives() {
 
     try {
       setSaving(true);
-      const res = await fetch("http://localhost:5001/api/test-drives", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/test-drives`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newBooking)
@@ -101,7 +101,7 @@ export default function TestDrives() {
 
   const handleUpdateStatus = async (bookingId: number, status: string) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/test-drives/${bookingId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/test-drives/${bookingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -122,7 +122,7 @@ export default function TestDrives() {
   const handleDeleteBooking = async (bookingId: number) => {
     if (!confirm("Are you sure you want to cancel and delete this test drive booking?")) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/test-drives/${bookingId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/test-drives/${bookingId}`, {
         method: "DELETE"
       });
 
