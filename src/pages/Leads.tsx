@@ -97,9 +97,30 @@ export default function Leads() {
 
   const parseBudget = (budget: string | null | undefined): number => {
     if (!budget) return 0;
-    const clean = budget.replace(/[^0-9]/g, "");
-    const parsed = parseInt(clean, 10);
-    return isNaN(parsed) ? 0 : parsed;
+    const lower = budget.toLowerCase();
+    const noCommas = lower.replace(/,/g, "");
+    
+    const hasMillion = noCommas.includes("million") || /\d+\s*m\b/.test(noCommas) || /\d+\s*mn\b/.test(noCommas);
+    const hasLakh = noCommas.includes("lakh") || noCommas.includes("lac");
+    const hasK = noCommas.includes("thousand") || /\d+\s*k\b/.test(noCommas);
+
+    const matches = noCommas.match(/\d+(\.\d+)?/g);
+    if (!matches) return 0;
+
+    let numbers = matches.map(m => parseFloat(m));
+    let val = numbers[0];
+    if (numbers.length >= 2) {
+      val = (numbers[0] + numbers[1]) / 2; // Use average of range
+    }
+
+    if (hasMillion) val *= 1000000;
+    else if (hasLakh) val *= 100000;
+    else if (hasK) val *= 1000;
+    else if (val < 1000 && val > 0) {
+      val *= 1000000; // Infer millions for car prices if just given as e.g., "15"
+    }
+
+    return isNaN(val) ? 0 : val;
   };
 
   const formatLKR = (num: number): string => {
