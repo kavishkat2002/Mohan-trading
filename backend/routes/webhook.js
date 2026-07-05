@@ -31,19 +31,13 @@ router.post('/', async (req, res) => {
     if (body.entry && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.messages && body.entry[0].changes[0].value.messages[0]) {
       const phoneNumber = body.entry[0].changes[0].value.messages[0].from;
       const messageBody = body.entry[0].changes[0].value.messages[0].text?.body;
+      const profileName = body.entry[0].changes[0].value.contacts?.[0]?.profile?.name || 'WhatsApp User';
 
       if (messageBody) {
-        console.log(`Received message from ${phoneNumber}: ${messageBody}`);
-        
-        // Save raw message to CRM history if lead exists (optional step, doing it asynchronously)
-        db.query('SELECT id FROM leads WHERE phone = $1', [phoneNumber]).then(result => {
-           if (result.rows.length > 0) {
-             db.query('INSERT INTO messages (lead_id, sender, content) VALUES ($1, $2, $3)', [result.rows[0].id, 'customer', messageBody]);
-           }
-        }).catch(err => console.error(err));
+        console.log(`Received message from ${phoneNumber} (${profileName}): ${messageBody}`);
 
         // Process message through WhatsApp service for auto-reply and lead capture
-        await whatsappService.handleIncomingMessage(phoneNumber, messageBody);
+        await whatsappService.handleIncomingMessage(phoneNumber, messageBody, profileName);
       }
     }
     res.sendStatus(200);

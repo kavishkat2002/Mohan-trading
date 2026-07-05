@@ -1,8 +1,19 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+    "outputDirectory": "dist",
+    "experimentalServices": {
+        "frontend": {
+            "routePrefix": "/",
+            "framework": "vite"
+        },
+        "backend": {
+            "root": "backend",
+            "routePrefix": "/_/backend",
+            "entrypoint": "server.js"
+        }
+    },
+    "functions": {
+        "backend/server.js": {
+            "includeFiles": "backend/uploads/**"
+        }
     }
-  ]
 }

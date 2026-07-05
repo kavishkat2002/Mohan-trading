@@ -138,8 +138,12 @@ router.put('/:id/profile', async (req, res) => {
   }
 });
 
+const fs = require('fs');
+const avatarDir = path.join(__dirname, '..', 'uploads', 'avatars');
+if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/avatars/'),
+  destination: (req, file, cb) => cb(null, avatarDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
@@ -190,13 +194,28 @@ router.put('/notifications/:notifId/read', async (req, res) => {
   }
 });
 
+// Mark all user notifications as read
+router.put('/:id/notifications/read-all', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await db.query(
+      'UPDATE notifications SET read = true WHERE user_id = $1 RETURNING *',
+      [id]
+    );
+    res.json({ message: 'All notifications marked as read', count: rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get user commissions for current month
 router.get('/:id/commissions', async (req, res) => {
   const { id } = req.params;
   try {
     const { rows } = await db.query(
       `SELECT SUM(commission_amount) as total_commission FROM leads 
-       WHERE assigned_to = $1 AND status = 'Closed' 
+       WHERE assigned_to = $1 AND status IN ('Closed', 'Closed Deal', 'Sale Completed') 
        AND EXTRACT(MONTH FROM updated_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
        AND EXTRACT(YEAR FROM updated_at) = EXTRACT(YEAR FROM CURRENT_DATE)`,
       [id]
@@ -207,5 +226,35 @@ router.get('/:id/commissions', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Sync/Ensure user exists (for Supabase bridge)
+router.post('/sync', async (req, res) => {
+  const { email, role, name, supabase_uid } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  
+  try {
+    // Check if user exists
+    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (rows.length > 0) {
+      // Update supabase_uid if provided and not yet stored
+      if (supabase_uid && !rows[0].supabase_uid) {
+        await db.query('UPDATE users SET supabase_uid = $1 WHERE id = $2', [supabase_uid, rows[0].id]);
+      }
+      const updatedUser = { ...rows[0], supabase_uid: supabase_uid || rows[0].supabase_uid };
+      return res.json(updatedUser);
+    }
+
+    // Create user if missing
+    const { rows: newRows } = await db.query(
+      'INSERT INTO users (email, role, name, supabase_uid) VALUES ($1, $2, $3, $4) RETURNING *',
+      [email, role || 'staff', name || email.split('@')[0], supabase_uid || null]
+    );
+    res.status(201).json(newRows[0]);
+  } catch (err) {
+    console.error('SYNC ERROR:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 module.exports = router;

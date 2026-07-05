@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { generateFinanceAnalysis } = require('../services/ai');
+
 
 // Get financial overview
 router.get('/overview', async (req, res) => {
@@ -28,6 +30,33 @@ router.get('/overview', async (req, res) => {
   }
 });
 
+// AI Chat for Finance
+router.post('/chat', async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message) return res.status(400).json({ error: "Message is required" });
+
+    // Gather finance context
+    const todaySales = await db.query("SELECT SUM(selling_price) as total FROM vehicle_sales WHERE sale_date = CURRENT_DATE");
+    const monthSales = await db.query("SELECT SUM(selling_price) as total FROM vehicle_sales WHERE sale_date >= date_trunc('month', CURRENT_DATE)");
+    const expenses = await db.query("SELECT SUM(amount) as total FROM expenses");
+    const balances = await db.query("SELECT account, SUM(CASE WHEN type = 'Income' THEN amount ELSE -amount END) as balance FROM cash_flow GROUP BY account");
+
+    const financeData = {
+      todaySales: todaySales.rows[0].total || 0,
+      monthSales: monthSales.rows[0].total || 0,
+      totalExpenses: expenses.rows[0].total || 0,
+      balances: balances.rows
+    };
+
+    const reply = await generateFinanceAnalysis(message, financeData, history || []);
+    res.json({ reply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Records
 router.get('/expenses', async (req, res) => {
   try {
@@ -38,15 +67,18 @@ router.get('/expenses', async (req, res) => {
 
 router.post('/expenses', async (req, res) => {
   const { category, amount, description, date, account } = req.body;
+  const amountVal = amount === "" || amount === undefined ? 0 : amount;
+  const dateVal = date === "" || date === undefined ? new Date() : date;
+  
   try {
     const { rows } = await db.query(
       "INSERT INTO expenses (category, amount, description, date) VALUES ($1, $2, $3, $4) RETURNING *",
-      [category, amount, description, date || new Date()]
+      [category, amountVal, description, dateVal]
     );
     // Also record in cash flow
     await db.query(
       "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Expense', $1, $2, $3, $4)",
-      [account || 'Cash', amount, `Expense: ${category} - ${description}`, date || new Date()]
+      [account || 'Cash', amountVal, `Expense: ${category} - ${description}`, dateVal]
     );
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -57,7 +89,7 @@ router.get('/sales', async (req, res) => {
     const { rows } = await db.query(`
       SELECT vs.*, v.brand, v.purchase_price, v.transport_cost, v.repair_cost, v.registration_fee 
       FROM vehicle_sales vs 
-      JOIN vehicles v ON vs.vehicle_id = v.id 
+      LEFT JOIN vehicles v ON vs.vehicle_id = v.id 
       ORDER BY vs.sale_date DESC
     `);
     res.json(rows);
@@ -65,21 +97,153 @@ router.get('/sales', async (req, res) => {
 });
 
 router.post('/sales', async (req, res) => {
-  const { vehicle_id, lead_id, selling_price, sale_date, payment_method, account } = req.body;
+  const { vehicle_id, lead_id, selling_price, sale_date, payment_method, account, is_new_customer, customer_name, customer_phone, customer_address } = req.body;
+  const vehicleIdVal = vehicle_id === "" || vehicle_id === undefined ? null : parseInt(vehicle_id, 10);
+  let leadIdVal = lead_id === "" || lead_id === undefined ? null : parseInt(lead_id, 10);
+  const sellingPriceVal = selling_price === "" || selling_price === undefined ? 0 : parseFloat(selling_price);
+  const saleDateVal = sale_date === "" || sale_date === undefined ? new Date() : sale_date;
+  const paymentMethodVal = payment_method || account || 'Bank';
+
   try {
+    let vehicleBrand = null;
+    if (vehicleIdVal) {
+      const vRes = await db.query("SELECT brand FROM vehicles WHERE id = $1", [vehicleIdVal]);
+      if (vRes.rows.length > 0) vehicleBrand = vRes.rows[0].brand;
+    }
+
+    if (is_new_customer) {
+      const notes = customer_address ? `Address: ${customer_address}` : null;
+      const budgetStr = `Rs. ${sellingPriceVal.toLocaleString()}`;
+      const newLead = await db.query(
+        "INSERT INTO leads (name, phone, status, notes, interested_car, budget) VALUES ($1, $2, 'Closed Deal', $3, $4, $5) RETURNING id",
+        [customer_name || 'Walk-in Customer', customer_phone || 'N/A', notes, vehicleBrand, budgetStr]
+      );
+      leadIdVal = newLead.rows[0].id;
+    }
+
     const { rows } = await db.query(
       "INSERT INTO vehicle_sales (vehicle_id, lead_id, selling_price, sale_date, payment_method) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [vehicle_id, lead_id, selling_price, sale_date || new Date(), payment_method]
+      [vehicleIdVal, leadIdVal, sellingPriceVal, saleDateVal, paymentMethodVal]
     );
     // Mark car as stock = 0
-    await db.query("UPDATE vehicles SET stock = stock - 1 WHERE id = $1", [vehicle_id]);
+    if (vehicleIdVal) {
+      await db.query("UPDATE vehicles SET stock = stock - 1 WHERE id = $1", [vehicleIdVal]);
+    }
     // Record in cash flow
     await db.query(
       "INSERT INTO cash_flow (type, account, amount, description, date) VALUES ('Income', $1, $2, $3, $4)",
-      [account || 'Bank', selling_price, `Vehicle Sale ID: ${vehicle_id}`, sale_date || new Date()]
+      [account || 'Bank', sellingPriceVal, `Vehicle Sale #${rows[0].id}`, saleDateVal]
     );
+
+    // Sync lead status to 'Closed Deal' and notify the assigned agent
+    if (leadIdVal) {
+      const leadRes = await db.query("SELECT name, assigned_to FROM leads WHERE id = $1", [leadIdVal]);
+      const lead = leadRes.rows[0];
+      if (lead) {
+        const budgetStr = `Rs. ${sellingPriceVal.toLocaleString()}`;
+        await db.query(
+          "UPDATE leads SET status = 'Closed Deal', interested_car = COALESCE($2, interested_car), budget = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1", 
+          [leadIdVal, vehicleBrand, budgetStr]
+        );
+        if (lead.assigned_to) {
+          await db.query(
+            "INSERT INTO notifications (user_id, message) VALUES ($1, $2)",
+            [lead.assigned_to, `🎉 Deal Closed! Vehicle sale recorded for lead: ${lead.name}.`]
+          );
+        }
+      }
+    }
+
     res.status(201).json(rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /finance/expenses/:id
+router.delete('/expenses/:id', async (req, res) => {
+  try {
+    const expense = await db.query('SELECT category, description, amount FROM expenses WHERE id = $1', [req.params.id]);
+    if (expense.rows.length > 0) {
+      const exp = expense.rows[0];
+      const descMatch = `Expense: ${exp.category} - ${exp.description}`;
+      await db.query("DELETE FROM cash_flow WHERE type = 'Expense' AND description = $1 AND amount = $2", [descMatch, exp.amount]);
+    }
+    await db.query('DELETE FROM expenses WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// PUT /finance/expenses/:id
+router.put('/expenses/:id', async (req, res) => {
+  try {
+    const { category, amount, description, date } = req.body;
+    const oldExpense = await db.query('SELECT category, description, amount FROM expenses WHERE id = $1', [req.params.id]);
+    
+    if (oldExpense.rows.length > 0) {
+      const exp = oldExpense.rows[0];
+      const descMatch = `Expense: ${exp.category} - ${exp.description}`;
+      const newDesc = `Expense: ${category} - ${description}`;
+      await db.query(
+        "UPDATE cash_flow SET amount = $1, description = $2, date = $3 WHERE type = 'Expense' AND description = $4 AND amount = $5", 
+        [amount, newDesc, date, descMatch, exp.amount]
+      );
+    }
+
+    const { rows } = await db.query(
+      "UPDATE expenses SET category = $1, amount = $2, description = $3, date = $4 WHERE id = $5 RETURNING *",
+      [category, amount, description, date, req.params.id]
+    );
+
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /finance/sales/:id
+router.delete('/sales/:id', async (req, res) => {
+  try {
+    // Restore vehicle stock, revert lead status, and remove cash_flow entry
+    const sale = await db.query('SELECT vehicle_id, lead_id, payment_method, selling_price FROM vehicle_sales WHERE id = $1', [req.params.id]);
+    if (sale.rows.length > 0) {
+      const { vehicle_id, lead_id, payment_method, selling_price } = sale.rows[0];
+      if (vehicle_id) {
+        await db.query('UPDATE vehicles SET stock = stock + 1 WHERE id = $1', [vehicle_id]);
+      }
+      if (lead_id) {
+        await db.query("UPDATE leads SET status = 'Negotiating', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [lead_id]);
+      }
+      // Remove the matching cash flow income entry
+      await db.query(
+        "DELETE FROM cash_flow WHERE type = 'Income' AND description = $1 AND amount = $2 AND account = $3",
+        [`Vehicle Sale #${req.params.id}`, selling_price, payment_method || 'Bank']
+      );
+    }
+    await db.query('DELETE FROM vehicle_sales WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// DELETE /finance/reset — wipes all financial data (admin/owner only)
+router.delete('/reset', async (req, res) => {
+  const { confirm } = req.body;
+  if (confirm !== 'RESET_FINANCIAL_DATA') {
+    return res.status(400).json({ error: 'Invalid confirmation token' });
+  }
+  try {
+    // Restore vehicle stock for all sold vehicles first
+    await db.query(`
+      UPDATE vehicles v
+      SET stock = stock + subq.sold_count
+      FROM (
+        SELECT vehicle_id, COUNT(*) as sold_count FROM vehicle_sales GROUP BY vehicle_id
+      ) subq
+      WHERE v.id = subq.vehicle_id
+    `);
+    // Clear all financial tables
+    await db.query('TRUNCATE TABLE vehicle_sales, expenses, cash_flow RESTART IDENTITY CASCADE');
+    res.json({ success: true, message: 'All financial data has been reset.' });
+  } catch (err) {
+    console.error('[Finance Reset Error]', err);
+    res.status(500).json({ error: 'Server error during reset' });
+  }
 });
 
 module.exports = router;

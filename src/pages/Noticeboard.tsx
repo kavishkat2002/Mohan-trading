@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Pin, PinOff, Trash2, Edit3, Plus, Bell, Bold, Italic, Underline,
-  Link2, Image, AlignLeft, AlignCenter, AlignRight, Palette, Type,
-  ChevronDown, X,
+  Pin, PinOff, Trash2, Edit3, Plus, Bold, Italic, Underline,
+  Link2, ImagePlus, AlignLeft, AlignCenter, AlignRight, Palette, Type,
+  ChevronDown, X, Upload,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -41,7 +41,7 @@ const BG_COLORS = [
 
 const FONT_SIZES = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
 
-function RichEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function RichEditor({ value, onChange, onImageInsert }: { value: string; onChange: (v: string) => void; onImageInsert: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,23 +61,16 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
     if (url) exec("createLink", url);
   };
 
-  const insertImage = () => {
-    const url = prompt("Enter image URL:", "https://");
-    if (url) exec("insertImage", url);
-  };
-
   return (
     <div className="border-2 border-border rounded-xl overflow-hidden focus-within:border-primary/50 transition-colors">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 bg-muted/40 border-b border-border">
-        {/* Text Format */}
         <ToolbarBtn icon={Bold} title="Bold" onClick={() => exec("bold")} />
         <ToolbarBtn icon={Italic} title="Italic" onClick={() => exec("italic")} />
         <ToolbarBtn icon={Underline} title="Underline" onClick={() => exec("underline")} />
 
         <Divider />
 
-        {/* Alignment */}
         <ToolbarBtn icon={AlignLeft} title="Align Left" onClick={() => exec("justifyLeft")} />
         <ToolbarBtn icon={AlignCenter} title="Align Center" onClick={() => exec("justifyCenter")} />
         <ToolbarBtn icon={AlignRight} title="Align Right" onClick={() => exec("justifyRight")} />
@@ -139,9 +132,9 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
 
         <Divider />
 
-        {/* Link & Image */}
         <ToolbarBtn icon={Link2} title="Insert Link" onClick={insertLink} />
-        <ToolbarBtn icon={Image} title="Insert Image URL" onClick={insertImage} />
+        {/* Image from device — triggers file input in parent */}
+        <ToolbarBtn icon={ImagePlus} title="Insert Image from Device" onClick={onImageInsert} />
       </div>
 
       {/* Content Editable */}
@@ -152,7 +145,7 @@ function RichEditor({ value, onChange }: { value: string; onChange: (v: string) 
         onInput={() => onChange(ref.current?.innerHTML || "")}
         className="min-h-[200px] p-4 text-sm text-foreground outline-none leading-relaxed"
         style={{ overflowY: "auto" }}
-        data-placeholder="Write your notice here... Use the toolbar to format text, add links, images, and more."
+        data-placeholder="Write your notice here... Use the toolbar to format text, add images, and more."
       />
 
       <style>{`
@@ -206,6 +199,11 @@ export default function Noticeboard() {
   const [pinned, setPinned] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Image upload state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const fetchNotices = () => {
     fetch(API)
       .then(r => r.json())
@@ -220,6 +218,8 @@ export default function Noticeboard() {
     setTitle("");
     setContent("");
     setPinned(false);
+    setImageFile(null);
+    setImagePreview(null);
     setIsOpen(true);
   };
 
@@ -228,32 +228,64 @@ export default function Noticeboard() {
     setTitle(n.title);
     setContent(n.content);
     setPinned(n.pinned);
+    setImageFile(null);
+    setImagePreview(n.image_url || null);
     setIsOpen(true);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const triggerImagePicker = () => {
+    imageInputRef.current?.click();
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    if (!title.trim() || !content.trim()) {
+      toast({ title: "Missing fields", description: "Please fill in title and content.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
     try {
       const method = editingNotice ? "PUT" : "POST";
       const url = editingNotice ? `${API}/${editingNotice.id}` : API;
-      const body = editingNotice
-        ? { title, content, pinned }
-        : { title, content, pinned, author_id: user?.id, author_name: user?.email };
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      // Use FormData so we can upload an image file alongside JSON fields
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("content", content);
+      formData.append("pinned", String(pinned));
+      if (!editingNotice) {
+        formData.append("author_id", String(user?.id || ""));
+        formData.append("author_name", user?.email || "Admin");
+      }
+      if (imageFile) {
+        formData.append("image", imageFile);
+      } else if (imagePreview && editingNotice?.image_url) {
+        formData.append("image_url", imagePreview); // keep existing
+      }
+
+      const res = await fetch(url, { method, body: formData });
+      const data = await res.json();
 
       if (res.ok) {
-        toast({ title: editingNotice ? "Notice Updated" : "Notice Posted", description: "All team members can now see this." });
+        toast({ title: editingNotice ? "Notice Updated ✅" : "Notice Posted ✅", description: "All team members can now see this." });
         setIsOpen(false);
         fetchNotices();
+      } else {
+        toast({ title: "Failed to post", description: data.error || "Unknown error", variant: "destructive" });
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Network error", variant: "destructive" });
+    }
     setIsSaving(false);
   };
 
@@ -265,23 +297,30 @@ export default function Noticeboard() {
   };
 
   const handleTogglePin = async (n: any) => {
-    await fetch(`${API}/${n.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: n.title, content: n.content, pinned: !n.pinned }),
-    });
+    const formData = new FormData();
+    formData.append("title", n.title);
+    formData.append("content", n.content);
+    formData.append("pinned", String(!n.pinned));
+    await fetch(`${API}/${n.id}`, { method: "PUT", body: formData });
     fetchNotices();
   };
 
   return (
     <div className="space-y-6">
+      {/* Hidden file input */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageSelect}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex flex-col">
-            <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">Noticeboard</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Company-wide announcements and notices.</p>
-          </div>
+          <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">Noticeboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Company-wide announcements and notices.</p>
         </div>
         {isAdmin && (
           <Button
@@ -300,9 +339,6 @@ export default function Noticeboard() {
         </div>
       ) : notices.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-          <div className="py-4">
-            {/* Icon removed */}
-          </div>
           <div>
             <p className="text-base font-medium text-foreground">No notices yet</p>
             <p className="text-sm text-muted-foreground mt-1">
@@ -317,13 +353,12 @@ export default function Noticeboard() {
         </div>
       ) : (
         <div className="space-y-4">
-          {notices.map((n, i) => (
+          {notices.map((n) => (
             <div
               key={n.id}
               className={`relative border-2 rounded-2xl bg-white overflow-hidden transition-all hover:shadow-md group
                 ${n.pinned ? "border-amber-300 shadow-amber-100 shadow-md" : "border-border"}`}
             >
-              {/* Pinned indicator */}
               {n.pinned && (
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-400" />
               )}
@@ -365,14 +400,23 @@ export default function Noticeboard() {
                   )}
                 </div>
 
+                {/* Attached Image — fixed crop height, fills full width on all screens */}
+                {n.image_url && (
+                  <div className="w-full rounded-xl overflow-hidden border border-border/50" style={{ height: "clamp(180px, 35vw, 380px)" }}>
+                    <img
+                      src={n.image_url}
+                      alt="Notice attachment"
+                      className="w-full h-full object-cover object-center"
+                      onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+
                 {/* Rich Content */}
                 <div
                   className="prose prose-sm max-w-none text-foreground/80 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: n.content }}
-                  style={{
-                    fontSize: "0.9rem",
-                    lineHeight: "1.7",
-                  }}
+                  style={{ fontSize: "0.9rem", lineHeight: "1.7" }}
                 />
 
                 {/* Footer */}
@@ -399,7 +443,7 @@ export default function Noticeboard() {
       )}
 
       {/* Compose/Edit Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { setImageFile(null); setImagePreview(null); } }}>
         <DialogContent className="max-w-3xl w-full p-0 gap-0 rounded-2xl overflow-hidden">
           <DialogHeader className="p-6 pb-4 border-b bg-gradient-to-r from-primary/5 to-amber-50">
             <DialogTitle className="font-display text-xl font-bold">
@@ -408,7 +452,7 @@ export default function Noticeboard() {
           </DialogHeader>
 
           <form onSubmit={handleSave}>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
               <div className="space-y-2">
                 <Label className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Notice Title</Label>
                 <Input
@@ -422,7 +466,39 @@ export default function Noticeboard() {
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Content</Label>
-                <RichEditor value={content} onChange={setContent} />
+                <RichEditor value={content} onChange={setContent} onImageInsert={triggerImagePicker} />
+              </div>
+
+              {/* Image Upload Section */}
+              <div className="space-y-2">
+                <Label className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Attach Image (Optional)</Label>
+                {imagePreview ? (
+                  <div className="relative rounded-xl overflow-hidden border-2 border-border group">
+                    <img src={imagePreview} alt="Preview" className="w-full max-h-48 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null); if (imageInputRef.current) imageInputRef.current.value = ''; }}
+                      className="absolute top-2 right-2 h-7 w-7 bg-black/60 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors"
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-3 py-1.5">
+                      <p className="text-[11px] text-white/80">
+                        {imageFile ? imageFile.name : "Current image"} · Click × to remove
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={triggerImagePicker}
+                    className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl p-6 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors group"
+                  >
+                    <Upload className="h-8 w-8 opacity-40 group-hover:opacity-70 transition-opacity" />
+                    <span className="text-sm font-medium">Click to upload image from device</span>
+                    <span className="text-xs">PNG, JPG, GIF, WEBP up to 10MB</span>
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-3 pt-1">
