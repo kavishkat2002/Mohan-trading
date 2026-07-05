@@ -95,7 +95,10 @@ router.get('/all', async (req, res) => {
     const { rows } = await db.query(`
       SELECT a.*
       FROM attendance a 
+<<<<<<< HEAD
       JOIN users u ON a.user_id = u.id::text 
+=======
+>>>>>>> Other-changes
       ORDER BY a.date DESC, a.check_in_time DESC
     `);
     res.json(rows);
@@ -213,9 +216,14 @@ router.post('/leaves', async (req, res) => {
 router.get('/leaves', async (req, res) => {
   try {
     const { rows } = await db.query(`
+<<<<<<< HEAD
       SELECT l.*, u.email, u.name 
       FROM leaves l 
       JOIN users u ON l.user_id = u.id::text 
+=======
+      SELECT l.*
+      FROM leaves l
+>>>>>>> Other-changes
       ORDER BY l.created_at DESC
     `);
     res.json(rows);

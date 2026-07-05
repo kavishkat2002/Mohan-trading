@@ -1,27 +1,19 @@
 {
-    "services": {
+    "outputDirectory": "dist",
+    "experimentalServices": {
         "frontend": {
-            "root": ".",
+            "routePrefix": "/",
             "framework": "vite"
         },
         "backend": {
-            "root": "backend"
+            "root": "backend",
+            "routePrefix": "/_/backend",
+            "entrypoint": "server.js"
         }
     },
-    "rewrites": [
-        {
-            "source": "/api(/.*)?",
-            "destination": {
-                "type": "service",
-                "service": "backend"
-            }
-        },
-        {
-            "source": "/(.*)",
-            "destination": {
-                "type": "service",
-                "service": "frontend"
-            }
+    "functions": {
+        "backend/server.js": {
+            "includeFiles": "backend/uploads/**"
         }
-    ]
+    }
 }
