@@ -41,9 +41,56 @@ const getImageUrl = (url: string | null) => {
   if (url.startsWith('http')) return url;
   const apiUrl = import.meta.env.VITE_API_URL || '';
   if (!apiUrl || apiUrl.startsWith('/') || !apiUrl.startsWith('http')) {
-    return url;
+    return `https://runny-unsentiently-teresita.ngrok-free.dev${url}`;
   }
   return `${apiUrl}${url}`;
+};
+
+const ImageWithBypass = ({ src, alt, className }: { src: string; alt?: string; className?: string }) => {
+  const [imgSrc, setImgSrc] = useState<string>("");
+
+  useEffect(() => {
+    if (!src) {
+      setImgSrc("");
+      return;
+    }
+    if (src.startsWith('blob:')) {
+      setImgSrc(src);
+      return;
+    }
+
+    let isMounted = true;
+    fetch(src, {
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.blob();
+      })
+      .then(blob => {
+        if (isMounted) {
+          const objectUrl = URL.createObjectURL(blob);
+          setImgSrc(objectUrl);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setImgSrc(src);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [src]);
+
+  if (!imgSrc) {
+    return <div className={`animate-pulse bg-muted rounded-md ${className}`} />;
+  }
+
+  return <img src={imgSrc} alt={alt} className={className} />;
 };
 
 export default function Vehicles() {
@@ -402,7 +449,7 @@ export default function Vehicles() {
                     ) : editingVehicle?.additional_images?.length > 0 ? (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {editingVehicle.additional_images.map((url: string, idx: number) => (
-                          <img key={idx} src={getImageUrl(url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                          <ImageWithBypass key={idx} src={getImageUrl(url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                         ))}
                       </div>
                     ) : null}
@@ -417,7 +464,7 @@ export default function Vehicles() {
                       </div>
                     ) : editingVehicle?.image_url ? (
                       <div className="mt-2">
-                        <img src={getImageUrl(editingVehicle.image_url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                        <ImageWithBypass src={getImageUrl(editingVehicle.image_url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                       </div>
                     ) : null}
                   </div>
@@ -469,7 +516,7 @@ export default function Vehicles() {
                       <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
                         <TableCell>
                           {v.image_url ? (
-                            <img src={getImageUrl(v.image_url)} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                            <ImageWithBypass src={getImageUrl(v.image_url)} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
                           ) : (
                             <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
                               <CarPassengersIcon className="h-5 w-5" />
@@ -542,7 +589,7 @@ export default function Vehicles() {
                     {/* Left Side: Image */}
                     <div className="w-20 h-16 shrink-0 relative">
                       {v.image_url ? (
-                        <img src={getImageUrl(v.image_url)} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
+                        <ImageWithBypass src={getImageUrl(v.image_url)} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
                       ) : (
                         <div className="w-full h-full bg-primary/5 rounded-lg border border-border flex items-center justify-center text-primary/30">
                           <CarPassengersIcon className="h-6 w-6" />
