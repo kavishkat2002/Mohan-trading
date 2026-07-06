@@ -36,6 +36,16 @@ const CarPassengersIcon = ({ className }: { className?: string }) => (
   />
 );
 
+const getImageUrl = (url: string | null) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  if (!apiUrl || apiUrl.startsWith('/') || !apiUrl.startsWith('http')) {
+    return `https://runny-unsentiently-teresita.ngrok-free.dev${url}`;
+  }
+  return `${apiUrl}${url}`;
+};
+
 export default function Vehicles() {
   const { user } = useAuth();
   const canUpdate = user?.role === 'owner' || user?.role === 'admin' || user?.role === 'sales';
@@ -198,7 +208,7 @@ export default function Vehicles() {
     if (!win) return;
     const inStockVehicles = vehicles.filter(v => v.stock > 0);
     const rows = inStockVehicles.map(v => {
-      const imgSrc = v.image_url ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}` : '';
+      const imgSrc = getImageUrl(v.image_url);
       return `
         <div class="card">
           <div class="card-img">
@@ -392,7 +402,7 @@ export default function Vehicles() {
                     ) : editingVehicle?.additional_images?.length > 0 ? (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {editingVehicle.additional_images.map((url: string, idx: number) => (
-                          <img key={idx} src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                          <img key={idx} src={getImageUrl(url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                         ))}
                       </div>
                     ) : null}
@@ -407,7 +417,7 @@ export default function Vehicles() {
                       </div>
                     ) : editingVehicle?.image_url ? (
                       <div className="mt-2">
-                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${editingVehicle.image_url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                        <img src={getImageUrl(editingVehicle.image_url)} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                       </div>
                     ) : null}
                   </div>
@@ -459,7 +469,7 @@ export default function Vehicles() {
                       <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
                         <TableCell>
                           {v.image_url ? (
-                            <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                            <img src={getImageUrl(v.image_url)} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
                           ) : (
                             <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
                               <CarPassengersIcon className="h-5 w-5" />
@@ -532,7 +542,7 @@ export default function Vehicles() {
                     {/* Left Side: Image */}
                     <div className="w-20 h-16 shrink-0 relative">
                       {v.image_url ? (
-                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}`} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
+                        <img src={getImageUrl(v.image_url)} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
                       ) : (
                         <div className="w-full h-full bg-primary/5 rounded-lg border border-border flex items-center justify-center text-primary/30">
                           <CarPassengersIcon className="h-6 w-6" />
