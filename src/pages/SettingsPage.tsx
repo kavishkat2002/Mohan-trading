@@ -30,7 +30,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
   const { user: currentUser } = useAuth();
 
   const fetchUsers = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/admin/users`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/admin/users`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
@@ -47,7 +47,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
     if (!newEmail || !newPassword) return;
     setIsAdding(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/admin/create-user`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/admin/create-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmail, password: newPassword, role: "sales" })
@@ -74,7 +74,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
 
   const changeRole = async (supabaseId: string, role: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/admin/update-role/${supabaseId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/admin/update-role/${supabaseId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role })
@@ -93,7 +93,7 @@ function TeamManager({ isOwner }: { isOwner: boolean }) {
   const deleteMember = async (supabaseId: string) => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/admin/delete-user/${supabaseId}`, { method: "DELETE" });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/admin/delete-user/${supabaseId}`, { method: "DELETE" });
       if (res.ok) {
         toast({ title: "Account deleted", description: "The team member's account has been permanently removed." });
         setConfirmDeleteId(null);
@@ -288,7 +288,7 @@ export default function SettingsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const fetchAiVehicles = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setAiVehicles(data);
@@ -299,7 +299,7 @@ export default function SettingsPage() {
   const saveVehicleNotes = async (id: number, notes: string) => {
     setIsSavingVehicleNotes(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles/${id}/ai-notes`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles/${id}/ai-notes`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ai_notes: notes })
@@ -472,7 +472,7 @@ export default function SettingsPage() {
         ...overrideFields
       };
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/settings`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -493,7 +493,7 @@ export default function SettingsPage() {
       // The backend actually has a generic upload endpoint or we can use the avatar endpoint.
       // Wait, let's use the standard POST to /api/users/${user.id}/avatar for simplicity and get an image URL.
       // Since it's local storage, we can just use it to host the image.
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/users/${user?.id || 1}/avatar`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${user?.id || 1}/avatar`, {
         method: "POST",
         body: formData
       });
@@ -553,7 +553,7 @@ export default function SettingsPage() {
                 onClick={() => logoInputRef.current?.click()}
               >
                 {logoUrl ? (
-                  <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${logoUrl.replace(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`, '')}`} alt="Logo" className="h-full w-full object-contain p-1.5" />
+                  <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${logoUrl.replace(`${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`, '')}`} alt="Logo" className="h-full w-full object-contain p-1.5" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center">
                     <Building2 className="h-7 w-7 text-slate-300" />
@@ -1553,7 +1553,7 @@ export default function SettingsPage() {
                           content: m.content
                         }));
 
-                        const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/settings/test-chat`, {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/settings/test-chat`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({

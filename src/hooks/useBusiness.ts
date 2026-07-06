@@ -7,7 +7,7 @@ export function useBusiness() {
   const { data: business, isLoading: businessLoading } = useQuery({
     queryKey: ["business"],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/settings`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/settings`);
       if (!res.ok) throw new Error("Failed to fetch settings");
       return res.json();
     },

@@ -64,14 +64,14 @@ export default function Vehicles() {
   });
 
   const fetchVehicles = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`)
       .then(res => res.json())
       .then(data => { setVehicles(data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   };
 
   const fetchLeads = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`)
       .then(res => res.json())
       .then(data => setLeads((data || []).filter((l: any) => l.status !== 'Closed' && l.status !== 'Closed Deal')))
       .catch(console.error);
@@ -86,7 +86,7 @@ export default function Vehicles() {
     e.preventDefault();
     if (!selectedVehicle || !newSale.lead_id) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/sales`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -127,8 +127,8 @@ export default function Vehicles() {
 
     try {
       const url = editingVehicle
-        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles/${editingVehicle.id}`
-        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`;
+        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles/${editingVehicle.id}`
+        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`;
       const method = editingVehicle ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -174,7 +174,7 @@ export default function Vehicles() {
   const handleDeleteVehicle = async (id: number) => {
     if (!confirm("Are you sure you want to delete this vehicle?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles/${id}`, {
         method: "DELETE"
       });
       if (res.ok) {
@@ -198,7 +198,7 @@ export default function Vehicles() {
     if (!win) return;
     const inStockVehicles = vehicles.filter(v => v.stock > 0);
     const rows = inStockVehicles.map(v => {
-      const imgSrc = v.image_url ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${v.image_url}` : '';
+      const imgSrc = v.image_url ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}` : '';
       return `
         <div class="card">
           <div class="card-img">
@@ -392,7 +392,7 @@ export default function Vehicles() {
                     ) : editingVehicle?.additional_images?.length > 0 ? (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {editingVehicle.additional_images.map((url: string, idx: number) => (
-                          <img key={idx} src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                          <img key={idx} src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                         ))}
                       </div>
                     ) : null}
@@ -407,7 +407,7 @@ export default function Vehicles() {
                       </div>
                     ) : editingVehicle?.image_url ? (
                       <div className="mt-2">
-                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${editingVehicle.image_url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
+                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${editingVehicle.image_url}`} alt="existing" className="w-16 h-16 object-cover rounded-md border border-border opacity-70" />
                       </div>
                     ) : null}
                   </div>
@@ -459,7 +459,7 @@ export default function Vehicles() {
                       <TableRow key={v.id} className="hover:bg-primary/[0.02] transition-colors border-border">
                         <TableCell>
                           {v.image_url ? (
-                            <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
+                            <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}`} alt="car" className="w-14 h-10 object-cover rounded-md border border-border" />
                           ) : (
                             <div className="w-14 h-10 bg-primary/5 rounded-md border border-border flex items-center justify-center text-primary/30">
                               <CarPassengersIcon className="h-5 w-5" />
@@ -532,7 +532,7 @@ export default function Vehicles() {
                     {/* Left Side: Image */}
                     <div className="w-20 h-16 shrink-0 relative">
                       {v.image_url ? (
-                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${v.image_url}`} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
+                        <img src={`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${v.image_url}`} alt="car" className="w-full h-full object-cover rounded-lg border border-border" />
                       ) : (
                         <div className="w-full h-full bg-primary/5 rounded-lg border border-border flex items-center justify-center text-primary/30">
                           <CarPassengersIcon className="h-6 w-6" />

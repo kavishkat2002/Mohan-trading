@@ -137,7 +137,7 @@ export default function Leads() {
       
       if (!supaErr && supaLeads && supaLeads.length > 0) {
         // Sync them to backend
-        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/sync`, {
+        await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ leads: supaLeads })
@@ -145,7 +145,7 @@ export default function Leads() {
       }
 
       // 2. Fetch the newly merged data from main CRM
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`);
       const data = await res.json();
       setLeads(data);
       setLoading(false);
@@ -158,7 +158,7 @@ export default function Leads() {
   useEffect(() => { 
     fetchLeads(); 
     if (isElevated) {
-      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/admin/users`)
+      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/admin/users`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -173,7 +173,7 @@ export default function Leads() {
     e.preventDefault();
     setIsAdding(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newLead),
@@ -198,7 +198,7 @@ export default function Leads() {
     e.preventDefault();
     if (!editLead) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${editLead.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/${editLead.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -227,7 +227,7 @@ export default function Leads() {
   const handleDeleteLead = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${deleteId}`, { method: "DELETE" });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/${deleteId}`, { method: "DELETE" });
       if (res.ok) {
         toast({ title: "Deleted", description: "Lead removed from registry." });
         setIsDeleteOpen(false);
@@ -248,7 +248,7 @@ export default function Leads() {
     const selectedMember = team.find((m: any) => m.id === selectedAssignee);
     const assigneeName = selectedMember?.email || selectedAssignee;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${assignLead.id}/assign`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/${assignLead.id}/assign`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -277,7 +277,7 @@ export default function Leads() {
     e.preventDefault();
     if (!commissionLead) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${commissionLead.id}/commission`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/${commissionLead.id}/commission`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ commission_amount: parseFloat(commissionAmount) || 0 })
@@ -296,7 +296,7 @@ export default function Leads() {
   // Partial status update (Kanban column move)
   const updateLeadStatus = async (lead: any, newStatus: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads/${lead.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads/${lead.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

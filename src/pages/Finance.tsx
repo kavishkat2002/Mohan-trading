@@ -114,7 +114,7 @@ export default function Finance() {
     const fetchInsights = async () => {
       setInsightsLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}/api/finance/chat`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}/api/finance/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -171,7 +171,7 @@ export default function Finance() {
     setIsTyping(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}/api/finance/chat`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}/api/finance/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -263,11 +263,11 @@ export default function Finance() {
     setLoading(true);
     try {
       const [overRes, expRes, salesRes, vehRes, leadRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/overview`),
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/expenses`),
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/sales`),
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`),
-        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/leads`)
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/overview`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/expenses`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/sales`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`),
+        fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`)
       ]);
       setOverview(await overRes.json());
       setExpenses(await expRes.json());
@@ -296,7 +296,7 @@ export default function Finance() {
     if (resetConfirmText !== 'RESET') return;
     setIsResetting(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}/api/finance/reset`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}/api/finance/reset`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirm: 'RESET_FINANCIAL_DATA' })
@@ -321,8 +321,8 @@ export default function Finance() {
     e.preventDefault();
     try {
       const url = editingExpenseId 
-        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/expenses/${editingExpenseId}`
-        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/expenses`;
+        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/expenses/${editingExpenseId}`
+        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/expenses`;
       const method = editingExpenseId ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -360,7 +360,7 @@ export default function Finance() {
   const handleDeleteExpense = async (id: number) => {
     if (!confirm("Are you sure you want to delete this expense? This will also remove the corresponding cash flow entry.")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/expenses/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/expenses/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: "Expense deleted" });
         fetchData();
@@ -393,7 +393,7 @@ export default function Finance() {
         is_new_customer: isNewCustomer
       };
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/sales`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -419,7 +419,7 @@ export default function Finance() {
   const handleDeleteSale = async (id: number) => {
     if (!window.confirm('Delete this sale record? This will restore vehicle stock and revert the lead status.')) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/finance/sales/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/sales/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Sale Deleted', description: 'Record removed. Vehicle stock and lead status restored.' });
         fetchData();
@@ -834,7 +834,7 @@ export default function Finance() {
            {/* Custom Print Header just for the PDF export */}
            <div className="hidden print:flex w-full items-center gap-6 border-b-4 border-emerald-950 pb-6 mb-8 mt-10 px-8">
                <img 
-                 src={business?.logo_url ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}${business.logo_url.replace(`${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`, '')}` : "/mohantrader-logo.png"} 
+                 src={business?.logo_url ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}${business.logo_url.replace(`${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`, '')}` : "/mohantrader-logo.png"} 
                  className="w-24 h-24 object-contain rounded-xl shadow-lg border bg-white" 
                  alt="Logo" 
                  onError={(e) => { e.currentTarget.src = "/mohantrader-logo.png"; }} 

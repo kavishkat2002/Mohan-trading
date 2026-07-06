@@ -53,7 +53,7 @@ export default function Tasks() {
       
       // 1. Ensure user exists in local DB using existing /register route if /sync is unavailable
       try {
-        const syncRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/users/sync`, {
+        const syncRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: user.email, role: user.role })
@@ -61,7 +61,7 @@ export default function Tasks() {
         
         if (!syncRes.ok) {
           // Fallback to /register if sync is not found
-          await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/users/register`, {
+          await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
@@ -76,12 +76,12 @@ export default function Tasks() {
       }
 
       // 2. Fetch Users & Vehicles
-      const uRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/users`);
+      const uRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users`);
       const usersData = uRes.ok ? await uRes.json() : [];
       
       let vehiclesData = [];
       try {
-        const vRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/vehicles`);
+        const vRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`);
         if (vRes.ok) vehiclesData = await vRes.json();
       } catch (e) { console.error("Vehicles fetch failed", e); }
 
@@ -96,7 +96,7 @@ export default function Tasks() {
       const localId = localUser ? localUser.id : -1;
 
       try {
-        const tRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/tasks?userId=${localId}&role=${user?.role}`);
+        const tRes = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/tasks?userId=${localId}&role=${user?.role}`);
         if (tRes.ok) {
           const tData = await tRes.json();
           setTasks(Array.isArray(tData) ? tData : []);
@@ -151,7 +151,7 @@ export default function Tasks() {
         return;
       }
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/tasks`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(taskData)
@@ -176,7 +176,7 @@ export default function Tasks() {
 
   const handleUpdateStatus = async (taskId: number, status: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/tasks/${taskId}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/tasks/${taskId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -194,7 +194,7 @@ export default function Tasks() {
   const handleDeleteTask = async (taskId: number) => {
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/tasks/${taskId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/tasks/${taskId}`, {
         method: "DELETE"
       });
 

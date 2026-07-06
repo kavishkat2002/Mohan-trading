@@ -19,7 +19,7 @@ export default function SuperAdmin() {
 
   const fetchSubscription = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/subscription`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/subscription`);
       const data = await res.json();
       setSubStatus(data); // Instantly updates daysLeft & isExpired
     } catch (err) {
@@ -36,7 +36,7 @@ export default function SuperAdmin() {
   const handleRenew = async () => {
     try {
       setActionLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/subscription/renew`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/subscription/renew`, { method: "POST", headers: { "Content-Type": "application/json" } });
       if (res.ok) {
         const data = await res.json();
         setSubStatus(data); // Instantly update UI
@@ -53,7 +53,7 @@ export default function SuperAdmin() {
     if (!customDate) { toast.error("Please select a date first."); return; }
     try {
       setActionLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/subscription/renew`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/subscription/renew`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expires_at: customDate, status: "Active" })
@@ -75,7 +75,7 @@ export default function SuperAdmin() {
     if (!window.confirm("WARNING: This will instantly lock the client out of their dashboard. Are you sure?")) return;
     try {
       setActionLoading(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5001`}`}/api/subscription/suspend`, { method: "POST" });
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/subscription/suspend`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setSubStatus(data); // Instantly update UI
