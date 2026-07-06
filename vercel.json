@@ -11,14 +11,15 @@
     },
     "rewrites": [
         {
-            "source": "/api(/.*)?",
-            "destination": {
-                "type": "service",
-                "service": "backend"
-            }
+            "source": "/api/(.*)",
+            "destination": "https://runny-unsentiently-teresita.ngrok-free.dev/api/$1"
         },
         {
-            "source": "/((?!api)[^.]*)",
+            "source": "/uploads/(.*)",
+            "destination": "https://runny-unsentiently-teresita.ngrok-free.dev/uploads/$1"
+        },
+        {
+            "source": "/((?!api|uploads)[^.]*)",
             "destination": "/index.html"
         },
         {

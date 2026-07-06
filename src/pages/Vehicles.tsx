@@ -41,7 +41,7 @@ const getImageUrl = (url: string | null) => {
   if (url.startsWith('http')) return url;
   const apiUrl = import.meta.env.VITE_API_URL || '';
   if (!apiUrl || apiUrl.startsWith('/') || !apiUrl.startsWith('http')) {
-    return `https://runny-unsentiently-teresita.ngrok-free.dev${url}`;
+    return url;
   }
   return `${apiUrl}${url}`;
 };
