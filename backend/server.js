@@ -17,14 +17,57 @@ const testDrivesRouter = require('./routes/test_drives');
 const db = require('./db');
 const { initFollowUpCron } = require('./services/followUpCron');
 
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const authMiddleware = require('./middleware/auth');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Security HTTP headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Restrict CORS origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    // Allow exact matches or subdomain templates
+    if (
+      allowedOrigins.includes(origin) || 
+      origin.endsWith('.vercel.app') || 
+      origin.endsWith('.netlify.app')
+    ) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+
 app.use(express.json());
+
 // Serve static image uploads
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Rate limiter for user login to prevent brute force attacks
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Too many login attempts from this IP, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/users/login', loginLimiter);
+
+// Global JWT Auth Middleware
+app.use('/api', authMiddleware);
 
 const subscriptionRouter = require('./routes/subscription');
 
