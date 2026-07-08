@@ -9,6 +9,7 @@ router.get('/', async (req, res) => {
       SELECT l.*, COALESCE(NULLIF(u.name, ''), u.email) as assigned_to_name 
       FROM leads l 
       LEFT JOIN users u ON l.assigned_to = u.id::text 
+      WHERE l.phone <> 'SYSTEM_SETTINGS'
       ORDER BY l.created_at DESC
     `);
     res.json(rows);
