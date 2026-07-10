@@ -1,6 +1,6 @@
 const axios = require('axios');
 const db = require('../db');
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const OPENAI_API_KEY = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || '';
 
 async function generateSmartReply(userMessage, context = {}) {
   if (!OPENAI_API_KEY) {

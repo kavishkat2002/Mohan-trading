@@ -370,11 +370,11 @@ serve(async (req: Request) => {
 });
 
 async function generateSmartReply(userMessage: string, context: any) {
-  let apiKey = Deno.env.get("OPENAI_API_KEY");
-  console.log("Deno.env OPENAI_API_KEY present:", !!apiKey, "starts with gsk_:", apiKey?.startsWith('gsk_'));
+  let apiKey = Deno.env.get("GROQ_API_KEY") || Deno.env.get("OPENAI_API_KEY");
+  console.log("API Key loaded. Starts with gsk_:", apiKey?.startsWith('gsk_'));
 
   if (!apiKey) {
-    console.log("No OPENAI_API_KEY found, returning fallback.");
+    console.log("No API Key found, returning fallback.");
     return {
       reply: "Our sales team will get back to you shortly, or you can call us directly.",
       extracted_info: null
