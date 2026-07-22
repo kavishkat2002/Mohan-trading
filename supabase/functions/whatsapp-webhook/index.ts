@@ -305,7 +305,13 @@ serve(async (req: Request) => {
           updateObj.status = info.status;
         }
 
-        updateObj.notes = `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: info })}`;
+        const debugMeta = {
+          ...info,
+          send_photos_for_vehicle_id: aiResult.send_photos_for_vehicle_id,
+          send_image_urls: aiResult.send_image_urls,
+          send_image_url: aiResult.send_image_url
+        };
+        updateObj.notes = `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: debugMeta })}`;
 
         await supabase.from('leads').update(updateObj).eq('id', lead.id);
         console.log(`[WEBHOOK] Lead details updated:`, info);
@@ -356,8 +362,13 @@ serve(async (req: Request) => {
         }
 
       } else {
+        const debugMeta = {
+          send_photos_for_vehicle_id: aiResult.send_photos_for_vehicle_id,
+          send_image_urls: aiResult.send_image_urls,
+          send_image_url: aiResult.send_image_url
+        };
         await supabase.from('leads').update({
-          notes: `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: {} })}`
+          notes: `STATE:${JSON.stringify({ step: 'AI_AGENT', meta: debugMeta })}`
         }).eq('id', lead.id);
       }
 
