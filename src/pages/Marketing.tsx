@@ -50,7 +50,7 @@ export default function Marketing() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`);
       const data = await res.json();
       // Only include Customers (Closed deals OR whatsapp live chat syncs)
       const filtered = data.filter((l: any) => 

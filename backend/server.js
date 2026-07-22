@@ -37,20 +37,32 @@ const allowedOrigins = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    // Allow exact matches or subdomain templates
+    // Allow exact matches, localhost/127.0.0.1/private network IPs on any port, or subdomain templates
     if (
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') ||
+      origin.startsWith('http://192.168.') ||
+      origin.startsWith('http://10.') ||
+      origin.startsWith('http://172.') ||
       allowedOrigins.includes(origin) || 
       origin.endsWith('.vercel.app') || 
       origin.endsWith('.netlify.app')
     ) {
       return callback(null, true);
     }
+    console.log(`[CORS Reject] Origin is: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
 
 app.use(express.json());
+
+// HTTP Request Logger Middleware for diagnostics
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${req.method} ${req.url}`);
+  next();
+});
 
 // Serve static image uploads
 const path = require('path');

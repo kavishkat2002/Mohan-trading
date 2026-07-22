@@ -41,7 +41,7 @@ const getImageUrl = (url: string | null) => {
   if (url.startsWith('http')) return url;
   const apiUrl = import.meta.env.VITE_API_URL || '';
   if (!apiUrl || apiUrl.startsWith('/') || !apiUrl.startsWith('http')) {
-    return `https://runny-unsentiently-teresita.ngrok-free.dev${url}`;
+    return `http://localhost:5001${url}`;
   }
   return `${apiUrl}${url}`;
 };
@@ -121,14 +121,14 @@ export default function Vehicles() {
   });
 
   const fetchVehicles = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles`)
       .then(res => res.json())
       .then(data => { setVehicles(data); setLoading(false); })
       .catch(err => { console.error(err); setLoading(false); });
   };
 
   const fetchLeads = () => {
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`)
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`)
       .then(res => res.json())
       .then(data => setLeads((data || []).filter((l: any) => l.status !== 'Closed' && l.status !== 'Closed Deal')))
       .catch(console.error);
@@ -143,7 +143,7 @@ export default function Vehicles() {
     e.preventDefault();
     if (!selectedVehicle || !newSale.lead_id) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/finance/sales`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/finance/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -184,8 +184,8 @@ export default function Vehicles() {
 
     try {
       const url = editingVehicle
-        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles/${editingVehicle.id}`
-        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles`;
+        ? `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles/${editingVehicle.id}`
+        : `${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles`;
       const method = editingVehicle ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -231,7 +231,7 @@ export default function Vehicles() {
   const handleDeleteVehicle = async (id: number) => {
     if (!confirm("Are you sure you want to delete this vehicle?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/vehicles/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/vehicles/${id}`, {
         method: "DELETE"
       });
       if (res.ok) {

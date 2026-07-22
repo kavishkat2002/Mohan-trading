@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkSubscription = () => {
-      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/subscription`)
+      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/subscription`)
         .then(res => res.json())
         .then(data => setSubscription(data))
         .catch(() => setSubscription(null));
@@ -104,7 +104,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (!user?.email) return;
 
     // First, sync the user to get their local database ID
-    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/sync`, {
+    fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         // Fetch Commissions if Sales Person
         if (!isElevated) {
-          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localId}/commissions`)
+          fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localId}/commissions`)
             .then(res => res.json())
             .then(data => setCommissionTotal(data.total))
             .catch(console.error);
@@ -131,7 +131,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     // Fetch Company Stats for Owner & Accountant (Independent of localId)
     if (user?.role === 'owner' || user?.role === 'accountant') {
-      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/leads`)
+      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`)
         .then(res => res.json())
         .then(data => {
           const closed = data.filter((l: any) => l.status === 'Closed');
@@ -153,7 +153,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (!localUserId) return;
 
     const fetchNotifications = () => {
-      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localUserId}/notifications`)
+      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localUserId}/notifications`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -195,7 +195,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const handleMarkAsRead = async (notifId: number) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/notifications/${notifId}/read`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/notifications/${notifId}/read`, {
         method: "PUT"
       });
       if (res.ok) {
@@ -209,7 +209,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const handleMarkAllAsRead = async () => {
     if (!localUserId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localUserId}/notifications/read-all`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localUserId}/notifications/read-all`, {
         method: "PUT"
       });
       if (res.ok) {
@@ -534,7 +534,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
 
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localUserId}/avatar`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localUserId}/avatar`, {
         method: "POST",
         body: formData
       });
@@ -555,7 +555,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
 
   useEffect(() => {
     if (open && localUserId) {
-      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localUserId}/profile`)
+      fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localUserId}/profile`)
         .then(res => res.json())
         .then(data => {
           if (data.name) {
@@ -585,7 +585,7 @@ function ProfileSettingsDialog({ open, onOpenChange, user, localUserId, setProfi
 
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'https://runny-unsentiently-teresita.ngrok-free.dev'}`}/api/users/${localUserId}/profile`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/users/${localUserId}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

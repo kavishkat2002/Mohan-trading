@@ -1,7 +1,14 @@
 const jwt = require('jsonwebtoken');
+const { createClient } = require('@supabase/supabase-js');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
-module.exports = (req, res, next) => {
+let supabaseClient = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+module.exports = async (req, res, next) => {
   // Allow OPTIONS preflight requests (required for CORS)
   if (req.method === 'OPTIONS') {
     return next();
@@ -27,7 +34,33 @@ module.exports = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    let decoded = null;
+
+    // 1. Try verifying with Supabase Auth
+    if (supabaseClient) {
+      try {
+        const { data: { user }, error } = await supabaseClient.auth.getUser(token);
+        if (!error && user) {
+          decoded = {
+            userId: user.id,
+            email: user.email,
+            role: user.user_metadata?.role || user.app_metadata?.role || 'sales'
+          };
+        }
+      } catch (err) {
+        // Fallback to local JWT verification below
+      }
+    }
+
+    // 2. Fallback: Try verifying with local JWT secret
+    if (!decoded) {
+      const payload = jwt.verify(token, JWT_SECRET);
+      decoded = {
+        userId: payload.userId,
+        role: payload.role
+      };
+    }
+
     req.user = decoded;
 
     // Enforce Role-Based Access Control (RBAC) on admin routes
