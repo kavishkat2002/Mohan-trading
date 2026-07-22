@@ -624,7 +624,7 @@ FIELD RULES (read carefully):
       finalApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       // Force a supported Groq model
       if (finalModel !== 'llama-3.3-70b-versatile' && finalModel !== 'llama-3.1-8b-instant') {
-        finalModel = 'llama-3.1-8b-instant';
+        finalModel = 'llama-3.3-70b-versatile';
       }
     }
 
