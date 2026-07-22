@@ -239,13 +239,29 @@ serve(async (req: Request) => {
       outMsg = aiResult.reply;
       sendImageUrls = [];
       
+      console.log(`[WEBHOOK] AI reply generated: "${outMsg}"`);
+      console.log(`[WEBHOOK] send_photos_for_vehicle_id:`, aiResult.send_photos_for_vehicle_id);
+      
       if (aiResult.send_photos_for_vehicle_id) {
-        const vehicle = (vehicles || []).find((v: any) => v.id === aiResult.send_photos_for_vehicle_id);
+        const targetId = Number(aiResult.send_photos_for_vehicle_id);
+        let vehicle = (vehicles || []).find((v: any) => Number(v.id) === targetId);
+        
+        // Robust fallback: if not found by numeric ID, try matching by name/brand
+        if (!vehicle && typeof aiResult.send_photos_for_vehicle_id === 'string') {
+          const searchName = aiResult.send_photos_for_vehicle_id.toLowerCase().trim();
+          vehicle = (vehicles || []).find((v: any) => 
+            v.brand.toLowerCase().includes(searchName) || 
+            searchName.includes(v.brand.toLowerCase())
+          );
+        }
+        
         if (vehicle) {
+          console.log(`[WEBHOOK] Found vehicle for photos: ${vehicle.brand} (ID: ${vehicle.id})`);
           if (vehicle.image_url) {
             try {
               const parsed = JSON.parse(vehicle.image_url);
               if (Array.isArray(parsed)) sendImageUrls.push(...parsed);
+              else sendImageUrls.push(String(vehicle.image_url));
             } catch (e) {
               if (Array.isArray(vehicle.image_url)) sendImageUrls.push(...vehicle.image_url);
               else sendImageUrls.push(String(vehicle.image_url));
@@ -257,6 +273,9 @@ serve(async (req: Request) => {
               if (Array.isArray(parsedAdd)) sendImageUrls.push(...parsedAdd);
             } catch (e) {}
           }
+          console.log(`[WEBHOOK] Prepared ${sendImageUrls.length} images to send.`);
+        } else {
+          console.warn(`[WEBHOOK] No vehicle found matching send_photos_for_vehicle_id:`, aiResult.send_photos_for_vehicle_id);
         }
       }
       
