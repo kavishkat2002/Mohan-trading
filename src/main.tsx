@@ -55,7 +55,16 @@ window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
       }
     }
   }
-  return originalFetch(input, init);
+  return originalFetch(input, init).then((res) => {
+    if (res.status === 401 && isBackendCall) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    return res;
+  });
 };
 
 createRoot(document.getElementById("root")!).render(<App />);

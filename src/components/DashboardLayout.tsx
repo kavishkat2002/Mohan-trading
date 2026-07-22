@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       fetch(`${import.meta.env.VITE_API_URL || `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}`}/api/leads`)
         .then(res => res.json())
         .then(data => {
-          const closed = data.filter((l: any) => l.status === 'Closed');
+          const closed = (Array.isArray(data) ? data : []).filter((l: any) => l.status === 'Closed');
           let rev = 0;
           let pay = 0;
           closed.forEach((l: any) => {
