@@ -17,7 +17,7 @@ window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
   const isBackendCall = url.includes('/api/') || url.startsWith('/api/');
 
   if (input instanceof Request) {
-    if (url.includes('ngrok-free.dev')) {
+    if (url.includes('ngrok-free.dev') || isBackendCall) {
       input.headers.set('ngrok-skip-browser-warning', 'true');
     }
     if (isBackendCall) {
@@ -45,7 +45,7 @@ window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
       }
     };
 
-    if (url.includes('ngrok-free.dev')) {
+    if (url.includes('ngrok-free.dev') || isBackendCall) {
       injectHeader('ngrok-skip-browser-warning', 'true');
     }
     if (isBackendCall) {
