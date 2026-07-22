@@ -14,6 +14,20 @@ window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
     url = input.url;
   }
 
+  // Rewrite localhost:5001 to relative path in production/Vercel to avoid Mixed Content errors
+  const isVercel = window.location.hostname.endsWith('.vercel.app') || !['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isVercel && (url.includes('localhost:5001') || url.includes('127.0.0.1:5001'))) {
+    const relativeUrl = url.replace(/https?:\/\/(localhost|127\.0\.0\.1):5001/, '');
+    url = relativeUrl;
+    if (typeof input === 'string') {
+      input = relativeUrl;
+    } else if (input instanceof URL) {
+      input = new URL(relativeUrl, window.location.origin);
+    } else if (input instanceof Request) {
+      input = new Request(relativeUrl, input);
+    }
+  }
+
   const isBackendCall = url.includes('/api/') || url.startsWith('/api/');
 
   if (input instanceof Request) {
